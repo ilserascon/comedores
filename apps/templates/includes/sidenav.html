@@ -10,90 +10,59 @@
       <!-- Collapse -->
       <div class="collapse navbar-collapse" id="sidenav-collapse-main">
         <!-- Nav items -->
-        <ul class="navbar-nav">
+        <ul class="navbar-nav">          
           <li class="nav-item">
             <a class="nav-link {% if 'index' in segment %} active {% endif %}" href="/">
               <i class="ni ni-tv-2 text-primary"></i>
-              <span class="nav-link-text">Dashboard</span>
+              <span class="nav-link-text">Inicio</span>
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link {% if 'icons' in segment %} active {% endif %}" href="/icons.html">
-              <i class="ni ni-planet text-orange"></i>
-              <span class="nav-link-text">Icons</span>
+            <a class="nav-link {% if 'usuarios' in segment %} active {% endif %}" href="/usuarios.html">
+              <i class="ni ni-circle-08 text-default"></i>
+              <span class="nav-link-text">Usuarios</span>
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link {% if 'map' in segment %} active {% endif %}" href="/map.html">
-              <i class="ni ni-pin-3 text-primary"></i>
-              <span class="nav-link-text">Google</span>
+            <a class="nav-link {% if 'clientes' in segment %} active {% endif %}" href="/clientes.html">
+              <i class="ni ni-building text-blue"></i>
+              <span class="nav-link-text">Clientes</span>
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link {% if 'profile' in segment %} active {% endif %}" href="/profile.html">
-              <i class="ni ni-single-02 text-yellow"></i>
-              <span class="nav-link-text">Profile</span>
+            <a class="nav-link {% if 'comedores' in segment %} active {% endif %}" href="/comedores.html">
+              <i class="ni ni-shop text-brown"></i>
+              <span class="nav-link-text">Comedores</span>
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link {% if 'tables' in segment %} active {% endif %}" href="/tables.html">
-              <i class="ni ni-bullet-list-67 text-default"></i>
-              <span class="nav-link-text">Tables</span>
+            <a class="nav-link {% if 'empleados' in segment %} active {% endif %}" href="/empleados.html">
+              <i class="ni ni-single-02 text-info"></i>
+              <span class="nav-link-text">Empleados</span>
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="/login.html">
-              <i class="ni ni-key-25 text-info"></i>
-              <span class="nav-link-text">Login (template)</span>
+            <a class="nav-link {% if 'administrador-vales' in segment %} active {% endif %}" href="/administrador-vales.html">
+              <i class="ni ni-credit-card text-orange"></i>
+              <span class="nav-link-text">Administrador de Vales</span>
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="/register.html">
-              <i class="ni ni-circle-08 text-pink"></i>
-              <span class="nav-link-text">Register (template)</span>
+            <a class="nav-link {% if 'entradas' in segment %} active {% endif %}" href="/entradas.html">
+              <i class="ni ni-check-bold text-green"></i>
+              <span class="nav-link-text">Entradas</span>
             </a>
           </li>
-
           <li class="nav-item">
-            <a class="nav-link" href="{% url 'logout' %}">
-              <i class="ni ni-user-run text-red"></i>
-              <span class="nav-link-text">Logout</span>
-            </a>
-          </li>            
-        </ul>
-        <!-- Divider -->
-        <hr class="my-3">
-        <!-- Heading -->
-        <h6 class="navbar-heading p-0 text-muted">
-          <span class="docs-normal">Resources</span>
-        </h6>
-        <!-- Navigation -->
-        <ul class="navbar-nav mb-md-3">
-
-          <li class="nav-item">
-            <a class="nav-link" 
-               target="_blank" 
-               href="https://appseed.us/admin-dashboards/django-dashboard-argon">
-              <i class="ni ni-archive-2"></i>
-              <span class="nav-link-text">Product Page</span>
+            <a class="nav-link {% if 'historico-vales' in segment %} active {% endif %}" href="/historico-vales.html">
+              <i class="ni ni-archive-2 text-yellow"></i>
+              <span class="nav-link-text">Historico vales</span>
             </a>
           </li>
-
           <li class="nav-item">
-            <a class="nav-link" 
-               target="_blank" 
-               href="https://appseed.us/admin-dashboards/django-dashboard-argon-pro">
-              <i class="ni ni-spaceship text-red"></i>
-              <span class="nav-link-text text-red">PRO Version</span>
-            </a>
-          </li>
-
-          <li class="nav-item">
-            <a class="nav-link active active-pro" 
-               target="_blank" 
-               href="http://appseed.us">
-              <i class="ni ni-send text-dark"></i>
-              <span class="nav-link-text">AppSeed</span>
+            <a class="nav-link {% if 'reportes' in segment %} active {% endif %}" href="/reportes.html">
+              <i class="ni ni-single-copy-04 text-folder"></i>
+              <span class="nav-link-text">Reportes</span>
             </a>
           </li>
         </ul>

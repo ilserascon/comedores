@@ -14948,6 +14948,18 @@ button.section-darker:focus {
 a.text-blue:hover, a.text-blue:focus {
   color: #233dd2 !important; }
 
+.text-gray {
+  color: #8898aa !important; }
+
+a.text-gray:hover, a.text-gray:focus {
+  color: #6a7e95 !important; }
+
+.text-brown {
+  color: #ccab00 !important; }
+
+a.text-brown:hover, a.text-brown:focus {
+  color: #7e57c2 !important; }
+
 .text-indigo {
   color: #5603ad !important; }
 
@@ -14995,6 +15007,9 @@ a.text-green:hover, a.text-green:focus {
 
 a.text-teal:hover, a.text-teal:focus {
   color: #0b90a8 !important; }
+
+.text-folder {
+  color: #b7b563 !important; }
 
 .text-cyan {
   color: #2bffc6 !important; }
