@@ -55,7 +55,7 @@ class DiningRoom(models.Model):
         return "Comedor: " + self.name + ', Descripción: ' + self.description
     
 class ClientDiner(models.Model):
-    client = models.ForeignKey(Client, on_delete=models.CASCADE)
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='client_diner_client')
     dining_room = models.ForeignKey(DiningRoom, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -74,7 +74,7 @@ class ClientDiner(models.Model):
         return "Cliente: " + self.client.company + ', Comedor Asignado: ' + self.dining_room.name
     
 class Employee(models.Model):
-    client = models.ForeignKey(Client, on_delete=models.CASCADE)
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='employee_client')
     employeed_code = models.CharField(max_length=25, blank=True, null=True)
     name = models.CharField(max_length=50)
     lastname = models.CharField(max_length=50)
@@ -99,8 +99,8 @@ class Employee(models.Model):
         return "Empleado: " + self.name + ' ' + self.lastname + ' ' + self.second_lastname
     
 class EmployeeClientDiner(models.Model):
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
-    client_diner = models.ForeignKey(ClientDiner, on_delete=models.CASCADE)
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='employee_client_diner_employee')
+    client_diner = models.ForeignKey(ClientDiner, on_delete=models.CASCADE, related_name='employee_client_diner_client_diner')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True, blank=True)

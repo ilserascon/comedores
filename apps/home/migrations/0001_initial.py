@@ -48,7 +48,7 @@ class Migration(migrations.Migration):
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('deleted_at', models.DateTimeField(blank=True, null=True)),
                 ('status', models.BooleanField(default=True)),
-                ('client', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='home.client')),
+                ('client', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='home.client', related_name='client_diner_client')),
                 ('created_by', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='client_diner_created_by', to=settings.AUTH_USER_MODEL)),
                 ('deleted_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='client_diner_deleted_by', to=settings.AUTH_USER_MODEL)),
             ],
