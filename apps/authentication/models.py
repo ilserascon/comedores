@@ -21,7 +21,7 @@ class Role(models.Model):
     
 class CustomUser(AbstractUser):
     role = models.ForeignKey(Role, on_delete=models.CASCADE, null=True, blank=True)
-    user = models.CharField(max_length=50, null=True, blank=True)
+    second_last_name = models.CharField(max_length=50, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
