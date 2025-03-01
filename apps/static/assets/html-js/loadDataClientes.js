@@ -162,6 +162,12 @@ document.addEventListener('DOMContentLoaded', function() {
             status: editStatusInput.value === 'true'
         };
 
+        // Validate form data
+        if (validateClientData(formData)) {
+            showToast(validateClientData(formData).error, 'danger');
+            return;
+        }
+
         // Check if form data has changed
         if (!hasFormChanged(originalData, formData)) {
             showToast('No hay cambios para guardar', 'info');
@@ -177,6 +183,42 @@ document.addEventListener('DOMContentLoaded', function() {
             showToast(result.error || 'Error al actualizar cliente', 'danger');
         }
     });
+
+    function validateClientData(data) {
+        if (data.company.length < 2) {
+            return { error: 'El nombre de la compañía debe tener al menos 2 caracteres' };
+        }
+        
+        if (data.company.length > 50) {
+            return { error: 'El nombre de la compañía debe tener máximo 50 caracteres' };
+        }
+    
+        if (data.name.length < 2 || data.lastname.length < 2 || data.second_lastname.length < 2) {
+            return { error: 'El nombre y los apellidos deben tener al menos 2 caracteres' };
+        }
+        
+        if (data.rfc.length != 13) {
+            return { error: 'El RFC debe tener 13 caracteres' };
+        }
+        
+        if (data.phone.length != 10) {
+            return { error: 'El teléfono debe tener 10 caracteres' };
+        }
+        
+        if (data.address.length < 5) {
+            return { error: 'La dirección debe tener al menos 5 caracteres' };
+        }
+        
+        if (data.address.length > 100) {
+            return { error: 'La dirección debe tener máximo 100 caracteres' };
+        }
+        
+        if (!data.email.includes('@') || !data.email.includes('.')) {
+            return { error: 'Correo electrónico inválido' };
+        }
+    
+        return null; // No errors
+    }
 
     // Function to check if any value has changed
     function hasFormChanged(originalData, formData) {
