@@ -76,20 +76,30 @@ document.addEventListener('DOMContentLoaded', function() {
     // Populate users
     async function populateUsers(page = 1, search = '') {
         const data = await fetchUsers(page, search);
-        userTableBody.innerHTML = data.users.map(user => `
-            <tr>
-                <td>${user.username ? user.username : 'N/A'}</td>
-                <td>${user.first_name ? user.first_name : 'N/A'}</td>
-                <td>${user.last_name ? user.last_name : 'N/A'}</td>
-                <td>${user.second_last_name ? user.second_last_name : 'N/A'}</td>
-                <td>${user.email}</td>
-                <td>${user.role__name}</td>
-                <td>${user.status ? 'Activo' : 'Inactivo'}</td>
-                <td>
-                    <button class="btn btn-sm btn-primary" onclick="editUser(${user.id})">Editar</button>
-                </td>
-            </tr>
-        `).join('');
+        if(data.users.length === 0) {
+            userTableBody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="text-center">No se encontraron usuarios</td>
+                </tr>
+            `;
+            pagination.innerHTML = '';
+            return;
+        }else{
+            userTableBody.innerHTML = data.users.map(user => `
+                <tr>
+                    <td>${user.username ? user.username : 'N/A'}</td>
+                    <td>${user.first_name ? user.first_name : 'N/A'}</td>
+                    <td>${user.last_name ? user.last_name : 'N/A'}</td>
+                    <td>${user.second_last_name ? user.second_last_name : 'N/A'}</td>
+                    <td>${user.email}</td>
+                    <td>${user.role__name}</td>
+                    <td>${user.status ? 'Activo' : 'Inactivo'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="editUser(${user.id})">Editar</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
         pagination.innerHTML = createPagination(data.page, data.pages);
     }
 
@@ -226,6 +236,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const searchValue = this.value.trim();
         if (searchValue) {
             fetchUsers(1, searchValue).then(data => {
+                if(data.users.length === 0) {
+                    userTableBody.innerHTML = `
+                        <tr>
+                            <td colspan="8" class="text-center">No se encontraron usuarios</td>
+                        </tr>
+                    `;
+                    pagination.innerHTML = '';
+                    return;
+                }else{
                 userTableBody.innerHTML = data.users.map(user => `
                     <tr>
                         <td>${user.username ? user.username : 'N/A'}</td>
@@ -240,6 +259,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         </td>
                     </tr>
                 `).join('');
+                }
                 pagination.innerHTML = '';
             });
         } else {
