@@ -23,12 +23,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const editRoleInput = document.getElementById('edit_role');
     const editStatusInput = document.getElementById('edit_status');
     const pagination = document.getElementById('pagination');
-    const toastContainer = document.getElementById('toast');
 
     // Function to show toast
     function showToast(message, type = 'success') {
-        const toastArea = document.getElementById('toast-area');
-        
         const toast = document.createElement('div');
         const header = type === 'success' ? 'Éxito' : type === 'info' ? 'Aviso' : 'Error';
         // Set the toast classes with Bootstrap
@@ -36,8 +33,8 @@ document.addEventListener('DOMContentLoaded', function() {
         toast.role = 'alert';
         toast.ariaLive = 'assertive';
         toast.ariaAtomic = 'true';
-        toast.style = 'z-index: 1;';
-        
+        toast.style.zIndex = '1';
+    
         // Set the toast content (including a header, body, and close button)
         toast.innerHTML = `
             <div class="toast-header bg-${type} text-white d-flex align-items-center justify-content-between p-1 px-1 rounded-pill shadow-sm">
@@ -48,22 +45,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 ${message}
             </div>
         `;
-        
+    
         // Append the toast to the container
         const toastContainer = document.getElementById('toastContainer');
         toastContainer.appendChild(toast);
-        
+    
         // Initialize and show the toast with Bootstrap's Toast component
         const bsToast = new bootstrap.Toast(toast, { delay: 4000 });
         bsToast.show();
-
-        // Remove the toast from the container after it's hidden
-        toast.addEventListener('hidden.bs.toast', function() {
-            toast.remove();
-        });
-
+    
+        // Verificar que se cerró el toast sin usar addEventListener con hidden.bs.toast
+        setTimeout(() => {
+            toast.remove(); // Remove the toast manually after the delay
+        }, 4000); // Time in milliseconds, should match the delay
+    
         // Close the toast when the close button is clicked
         toast.querySelector('.btn-close').addEventListener('click', function() {
+            toast.remove();
             bsToast.hide();
         });
     }

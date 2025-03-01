@@ -5,7 +5,6 @@ async function fetchRoles() {
         const roles = await response.json();
         return roles;
     } catch (error) {
-        console.error('Error fetching roles:', error);
         return [];
     }
 }
@@ -17,7 +16,6 @@ async function fetchUsers(page = 1, search = '') {
         const data = await response.json();
         return data;
     } catch (error) {
-        console.error('Error fetching users:', error);
         return { users: [], page: 1, pages: 1 };
     }
 }
@@ -40,11 +38,9 @@ async function saveUser(userId, data) {
         if (response.ok) {
             return result;
         } else {
-            console.error('Error:', result);
             return result; // Return the error result to show in the toast
         }
     } catch (error) {
-        console.error('Error:', error);
         return { error: 'Network error' }; // Return a network error to show in the toast
     }
 }
@@ -56,7 +52,6 @@ async function fetchUserDetails(userId) {
         const user = await response.json();
         return user;
     } catch (error) {
-        console.error('Error fetching user:', error);
         return null;
     }
 }

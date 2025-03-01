@@ -15,6 +15,7 @@ from apps.authentication.models import CustomUser, Role
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 import json
 from django.db.models import Q
+from django.db import IntegrityError
 
 @login_required(login_url="/login/")
 def index(request):
@@ -48,8 +49,6 @@ def pages(request):
     except:
         html_template = loader.get_template('home/page-500.html')
         return HttpResponse(html_template.render(context, request))
-
-from django.db import IntegrityError
 
 @csrf_exempt
 def user_list(request):
@@ -87,6 +86,19 @@ def user_list(request):
                 return JsonResponse({'error': 'No tienes permiso para crear un usuario'}, status=403)
             data = json.loads(request.body)
             role = get_object_or_404(Role, id=data['role_id'])
+
+            if len(data['username']) < 5:
+                return JsonResponse({'error': 'El nombre de usuario debe tener al menos 5 caracteres'}, status=400)
+
+            if len(data['first_name']) < 2 or len(data['last_name']) < 2 or len(data['second_last_name']) < 2:
+                return JsonResponse({'error': 'El nombre, apellido paterno y apellido materno deben tener al menos 2 caracteres'}, status=400)
+                        
+            if '@' not in data['email'] or '.' not in data['email']:
+                return JsonResponse({'error': 'Correo electrónico inválido'}, status=400)
+            
+            if len(data['password']) < 8 or not any(char.isdigit() for char in data['password']) or not any(char.isalpha() for char in data['password']):
+                return JsonResponse({'error': 'La contraseña debe tener al menos 8 caracteres, una letra y un número'}, status=400)
+
             user = CustomUser.objects.create(
                 username=data['username'],
                 first_name=data['first_name'],
@@ -125,6 +137,19 @@ def user_detail(request, user_id):
             data = json.loads(request.body)
             user.username = data.get('username', user.username)
             user.email = data.get('email', user.email)
+
+            if len(data['username']) < 5:
+                return JsonResponse({'error': 'El nombre de usuario debe tener al menos 5 caracteres'}, status=400)
+            
+            if len(data['first_name']) < 2 or len(data['last_name']) < 2 or len(data['second_last_name']) < 2:
+                return JsonResponse({'error': 'El nombre, apellido paterno y apellido materno deben tener al menos 2 caracteres'}, status=400)
+            
+            if '@' not in data['email'] or '.' not in data['email']:
+                return JsonResponse({'error': 'Correo electrónico inválido'}, status=400)
+
+            if len(data['password']) < 8 or not any(char.isdigit() for char in data['password']) or not any(char.isalpha() for char in data['password']):
+                return JsonResponse({'error': 'La contraseña debe tener al menos 8 caracteres, una letra y un número'}, status=400)
+            
             if 'password' in data:
                 user.password = make_password(data['password'])
             if 'role_id' in data:
