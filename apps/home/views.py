@@ -186,6 +186,9 @@ def user_detail(request, user_id):
             if 'role_id' in data:
                 user.role = get_object_or_404(Role, id=data['role_id'])
             user.status = data.get('status', user.status)
+            user.first_name = data.get('first_name', user.first_name)
+            user.last_name = data.get('last_name', user.last_name)
+            user.second_last_name = data.get('second_last_name', user.second_last_name)
             user.save()
             return JsonResponse({'message': 'User updated successfully'})
         except Exception as e:

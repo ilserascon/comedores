@@ -138,6 +138,11 @@ document.addEventListener('DOMContentLoaded', function() {
             status: createStatusInput.value === 'true'
         };
 
+        // Validate form data
+        if (!validateFormData(data)) {
+            return;
+        }
+
         const result = await saveUser(null, data);
         if (result.message) {
             createUserModal.hide();
@@ -158,13 +163,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Function to check if any value has changed
-    function hasFormChanged(originalData, formData) {
-        return Object.keys(formData).some(key => formData[key] !== originalData[key]);
-    }
 
     // Edit user
     editUserForm.addEventListener('submit', async function(event) {
+        console.log('Edit user form submitted');
         event.preventDefault();
         const userId = editUserIdInput.value;
         const originalData = await fetchUserDetails(userId);
@@ -179,8 +181,13 @@ document.addEventListener('DOMContentLoaded', function() {
             status: editStatusInput.value === 'true'
         };
 
+        // Validate form data
+        if (!validateFormData(formData)) {
+            return;
+        }
+        
         // Check if form data has changed
-        if (hasFormChanged(originalData, formData)) {
+        if (!hasFormChanged(originalData, formData)) {
             showToast('No hay cambios para guardar', 'info');
             return;
         }
@@ -195,6 +202,35 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Function to check if any value has changed
+    function hasFormChanged(originalData, formData) {
+        return Object.keys(formData).some(key => formData[key] !== originalData[key]);
+    }   
+
+    // Validate form data
+    function validateFormData(data) {
+        if (data.username.length < 5) {
+            showToast('El nombre de usuario debe tener al menos 5 caracteres', 'danger');
+            return false;
+        }
+
+        if (data.first_name.length < 2 || data.last_name.length < 2 || data.second_last_name.length < 2) {
+            showToast('El nombre, apellido paterno y apellido materno deben tener al menos 2 caracteres', 'danger');
+            return false;
+        }
+
+        if (!data.email.includes('@') || !data.email.includes('.')) {
+            showToast('Correo electrónico inválido', 'danger');
+            return false;
+        }
+
+        if (data.password && (data.password.length < 8 || !/\d/.test(data.password) || !/[a-zA-Z]/.test(data.password))) {
+            showToast('La contraseña debe tener al menos 8 caracteres, una letra y un número', 'danger');
+            return false;
+        }
+
+        return true;
+    }
     // Edit user
     window.editUser = async function(userId) {
         const user = await fetchUserDetails(userId);
