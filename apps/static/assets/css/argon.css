@@ -4601,6 +4601,9 @@ a.close.disabled {
     @media (prefers-reduced-motion: reduce) {
       .modal.fade .modal-dialog {
         transition: none; } }
+    @media (max-width: 576px) {
+      .modal-dialog {
+        margin: 1.75rem auto; } }
   .modal.show .modal-dialog {
     transform: none; }
   .modal.modal-static .modal-dialog {

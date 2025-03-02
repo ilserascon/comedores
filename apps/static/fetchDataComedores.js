@@ -57,8 +57,7 @@ async function createComedor(data) {
             throw new Error(errorData.error || 'Error al crear comedor');
         }
 
-        const result = await response.json();
-        console.log('Comedor creado:', result);
+        const result = await response.json();        
 
         // Llenar el select de clientes con comedores para actualizarlo dinamicamente
         await llenarSelectClientesComedores('filterComedorSelect');
