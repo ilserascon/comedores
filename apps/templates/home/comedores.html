@@ -197,8 +197,8 @@
     });
 
     document.getElementById('filterComedorSelect').addEventListener('change', async function() {
-        const filterValue = this.value;
-        await actualizarTablaComedores(1, filterValue);
+        currentFilter = this.value;
+        await actualizarTablaComedores(1, currentFilter);
     });
 
     document.getElementById('guardarComedorBtn').addEventListener('click', async function() {

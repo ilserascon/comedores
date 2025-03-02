@@ -60,8 +60,14 @@ async function createComedor(data) {
         const result = await response.json();
         console.log('Comedor creado:', result);
 
-        // Actualizar la tabla con el nuevo comedor y mantener la página actual
-        await actualizarTablaComedores(currentPage);
+        // Llenar el select de clientes con comedores para actualizarlo dinamicamente
+        await llenarSelectClientesComedores('filterComedorSelect');
+
+        // Mantener el valor actual del filtro seleccionado
+        document.getElementById('filterComedorSelect').value = currentFilter;
+
+        // Actualizar la tabla con el nuevo comedor y mantener la página actual y el filtro aplicado
+        await actualizarTablaComedores(currentPage, currentFilter);
 
         // Cerrar el modal de creación
         $('#crearComedorModal').modal('hide');
@@ -127,8 +133,11 @@ async function updateComedor(data) {
         // Llenar el select de clientes con comedores para actualizarlo dinamicamente
         await llenarSelectClientesComedores('filterComedorSelect');
 
-        // Actualizar la tabla con el comedor actualizado y mantener la página actual
-        await actualizarTablaComedores(currentPage);
+        // Mantener el valor actual del filtro seleccionado
+        document.getElementById('filterComedorSelect').value = currentFilter;
+
+        // Actualizar la tabla con el comedor actualizado y mantener la página actual y el filtro aplicado
+        await actualizarTablaComedores(currentPage, currentFilter);
 
         // Cerrar el modal de edición
         $('#editarComedorModal').modal('hide');
@@ -138,6 +147,7 @@ async function updateComedor(data) {
 }
 
 let currentPage = 1; // Variable global para almacenar el número de página actual
+let currentFilter = 'all'; // Variable global para almacenar el filtro actual
 
 async function actualizarTablaComedores(page = 1, filter = 'all') {
     try {
