@@ -95,8 +95,8 @@ def client_list(request):
             if len(data['name']) < 2 or len(data['lastname']) < 2 or len(data['second_lastname']) < 2:
                 return JsonResponse({'error': 'El nombre y  los apellidos deben tener al menos 2 caracteres'}, status=400)
             
-            if len(data['rfc']) != 12:
-                return JsonResponse({'error': 'El RFC debe tener 12 caracteres'}, status=400)
+            if len(data['rfc']) != 13:
+                return JsonResponse({'error': 'El RFC debe tener 13 caracteres'}, status=400)
             
             if len(data['phone']) != 10:
                 return JsonResponse({'error': 'El teléfono debe tener 10 caracteres'}, status=400)
