@@ -22,7 +22,7 @@ async function getComedores(page = 1, filter = 'all') {
 
 async function getComedor(id) {
     try {
-        const response = await fetch(`/get_comedor/${id}`, {
+        const response = await fetch(`/get_comedor?dining_room_id=${id}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json'
@@ -34,7 +34,7 @@ async function getComedor(id) {
             throw new Error(errorData.error || 'Error al obtener comedor');
         }
 
-        const data = await response.json();
+        const data = await response.json();        
         return data;
     } catch (error) {
         console.error('Error:', error.message);
@@ -85,13 +85,15 @@ async function editarComedor(id) {
           throw new Error(errorData.error || 'Error al obtener comedor');
       }
 
-      const comedor = await response.json();      
+      const comedor = await response.json();
+      
 
       // Llenar el formulario del modal con los datos del comedor
       document.getElementById('editarComedorName').value = comedor.name;
       document.getElementById('editarComedorDescription').value = comedor.description;
       document.getElementById('editarComedorStatus').value = comedor.status ? '1' : '0';
       document.getElementById('editarComedorId').value = comedor.dining_room_id;
+      document.getElementById('editarComedorClient').value = comedor.client_id;
 
       // Llenar el select de encargados
       await llenarSelectEncargados('editarComedorInCharge');

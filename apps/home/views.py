@@ -209,21 +209,31 @@ def get_comedores(request):
 def get_comedor(request):
     try:
         dining_room_id = request.GET.get('dining_room_id')
-        dining_room = DiningRoom.objects.select_related('in_charge').values(
-            'id', 'name', 'description', 'status', 'in_charge__first_name', 'in_charge__last_name', 'in_charge_id'
-        ).get(id=dining_room_id)
+        
+        # Realizar la consulta con las uniones necesarias
+        dining_room = DiningRoom.objects.filter(id=dining_room_id).select_related('in_charge', 'clientdiner__client').values(
+            'id', 'name', 'description', 'status', 'in_charge__first_name', 'in_charge__last_name', 'in_charge_id',
+            'clientdiner__client__id'
+        ).first()
+
+        if not dining_room:
+            return JsonResponse({'error': 'Comedor no encontrado'}, status=404)
+
         in_charge = {
             'id': dining_room['in_charge_id'],
             'first_name': dining_room['in_charge__first_name'],
             'last_name': dining_room['in_charge__last_name']
         }
+
         context = {
             'dining_room_id': dining_room['id'],
             'name': dining_room['name'],
             'description': dining_room['description'],
             'status': dining_room['status'],
             'in_charge': in_charge,
-        }
+            'client_id': dining_room['clientdiner__client__id']
+        }        
+
         return JsonResponse(context)
     except DiningRoom.DoesNotExist:
         return JsonResponse({'error': 'Comedor no encontrado'}, status=404)
