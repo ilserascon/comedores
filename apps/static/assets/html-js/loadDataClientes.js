@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     const clientTableBody = document.getElementById('clientTableBody');
     const createClientBtn = document.getElementById('createClientBtn');
-    const createClientModal = new bootstrap.Modal(document.getElementById('createClientModal'));
+    // const createClientModal = new bootstrap.Modal(document.getElementById('createClientModal'));
     const editClientModal = new bootstrap.Modal(document.getElementById('editClientModal'));
     const createClientForm = document.getElementById('createClientForm');
     const editClientForm = document.getElementById('editClientForm');
@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded', function() {
             pagination.addEventListener('click', async function(event) {
                 if (event.target.tagName === 'A') {
                     const pageNumber = event.target.getAttribute('page-number');
-                    populateUsers(pageNumber);
+                    populateClients(pageNumber);
                 }
             });
         }
@@ -137,7 +137,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const result = await saveClient(null, data);
         if (result.message) {
-            createClientModal.hide();
+            $('#createClientModal').modal('toggle')
             populateClients();
             showToast('Cliente creado correctamente', 'success');
         } else {
@@ -176,7 +176,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const result = await saveClient(clientId, formData);
         if (result.message) {
-            editClientModal.hide();
             populateClients();
             showToast('Cliente actualizado correctamente', 'success');
         } else {
@@ -248,16 +247,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize
     populateClients();
 
-    // Show modal for creating new client
-    createClientBtn.addEventListener('click', function() {
-        createClientForm.reset();
-        createClientModal.show();
-    });
-
     // Close modal on button click
     document.querySelectorAll('.btn-close').forEach(button => {
         button.addEventListener('click', function() {
-            createClientModal.hide();
             editClientModal.hide();
         });
     });
