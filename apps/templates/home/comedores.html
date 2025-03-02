@@ -62,7 +62,7 @@
       {% include "includes/footer.html" %}
   </div>
   
-        <!-- Modal Crear -->
+                <!-- Modal Crear -->
         <div class="modal fade" id="crearComedorModal" tabindex="-1" role="dialog" aria-labelledby="crearComedorModalLabel" aria-hidden="true">
           <div class="modal-dialog" role="document">
             <div class="modal-content">
@@ -78,24 +78,28 @@
                     <div class="form-group col-md-6">
                       <label for="comedorName">Nombre</label>
                       <input type="text" class="form-control" id="comedorName" placeholder="Nombre del comedor">
+                      <div class="invalid-feedback" id="comedorNameError">El campo Nombre es obligatorio.</div>
                     </div>
                     <div class="form-group col-md-6">
                       <label for="comedorDescription">Descripción</label>
                       <input type="text" class="form-control" id="comedorDescription" placeholder="Descripción del comedor">
+                      <div class="invalid-feedback" id="comedorDescriptionError">El campo Descripción es obligatorio.</div>
                     </div>
                   </div>
                   <div class="form-row">
                     <div class="form-group col-md-6">
                       <label for="comedorClient">Cliente</label>
-                      <select class="form-control" id="selectCliente">
+                      <select class="form-control" id="selectCliente">                        
                         <!-- Opciones se llenarán dinámicamente -->
                       </select>
+                      <div class="invalid-feedback" id="comedorClientError">El campo Cliente es obligatorio.</div>
                     </div>
                     <div class="form-group col-md-6">
                       <label for="comedorInCharge">Encargado</label>
-                      <select class="form-control" id="comedorInCharge">
+                      <select class="form-control" id="comedorInCharge">                        
                         <!-- Opciones se llenarán dinámicamente -->
                       </select>
+                      <div class="invalid-feedback" id="comedorInChargeError">El campo Encargado es obligatorio.</div>
                     </div>
                   </div>
                   <div class="form-row">
@@ -115,64 +119,68 @@
               </div>
             </div>
           </div>
-        </div>     
+        </div>
         
         
                 <!-- Modal Editar -->
-        <div class="modal fade" id="editarComedorModal" tabindex="-1" role="dialog" aria-labelledby="editarComedorModalLabel" aria-hidden="true">
-          <div class="modal-dialog" role="document">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h5 class="modal-title" id="editarComedorModalLabel">Editar Comedor</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                  <span aria-hidden="true">&times;</span>
-                </button>
-              </div>
-              <div class="modal-body">
-                <form id="editarComedorForm">
-                  <input type="hidden" id="editarComedorId">
-                  <div class="form-row">
-                    <div class="form-group col-md-6">
-                      <label for="editarComedorName">Nombre</label>
-                      <input type="text" class="form-control" id="editarComedorName" placeholder="Nombre del comedor">
-                    </div>
-                    <div class="form-group col-md-6">
-                      <label for="editarComedorDescription">Descripción</label>
-                      <input type="text" class="form-control" id="editarComedorDescription" placeholder="Descripción del comedor">
+                <div class="modal fade" id="editarComedorModal" tabindex="-1" role="dialog" aria-labelledby="editarComedorModalLabel" aria-hidden="true">
+                  <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title" id="editarComedorModalLabel">Editar Comedor</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                          <span aria-hidden="true">&times;</span>
+                        </button>
+                      </div>
+                      <div class="modal-body">
+                        <form id="editarComedorForm">
+                          <input type="hidden" id="editarComedorId">
+                          <div class="form-row">
+                            <div class="form-group col-md-6">
+                              <label for="editarComedorName">Nombre</label>
+                              <input type="text" class="form-control" id="editarComedorName" placeholder="Nombre del comedor">
+                              <div class="invalid-feedback" id="editarComedorNameError">El campo Nombre es obligatorio.</div>
+                            </div>
+                            <div class="form-group col-md-6">
+                              <label for="editarComedorDescription">Descripción</label>
+                              <input type="text" class="form-control" id="editarComedorDescription" placeholder="Descripción del comedor">
+                              <div class="invalid-feedback" id="editarComedorDescriptionError">El campo Descripción es obligatorio.</div>
+                            </div>
+                          </div>
+                          <div class="form-row">
+                            <div class="form-group col-md-6">
+                              <label for="editarComedorClient">Cliente</label>
+                              <select class="form-control" id="editarComedorClient">
+                                <!-- Opciones se llenarán dinámicamente -->
+                              </select>
+                              <div class="invalid-feedback" id="editarComedorClientError">El campo Cliente es obligatorio.</div>
+                            </div>
+                            <div class="form-group col-md-6">
+                              <label for="editarComedorInCharge">Encargado</label>
+                              <select class="form-control" id="editarComedorInCharge">
+                                <!-- Opciones se llenarán dinámicamente -->
+                              </select>
+                              <div class="invalid-feedback" id="editarComedorInChargeError">El campo Encargado es obligatorio.</div>
+                            </div>
+                          </div>
+                          <div class="form-row">
+                            <div class="form-group col-md-6">
+                              <label for="editarComedorStatus">Estado</label>
+                              <select class="form-control" id="editarComedorStatus">
+                                <option value="1">Activo</option>
+                                <option value="0">Inactivo</option>
+                              </select>
+                            </div>
+                          </div>
+                        </form>
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                        <button type="button" class="btn btn-primary" id="actualizarComedorBtn">Actualizar</button>
+                      </div>
                     </div>
                   </div>
-                  <div class="form-row">
-                    <div class="form-group col-md-6">
-                      <label for="editarComedorClient">Cliente</label>
-                      <select class="form-control" id="editarComedorClient">
-                        <!-- Opciones se llenarán dinámicamente -->
-                      </select>
-                    </div>
-                    <div class="form-group col-md-6">
-                      <label for="editarComedorInCharge">Encargado</label>
-                      <select class="form-control" id="editarComedorInCharge">
-                        <!-- Opciones se llenarán dinámicamente -->
-                      </select>
-                    </div>
-                  </div>
-                  <div class="form-row">
-                    <div class="form-group col-md-6">
-                      <label for="editarComedorStatus">Estado</label>
-                      <select class="form-control" id="editarComedorStatus">
-                        <option value="1">Activo</option>
-                        <option value="0">Inactivo</option>
-                      </select>
-                    </div>
-                  </div>
-                </form>
-              </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
-                <button type="button" class="btn btn-primary" id="actualizarComedorBtn">Actualizar</button>
-              </div>
-            </div>
-          </div>
-        </div>
+                </div>
 {% endblock content %}
 
 <!-- Specific JS goes HERE --> 
@@ -194,12 +202,59 @@
     });
 
     document.getElementById('guardarComedorBtn').addEventListener('click', async function() {
-        const name = document.getElementById('comedorName').value;
-        const description = document.getElementById('comedorDescription').value;
+        const name = document.getElementById('comedorName').value.trim();
+        const description = document.getElementById('comedorDescription').value.trim();
         const client = document.getElementById('selectCliente').value;
         const inCharge = document.getElementById('comedorInCharge').value;
         const status = document.getElementById('comedorStatus').value;
-
+    
+        // Validaciones
+        let isValid = true;
+        if (!name) {
+            const nameField = document.getElementById('comedorName');
+            nameField.classList.add('is-invalid');
+            setTimeout(() => {
+                nameField.classList.remove('is-invalid');
+            }, 4000);
+            isValid = false;
+        } else {
+            document.getElementById('comedorName').classList.remove('is-invalid');
+        }
+        if (!description) {
+            const descriptionField = document.getElementById('comedorDescription');
+            descriptionField.classList.add('is-invalid');
+            setTimeout(() => {
+                descriptionField.classList.remove('is-invalid');
+            }, 4000);
+            isValid = false;
+        } else {
+            document.getElementById('comedorDescription').classList.remove('is-invalid');
+        }
+        if (!client) {
+            const clientField = document.getElementById('selectCliente');
+            clientField.classList.add('is-invalid');
+            setTimeout(() => {
+                clientField.classList.remove('is-invalid');
+            }, 4000);
+            isValid = false;
+        } else {
+            document.getElementById('selectCliente').classList.remove('is-invalid');
+        }
+        if (!inCharge) {
+            const inChargeField = document.getElementById('comedorInCharge');
+            inChargeField.classList.add('is-invalid');
+            setTimeout(() => {
+                inChargeField.classList.remove('is-invalid');
+            }, 4000);
+            isValid = false;
+        } else {
+            document.getElementById('comedorInCharge').classList.remove('is-invalid');
+        }
+    
+        if (!isValid) {
+            return;
+        }
+    
         const data = {
             name,
             description,
@@ -207,18 +262,65 @@
             in_charge: inCharge,
             status
         };
-
+    
         await createComedor(data);
     });
     
     document.getElementById('actualizarComedorBtn').addEventListener('click', async function() {
         const id = document.getElementById('editarComedorId').value;
-        const name = document.getElementById('editarComedorName').value;
-        const description = document.getElementById('editarComedorDescription').value;
+        const name = document.getElementById('editarComedorName').value.trim();
+        const description = document.getElementById('editarComedorDescription').value.trim();
         const client = document.getElementById('editarComedorClient').value;
         const inCharge = document.getElementById('editarComedorInCharge').value;
         const status = document.getElementById('editarComedorStatus').value;
-
+    
+        // Validaciones
+        let isValid = true;
+        if (!name) {
+            const nameField = document.getElementById('editarComedorName');
+            nameField.classList.add('is-invalid');
+            setTimeout(() => {
+                nameField.classList.remove('is-invalid');
+            }, 4000);
+            isValid = false;
+        } else {
+            document.getElementById('editarComedorName').classList.remove('is-invalid');
+        }
+        if (!description) {
+            const descriptionField = document.getElementById('editarComedorDescription');
+            descriptionField.classList.add('is-invalid');
+            setTimeout(() => {
+                descriptionField.classList.remove('is-invalid');
+            }, 4000);
+            isValid = false;
+        } else {
+            document.getElementById('editarComedorDescription').classList.remove('is-invalid');
+        }
+        if (!client) {
+            const clientField = document.getElementById('editarComedorClient');
+            clientField.classList.add('is-invalid');
+            setTimeout(() => {
+                clientField.classList.remove('is-invalid');
+            }, 4000);
+            isValid = false;
+        } else {
+            document.getElementById('editarComedorClient').classList.remove('is-invalid');
+        }
+        if (!inCharge) {
+            const inChargeField = document.getElementById('editarComedorInCharge');
+            inChargeField.classList.add('is-invalid');
+            setTimeout(() => {
+                inChargeField.classList.remove('is-invalid');
+            }, 4000);
+            isValid = false;
+        } else {
+            document.getElementById('editarComedorInCharge').classList.remove('is-invalid');
+        }
+    
+        if (!isValid) {
+            return;
+        }
+    
         const data = {
             dining_room_id: id,
             name,
@@ -227,7 +329,7 @@
             inCharge,
             status
         };
-
+    
         await updateComedor(data);
     });
 </script>

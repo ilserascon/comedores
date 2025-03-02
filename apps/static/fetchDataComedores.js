@@ -294,8 +294,17 @@ async function getClientesComedores() {
 
 async function llenarSelectEncargados(selectId) {
     const select = document.getElementById(selectId);
-    select.innerHTML = ''; // Limpiar opciones anteriores
     const encargados = await getEncargados();
+    select.innerHTML = ''; // Limpiar opciones anteriores    
+
+    // Agregar opción por defecto "-------"
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = '-------';
+    defaultOption.disabled = true;
+    defaultOption.selected = true;
+    select.appendChild(defaultOption);
+
     encargados.forEach(encargado => {
         const option = document.createElement('option');
         option.value = encargado.id;
@@ -310,6 +319,14 @@ async function llenarSelectClientes(selectId) {
         const clientes = data.clientes;
         const select = document.getElementById(selectId);
         select.innerHTML = '';
+
+        // Agregar opción por defecto "-------"
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = '-------';
+        defaultOption.disabled = true;
+        defaultOption.selected = true;
+        select.appendChild(defaultOption);
 
         clientes.forEach(cliente => {
             const option = document.createElement('option');
