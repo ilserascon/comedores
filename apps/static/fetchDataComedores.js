@@ -57,7 +57,10 @@ async function createComedor(data) {
             throw new Error(errorData.error || 'Error al crear comedor');
         }
 
-        const result = await response.json();        
+        const result = await response.json();
+
+        // Mostrar mensaje de éxito
+        showToast('Comedor creado exitosamente', 'success');
 
         // Llenar el select de clientes con comedores para actualizarlo dinamicamente
         await llenarSelectClientesComedores('filterComedorSelect');
@@ -72,6 +75,7 @@ async function createComedor(data) {
         $('#crearComedorModal').modal('hide');
     } catch (error) {
         console.error('Error:', error.message);
+        showToast('Error al crear comedor', 'danger');
     }
 }
 
@@ -113,6 +117,18 @@ async function editarComedor(id) {
 
 async function updateComedor(data) {
     try {
+        // Obtener los valores originales del comedor
+        const originalComedor = await getComedor(data.dining_room_id);
+
+        // Verificar si los valores han cambiado
+        const hasChanged = (
+            data.name !== originalComedor.name ||
+            data.description !== originalComedor.description ||
+            data.client !== originalComedor.client_id.toString() ||
+            data.inCharge !== originalComedor.in_charge.id.toString() ||
+            data.status !== (originalComedor.status ? '1' : '0')
+        );
+        
         const response = await fetch('/update_comedor', {
             method: 'POST',
             headers: {
@@ -125,9 +141,14 @@ async function updateComedor(data) {
             const errorData = await response.json();
             throw new Error(errorData.error || 'Error al actualizar comedor');
         }
-
-        const result = await response.json();
-        console.log('Comedor actualizado:', result);
+        
+        if (!hasChanged) {
+            // Mostrar mensaje informativo si no se han realizado cambios
+            showToast('No se han realizado cambios', 'info');            
+        } else {
+            // Mostrar mensaje de éxito si se han realizado cambios
+            showToast('Comedor actualizado exitosamente', 'success');
+        }
 
         // Llenar el select de clientes con comedores para actualizarlo dinamicamente
         await llenarSelectClientesComedores('filterComedorSelect');
@@ -142,6 +163,7 @@ async function updateComedor(data) {
         $('#editarComedorModal').modal('hide');
     } catch (error) {
         console.error('Error:', error.message);
+        showToast('Error al actualizar comedor', 'danger');
     }
 }
 
@@ -377,4 +399,48 @@ async function llenarSelectClientesComedores(selectId) {
     } catch (error) {
         console.error('Error al llenar el select de clientes con comedores:', error.message);
     }
+}
+
+
+// Function to show toast
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    const header = type === 'success' ? 'Éxito' : type === 'info' ? 'Aviso' : 'Error';
+    // Set the toast classes with Bootstrap
+    toast.className = `toast align-items-center text-white bg-${type} border-0 shadow-sm p-2 px-3 m-1`;
+    toast.role = 'alert';
+    toast.ariaLive = 'assertive';
+    toast.ariaAtomic = 'true';
+    toast.style.zIndex = '1';
+    toast.style.opacity = '1'; // Make the toast solid
+
+    // Set the toast content (including a header, body, and close button)
+    toast.innerHTML = `
+        <div class="toast-header bg-${type} text-white d-flex align-items-center justify-content-between p-1 px-1 shadow-sm">
+            <strong class="me-auto">${header}</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body p-1 px-1">
+            ${message}
+        </div>
+    `;
+
+    // Append the toast to the container
+    const toastContainer = document.getElementById('toastContainer');
+    toastContainer.appendChild(toast);
+
+    // Initialize and show the toast with Bootstrap's Toast component
+    const bsToast = new bootstrap.Toast(toast, { delay: 4000 });
+    bsToast.show();
+
+    // Verificar que se cerró el toast sin usar addEventListener con hidden.bs.toast
+    setTimeout(() => {
+        toast.remove(); // Remove the toast manually after the delay
+    }, 4000); // Time in milliseconds, should match the delay
+
+    // Close the toast when the close button is clicked
+    toast.querySelector('.btn-close').addEventListener('click', function() {
+        toast.remove();
+        bsToast.hide();
+    });
 }
