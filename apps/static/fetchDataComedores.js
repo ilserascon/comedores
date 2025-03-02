@@ -144,22 +144,19 @@ async function actualizarTablaComedores(page = 1, filter = 'all') {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <th scope="row">
-                    <div class="media align-items-center">
-                        <a href="#" class="avatar rounded-circle mr-3">
-                            <img alt="Image placeholder" src="/static/assets/img/theme/vue.jpg">
-                        </a>
+                    <div class="media align-items-center pl-3">
                         <div class="media-body">
-                            <span class="name mb-0 text-sm">${comedor.name}</span>
+                            <span class="name mb-0 text-sm font-weight-bold">${comedor.name}</span>
                         </div>
                     </div>
                 </th>
-                <td class="budget">
+                <td class="budget text-muted">
                     ${comedor.description}
                 </td>
-                <td>
+                <td class="text-muted">
                     ${comedor.company}
                 </td>
-                <td>
+                <td class="text-muted">
                     ${comedor.in_charge_first_name} ${comedor.in_charge_last_name}
                 </td>
                 <td>
@@ -222,7 +219,6 @@ async function actualizarTablaComedores(page = 1, filter = 'all') {
         console.error('Error al actualizar la tabla de comedores:', error);
     }
 }
-
 
 async function getEncargados() {
     try {
