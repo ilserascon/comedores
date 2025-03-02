@@ -107,21 +107,22 @@ document.addEventListener('DOMContentLoaded', function() {
     function createPagination(currentPage, totalPages) {
         let paginationHTML = '';
         for (let i = 1; i <= totalPages; i++) {
-            paginationHTML += `
-                <li class="page-item ${i === currentPage ? 'active' : ''}" style="z-index: 0;">
-                    <a class="page-link" href="javascript:void(0);" page-number="${i}"); return false;">${i}</a>
-                </li>
-            `;
-
-            // Add event listener to each pagination link
-            pagination.addEventListener('click', async function(event) {
-                if (event.target.tagName === 'A') {
-                    const pageNumber = event.target.getAttribute('page-number');
-                    populateUsers(pageNumber);
-                }
-            });
+            paginationHTML += 
+                `<li class="page-item ${i === currentPage ? 'active' : ''}" style="z-index: 0;">
+                    <a class="page-link" href="javascript:void(0);" page-number="${i}">${i}</a>
+                </li>`;
         }
-        return paginationHTML;
+        pagination.innerHTML = paginationHTML; // Set the inner HTML once
+
+        // Add a single event listener to the pagination element
+        pagination.addEventListener('click', async function(event) {
+            if (event.target.tagName === 'A') {
+                const pageNumber = event.target.getAttribute('page-number');
+                await populateUsers(pageNumber); // Ensure to await the function call
+            }
+        });
+        
+        return paginationHTML; // This return is optional now
     }
 
     // Create user
