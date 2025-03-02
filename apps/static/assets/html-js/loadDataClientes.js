@@ -1,7 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
     const clientTableBody = document.getElementById('clientTableBody');
-    const createClientBtn = document.getElementById('createClientBtn');
-    // const createClientModal = new bootstrap.Modal(document.getElementById('createClientModal'));
     const editClientModal = new bootstrap.Modal(document.getElementById('editClientModal'));
     const createClientForm = document.getElementById('createClientForm');
     const editClientForm = document.getElementById('editClientForm');
@@ -103,21 +101,28 @@ document.addEventListener('DOMContentLoaded', function() {
     function createPagination(currentPage, totalPages) {
         let paginationHTML = '';
         for (let i = 1; i <= totalPages; i++) {
-            paginationHTML += `
-                <li class="page-item ${i === currentPage ? 'active' : ''}" style="z-index: 0;">
-                    <a class="page-link" href="javascript:void(0);" page-number="${i}"); return false;">${i}</a>
-                </li>
-            `;
-
-            // Add event listener to each pagination link
-            pagination.addEventListener('click', async function(event) {
-                if (event.target.tagName === 'A') {
-                    const pageNumber = event.target.getAttribute('page-number');
-                    populateClients(pageNumber);
-                }
-            });
+            paginationHTML += 
+                `<li class="page-item ${i === currentPage ? 'active' : ''}" style="z-index: 0;">
+                    <a class="page-link" href="javascript:void(0);" page-number="${i}">${i}</a>
+                </li>`;
         }
-        return paginationHTML;
+        pagination.innerHTML = paginationHTML; // Set the inner HTML once
+
+        // Add a single event listener to the pagination element
+        pagination.addEventListener('click', async function(event) {
+            if (event.target.tagName === 'A') {
+                const pageNumber = event.target.getAttribute('page-number');
+                await populateClients(pageNumber); // Ensure to await the function call
+            }
+        });
+        
+        return paginationHTML; // This return is optional now
+    }
+
+    // Handle page click event
+    async function handlePageClick(event) {
+        const pageNumber = event.target.getAttribute('page-number');
+        populateClients(pageNumber);
     }
 
     // Create client
