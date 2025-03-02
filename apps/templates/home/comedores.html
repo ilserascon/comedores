@@ -68,7 +68,7 @@
             <div class="modal-content">
               <div class="modal-header">
                 <h5 class="modal-title" id="crearComedorModalLabel">Crear Comedor</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" id="cerrarComedorBtn">
                   <span aria-hidden="true">&times;</span>
                 </button>
               </div>
@@ -114,7 +114,7 @@
                 </form>
               </div>
               <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" id="cerrarComedorBtn2">Cerrar</button>
                 <button type="button" class="btn btn-primary" id="guardarComedorBtn">Guardar</button>
               </div>
             </div>
@@ -264,6 +264,15 @@
         };
     
         await createComedor(data);
+        resetCrearComedorForm(); // Resetear el formulario al cerrar el modal
+    });
+
+    document.getElementById('cerrarComedorBtn').addEventListener('click', function() {
+        resetCrearComedorForm(); // Resetear el formulario al cerrar el modal
+    });
+
+    document.getElementById('cerrarComedorBtn2').addEventListener('click', function() {
+        resetCrearComedorForm(); // Resetear el formulario al cerrar el modal
     });
     
     document.getElementById('actualizarComedorBtn').addEventListener('click', async function() {
@@ -332,5 +341,20 @@
     
         await updateComedor(data);
     });
+
+    function resetCrearComedorForm() {        
+        // Eliminar la clase 'is-invalid' de los campos del formulario
+        document.getElementById('comedorName').classList.remove('is-invalid');        
+        document.getElementById('comedorDescription').classList.remove('is-invalid');
+        document.getElementById('selectCliente').classList.remove('is-invalid');
+        document.getElementById('comedorInCharge').classList.remove('is-invalid');
+        
+        // Resetear el formulario a sus valores por defecto
+        document.getElementById('crearComedorForm').reset();
+
+        // Resetear los selects
+        document.getElementById('selectCliente').selectedIndex = 0;
+        document.getElementById('comedorInCharge').selectedIndex = 0;
+    }
 </script>
 {% endblock javascripts %}

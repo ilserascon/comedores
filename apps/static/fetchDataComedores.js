@@ -124,6 +124,9 @@ async function updateComedor(data) {
         const result = await response.json();
         console.log('Comedor actualizado:', result);
 
+        // Llenar el select de clientes con comedores para actualizarlo dinamicamente
+        await llenarSelectClientesComedores('filterComedorSelect');
+
         // Actualizar la tabla con el comedor actualizado y mantener la página actual
         await actualizarTablaComedores(currentPage);
 
@@ -216,7 +219,7 @@ async function actualizarTablaComedores(page = 1, filter = 'all') {
                 </a>
             `;
             pagination.appendChild(nextPage);
-        }
+        }        
     } catch (error) {
         console.error('Error al actualizar la tabla de comedores:', error);
     }
@@ -361,6 +364,7 @@ async function llenarSelectClientesComedores(selectId) {
             option.textContent = cliente.company;
             select.appendChild(option);
         });
+        
     } catch (error) {
         console.error('Error al llenar el select de clientes con comedores:', error.message);
     }
