@@ -11,13 +11,16 @@ urlpatterns = [
     # The home page
     path('', views.index, name='home'),    
 
-    # ======================= DINING ROOMS =======================
+    # ======================= COMEDORES ======================= #
     path('get_comedores', views.get_comedores, name='get_comedores'),
     path('get_comedor', views.get_comedor, name='get_comedor'),
     path('create_comedor', views.create_comedor, name='create_comedor'),
     path('update_comedor', views.update_comedor, name='update_comedor'),
     path('get_encargados', views.get_encargados, name='get_encargados'),
-    path('get_client_diner', views.get_client_diner, name='get_client_diner'),
+
+    # ======================= CLIENTES ======================= #
+    path('get_clientes', views.get_clientes, name='get_clientes'),
+    path('get_clientes_comedores', views.get_clientes_comedores, name='get_clientes_comedores'),
 
     # Matches any html file
     re_path(r'^.*\.*', views.pages, name='pages'),

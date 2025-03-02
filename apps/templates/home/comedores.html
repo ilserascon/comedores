@@ -18,14 +18,14 @@
               <div class="card">
                   <!-- Card header -->
                   <div class="card-header border-0 d-flex justify-content-between align-items-center">
-                    <h3 class="mb-0">Comedores</h3>
-                    <div class="d-flex">
-                      <select class="form-control mr-3 ml-3" id="filterComedorSelect">
-                        <option value="all">Todos</option>
-                        <!-- Opciones adicionales se pueden agregar aquí -->
-                      </select>
-                      <button class="btn btn-primary rounded-pill" id="crear-comedor-btn" data-toggle="modal" data-target="#crearComedorModal">Crear</button>
-                    </div>
+                      <h3 class="mb-0">Comedores</h3>
+                      <div class="d-flex">
+                        <select class="form-control mr-3 ml-3" id="filterComedorSelect">
+                          <option value="all">Todos</option>
+                          <!-- Opciones adicionales se pueden agregar aquí -->
+                        </select>
+                        <button class="btn btn-primary rounded-pill" id="crear-comedor-btn" data-toggle="modal" data-target="#crearComedorModal">Crear</button>
+                      </div>
                   </div>
   
                   <!-- Table -->
@@ -34,10 +34,11 @@
                           <thead class="thead-light">
                               <tr>
                                   <th scope="col" class="sort" data-sort="name">Nombre</th>
-                                  <th scope="col" class="sort" data-sort="budget">Descripción</th>
-                                  <th scope="col" class="sort" data-sort="status">Encargado</th>
-                                  <th scope="col">Estatus</th>
-                                  <th scope="col" class="sort" data-sort="completion">Acciones</th>
+                                  <th scope="col" class="sort" data-sort="description">Descripción</th>
+                                  <th scope="col" class="sort" data-sort="client">Cliente</th>
+                                  <th scope="col" class="sort" data-sort="in_charge">Encargado</th>
+                                  <th scope="col" class="sort" data-sort="status">Estatus</th>                                  
+                                  <th scope="col" class="sort">Acciones</th>
                               </tr>
                           </thead>
                           <tbody class="list">
@@ -62,91 +63,116 @@
   </div>
   
         <!-- Modal Crear -->
-    <div class="modal fade" id="crearComedorModal" tabindex="-1" role="dialog" aria-labelledby="crearComedorModalLabel" aria-hidden="true">
-      <div class="modal-dialog" role="document">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="crearComedorModalLabel">Crear Comedor</h5>
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-              <span aria-hidden="true">&times;</span>
-            </button>
+        <div class="modal fade" id="crearComedorModal" tabindex="-1" role="dialog" aria-labelledby="crearComedorModalLabel" aria-hidden="true">
+          <div class="modal-dialog" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="crearComedorModalLabel">Crear Comedor</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+              <div class="modal-body">
+                <form id="crearComedorForm">
+                  <div class="form-row">
+                    <div class="form-group col-md-6">
+                      <label for="comedorName">Nombre</label>
+                      <input type="text" class="form-control" id="comedorName" placeholder="Nombre del comedor">
+                    </div>
+                    <div class="form-group col-md-6">
+                      <label for="comedorDescription">Descripción</label>
+                      <input type="text" class="form-control" id="comedorDescription" placeholder="Descripción del comedor">
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group col-md-6">
+                      <label for="comedorClient">Cliente</label>
+                      <select class="form-control" id="selectCliente">
+                        <!-- Opciones se llenarán dinámicamente -->
+                      </select>
+                    </div>
+                    <div class="form-group col-md-6">
+                      <label for="comedorInCharge">Encargado</label>
+                      <select class="form-control" id="comedorInCharge">
+                        <!-- Opciones se llenarán dinámicamente -->
+                      </select>
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group col-md-6">
+                      <label for="comedorStatus">Estatus</label>
+                      <select class="form-control" id="comedorStatus">
+                        <option value="1">Activo</option>
+                        <option value="0">Inactivo</option>
+                      </select>
+                    </div>
+                  </div>
+                </form>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" id="guardarComedorBtn">Guardar</button>
+              </div>
+            </div>
           </div>
-          <div class="modal-body">
-            <form id="crearComedorForm">
-              <div class="form-group">
-                <label for="comedorName">Nombre</label>
-                <input type="text" class="form-control" id="comedorName" placeholder="Nombre del comedor">
+        </div>     
+        
+        
+                <!-- Modal Editar -->
+        <div class="modal fade" id="editarComedorModal" tabindex="-1" role="dialog" aria-labelledby="editarComedorModalLabel" aria-hidden="true">
+          <div class="modal-dialog" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="editarComedorModalLabel">Editar Comedor</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
               </div>
-              <div class="form-group">
-                <label for="comedorDescription">Descripción</label>
-                <input type="text" class="form-control" id="comedorDescription" placeholder="Descripción del comedor">
+              <div class="modal-body">
+                <form id="editarComedorForm">
+                  <input type="hidden" id="editarComedorId">
+                  <div class="form-row">
+                    <div class="form-group col-md-6">
+                      <label for="editarComedorName">Nombre</label>
+                      <input type="text" class="form-control" id="editarComedorName" placeholder="Nombre del comedor">
+                    </div>
+                    <div class="form-group col-md-6">
+                      <label for="editarComedorDescription">Descripción</label>
+                      <input type="text" class="form-control" id="editarComedorDescription" placeholder="Descripción del comedor">
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group col-md-6">
+                      <label for="editarComedorClient">Cliente</label>
+                      <select class="form-control" id="editarComedorClient">
+                        <!-- Opciones se llenarán dinámicamente -->
+                      </select>
+                    </div>
+                    <div class="form-group col-md-6">
+                      <label for="editarComedorInCharge">Encargado</label>
+                      <select class="form-control" id="editarComedorInCharge">
+                        <!-- Opciones se llenarán dinámicamente -->
+                      </select>
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group col-md-6">
+                      <label for="editarComedorStatus">Estado</label>
+                      <select class="form-control" id="editarComedorStatus">
+                        <option value="1">Activo</option>
+                        <option value="0">Inactivo</option>
+                      </select>
+                    </div>
+                  </div>
+                </form>
               </div>
-              <div class="form-group">
-                <label for="comedorInCharge">Encargado</label>
-                <select class="form-control" id="comedorInCharge">
-                  <!-- Opciones se llenarán dinámicamente -->
-                </select>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" id="actualizarComedorBtn">Actualizar</button>
               </div>
-              <div class="form-group">
-                <label for="comedorStatus">Estatus</label>
-                <select class="form-control" id="comedorStatus">
-                  <option value="1">Activo</option>
-                  <option value="0">Inactivo</option>
-                </select>
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
-            <button type="button" class="btn btn-primary" id="guardarComedorBtn">Guardar</button>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
-
-        <!-- Modal Editar -->
-    <div class="modal fade" id="editarComedorModal" tabindex="-1" role="dialog" aria-labelledby="editarComedorModalLabel" aria-hidden="true">
-      <div class="modal-dialog" role="document">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="editarComedorModalLabel">Editar Comedor</h5>
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-              <span aria-hidden="true">&times;</span>
-            </button>
-          </div>
-          <div class="modal-body">
-            <form id="editarComedorForm">
-              <input type="hidden" id="editarComedorId">
-              <div class="form-group">
-                <label for="editarComedorName">Nombre</label>
-                <input type="text" class="form-control" id="editarComedorName" placeholder="Nombre del comedor">
-              </div>
-              <div class="form-group">
-                <label for="editarComedorDescription">Descripción</label>
-                <input type="text" class="form-control" id="editarComedorDescription" placeholder="Descripción del comedor">
-              </div>
-              <div class="form-group">
-                <label for="editarComedorInCharge">Encargado</label>
-                <select class="form-control" id="editarComedorInCharge">
-                  <!-- Opciones se llenarán dinámicamente -->
-                </select>
-              </div>
-              <div class="form-group">
-                <label for="editarComedorStatus">Estado</label>
-                <select class="form-control" id="editarComedorStatus">
-                  <option value="1">Activo</option>
-                  <option value="0">Inactivo</option>
-                </select>
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
-            <button type="button" class="btn btn-primary" id="actualizarComedorBtn">Actualizar</button>
-          </div>
-        </div>
-      </div>
-    </div>
 {% endblock content %}
 
 <!-- Specific JS goes HERE --> 
@@ -154,10 +180,12 @@
 <script>    
     // Llenar los selects de encargados al cargar la página
     document.addEventListener("DOMContentLoaded", async function() {
+        await llenarSelectClientesComedores('filterComedorSelect'); // Llenar el select de clientes con comedores primero
         await actualizarTablaComedores();
         await llenarSelectEncargados('comedorInCharge');
         await llenarSelectEncargados('editarComedorInCharge');
-        await llenarSelectClientesComedor('filterComedorSelect');
+        await llenarSelectClientes('selectCliente');
+        await llenarSelectClientes('editarComedorClient');
     });
 
     document.getElementById('filterComedorSelect').addEventListener('change', async function() {
@@ -165,27 +193,29 @@
         await actualizarTablaComedores(1, filterValue);
     });
 
-
     document.getElementById('guardarComedorBtn').addEventListener('click', async function() {
         const name = document.getElementById('comedorName').value;
         const description = document.getElementById('comedorDescription').value;
+        const client = document.getElementById('selectCliente').value;
         const inCharge = document.getElementById('comedorInCharge').value;
         const status = document.getElementById('comedorStatus').value;
 
         const data = {
             name,
             description,
+            client,
             in_charge: inCharge,
             status
         };
 
         await createComedor(data);
     });
-
+    
     document.getElementById('actualizarComedorBtn').addEventListener('click', async function() {
         const id = document.getElementById('editarComedorId').value;
         const name = document.getElementById('editarComedorName').value;
         const description = document.getElementById('editarComedorDescription').value;
+        const client = document.getElementById('editarComedorClient').value;
         const inCharge = document.getElementById('editarComedorInCharge').value;
         const status = document.getElementById('editarComedorStatus').value;
 
@@ -193,6 +223,7 @@
             dining_room_id: id,
             name,
             description,
+            client,
             inCharge,
             status
         };

@@ -1,24 +1,23 @@
-async function getComedores() {
-  try {
-      const response = await fetch(`/get_comedores`, {
-          method: 'GET',
-          headers: {
-              'Content-Type': 'application/json'
-          }
-      });
+async function getComedores(page = 1, filter = 'all') {
+    try {
+        const response = await fetch(`/get_comedores?page=${page}&filter=${filter}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
 
-      if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Error al obtener comedores');
-      }
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Error al obtener comedores');
+        }
 
-      const data = await response.json();            
-
-      return data;
-  } catch (error) {
-      console.error('Error:', error.message);
-      throw new Error(error.message || 'Error al obtener comedores');
-  }
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error:', error.message);
+        throw new Error(error.message || 'Error al obtener comedores');
+    }
 }
 
 async function getComedor(id) {
@@ -136,21 +135,8 @@ async function updateComedor(data) {
 let currentPage = 1; // Variable global para almacenar el número de página actual
 
 async function actualizarTablaComedores(page = 1, filter = 'all') {
-    currentPage = page; // Actualizar la variable global con el número de página actual
     try {
-        const response = await fetch(`/get_comedores?page=${page}&filter=${filter}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Error al obtener comedores');
-        }
-
-        const data = await response.json();
+        const data = await getComedores(page, filter);
         const tbody = document.querySelector('.list');
         tbody.innerHTML = '';
 
@@ -171,6 +157,9 @@ async function actualizarTablaComedores(page = 1, filter = 'all') {
                     ${comedor.description}
                 </td>
                 <td>
+                    ${comedor.company}
+                </td>
+                <td>
                     ${comedor.in_charge_first_name} ${comedor.in_charge_last_name}
                 </td>
                 <td>
@@ -180,7 +169,7 @@ async function actualizarTablaComedores(page = 1, filter = 'all') {
                     </span>
                 </td>
                 <td class="text-right d-flex justify-content-center">
-                    <button class="btn btn-sm btn-primary" onclick="editarComedor(${comedor.dining_room_id})">Editar</button>
+                    <button class="btn btn-sm btn-primary" onclick="editarComedor(${comedor.id})">Editar</button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -258,6 +247,55 @@ async function getEncargados() {
     }
 }
 
+// Obtiene todos los clientes
+async function getClientes() {
+    try {
+        const response = await fetch('/get_clientes', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Error al obtener clientes');
+        }
+
+        const data = await response.json();        
+
+        return data;
+    } catch (error) {
+        console.error('Error:', error.message);
+        throw new Error(error.message || 'Error al obtener clientes');
+    }
+}
+
+// Obtiene los clientes que tienen comedores
+async function getClientesComedores() {
+    try {
+        const response = await fetch('/get_clientes_comedores', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Error al obtener clientes con comedores');
+        }
+
+        const data = await response.json();                  
+
+        return data;
+    } catch (error) {
+        console.error('Error:', error.message);
+        throw new Error(error.message || 'Error al obtener clientes con comedores');
+    }
+
+}
+
 async function llenarSelectEncargados(selectId) {
     const select = document.getElementById(selectId);
     select.innerHTML = ''; // Limpiar opciones anteriores
@@ -270,50 +308,45 @@ async function llenarSelectEncargados(selectId) {
     });
 }
 
-
-async function getClientDiner() {
+async function llenarSelectClientes(selectId) {
     try {
-        const response = await fetch('/get_client_diner', {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json'
-            }
+        const data = await getClientes();
+        const clientes = data.clientes;
+        const select = document.getElementById(selectId);
+        select.innerHTML = '';
+
+        clientes.forEach(cliente => {
+            const option = document.createElement('option');
+            option.value = cliente.id; // Acceder a 'id' en lugar de 'client__id'
+            option.textContent = cliente.company; // Acceder a 'company' en lugar de 'client__company'
+            select.appendChild(option);
         });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Error al obtener clientes');
-        }
-
-        const data = await response.json();
-        return data.client_dinners;
     } catch (error) {
-        console.error('Error:', error.message);
-        throw new Error(error.message || 'Error al obtener clientes');
+        console.error('Error al llenar el select de clientes:', error.message);
     }
 }
 
-async function llenarSelectClientesComedor(selectId) {
-    const select = document.getElementById(selectId);
-    select.innerHTML = ''; // Limpiar opciones anteriores
+async function llenarSelectClientesComedores(selectId) {
+    try {
+        const data = await getClientesComedores();
+        const clientes = data.clientes;
+        const select = document.getElementById(selectId);
+        select.innerHTML = ''; // Limpiar opciones anteriores
 
-    // Agregar opción por defecto "Todos"
-    const optionTodos = document.createElement('option');
-    optionTodos.value = 'all';
-    optionTodos.textContent = 'Todos';
-    select.appendChild(optionTodos);
+        // Agregar opción por defecto "Todos"
+        const optionTodos = document.createElement('option');
+        optionTodos.value = 'all';
+        optionTodos.textContent = 'Todos';
+        select.appendChild(optionTodos);
 
-    // Agregar opción por defecto "Sin asignar"
-    const optionSinAsignar = document.createElement('option');
-    optionSinAsignar.value = 'none';
-    optionSinAsignar.textContent = 'Sin asignar';
-    select.appendChild(optionSinAsignar);
-
-    const clientes = await getClientDiner();
-    clientes.forEach(cliente => {
-        const option = document.createElement('option');
-        option.value = cliente.client__id;
-        option.textContent = `${cliente.client__name} ${cliente.client__lastname}`;
-        select.appendChild(option);
-    });
+        // Agregar opciones obtenidas de la consulta
+        clientes.forEach(cliente => {
+            const option = document.createElement('option');
+            option.value = cliente.id;
+            option.textContent = cliente.company;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error al llenar el select de clientes con comedores:', error.message);
+    }
 }
