@@ -98,8 +98,14 @@ def client_list(request):
             if len(data['rfc']) != 13:
                 return JsonResponse({'error': 'El RFC debe tener 13 caracteres'}, status=400)
             
+            try:
+                int(data['phone'])
+            except ValueError:
+                if not data['phone'].isdigit():
+                    return JsonResponse({'error': 'El teléfono debe contener solo dígitos'}, status=400)
+            
             if len(data['phone']) != 10:
-                return JsonResponse({'error': 'El teléfono debe tener 10 caracteres'}, status=400)
+                return JsonResponse({'error': 'El teléfono debe tener 10 dígitos'}, status=400)
             
             if len(data['address']) < 5:
                 return JsonResponse({'error': 'La dirección debe tener al menos 5 caracteres'}, status=400)
