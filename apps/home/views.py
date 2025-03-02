@@ -9,9 +9,9 @@ from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.template import loader
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
-from .models import DiningRoom
+from .models import DiningRoom, ClientDiner
 from apps.authentication.models import CustomUser
-from django.shortcuts import get_object_or_404
+from django.core.paginator import Paginator
 from django.db.models import Q
 from django.db import IntegrityError
 import json
@@ -55,11 +55,12 @@ def pages(request):
 @csrf_exempt
 def get_comedores(request):
     try:
+        # Obtener todos los comedores
         dining_rooms = DiningRoom.objects.all().select_related('in_charge').values(
             'id', 'name', 'description', 'status', 'in_charge__first_name', 'in_charge__last_name'
         )
 
-        # Rename fields to avoid confusion
+        # Renombrar campos para evitar confusión
         dining_rooms_list = [
             {
                 'dining_room_id': dr['id'],
@@ -72,11 +73,18 @@ def get_comedores(request):
             for dr in dining_rooms
         ]
 
-        context = {
-            'dining_rooms': dining_rooms_list
-        }
+        # Paginación
+        page_number = request.GET.get('page', 1)
+        paginator = Paginator(dining_rooms_list, 10)  # 10 comedores por página
+        page_obj = paginator.get_page(page_number)
 
-        print(context)
+        context = {
+            'dining_rooms': list(page_obj),
+            'page_number': page_obj.number,
+            'num_pages': paginator.num_pages,
+            'has_next': page_obj.has_next(),
+            'has_previous': page_obj.has_previous(),
+        }
 
         return JsonResponse(context)
     except Exception as e:
@@ -181,6 +189,25 @@ def get_encargados(request):
             'encargados': list(encargados)
         }
         
+        return JsonResponse(context)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+    
+@csrf_exempt
+def get_client_diner(request):
+    try:
+        client_dinners = ClientDiner.objects.select_related('client').values(
+            'client__id',
+            'client__company',
+            'client__name',
+            'client__lastname',
+            'client__second_lastname'
+        ).distinct()
+
+        context = {
+            'client_dinners': list(client_dinners)
+        }
+
         return JsonResponse(context)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)

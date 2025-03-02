@@ -17,6 +17,7 @@ urlpatterns = [
     path('create_comedor', views.create_comedor, name='create_comedor'),
     path('update_comedor', views.update_comedor, name='update_comedor'),
     path('get_encargados', views.get_encargados, name='get_encargados'),
+    path('get_client_diner', views.get_client_diner, name='get_client_diner'),
 
     # Matches any html file
     re_path(r'^.*\.*', views.pages, name='pages'),
