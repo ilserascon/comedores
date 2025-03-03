@@ -1,14 +1,16 @@
 document.addEventListener('DOMContentLoaded', loadEmpleados);
 
 let originalEmpleadoData = {};
+let currentPage = 1;
 
-async function loadEmpleados() {
+async function loadEmpleados(page = currentPage, pageSize = 10) {
     try {
-        const response = await fetch('/get_empleados');
+        const response = await fetch(`/get_empleados?page=${page}&page_size=${pageSize}`);
         if (!response.ok) {
             throw new Error('Error al cargar empleados');
         }
-        const empleados = await response.json();
+        const data = await response.json();
+        const empleados = data.empleados;
         const empleadosTableBody = document.getElementById('empleadosTableBody');
         empleadosTableBody.innerHTML = '';
 
@@ -16,7 +18,7 @@ async function loadEmpleados() {
             const row = document.createElement('tr');
 
             row.innerHTML = `
-                <td>${empleado.employeed_code}</td>
+                <td class="text-center">${empleado.employeed_code}</td>
                 <td>${empleado.name}</td>
                 <td>${empleado.lastname}</td>
                 <td>${empleado.second_lastname}</td>
@@ -30,13 +32,46 @@ async function loadEmpleados() {
                         <span class="status">${empleado.status ? 'Activo' : 'Inactivo'}</span>
                     </span>
                 </td>
-                <td>
+                <td class="text-center">
                     <button class="btn btn-sm btn-primary" onclick="openEditModal(${empleado.id})">Editar</button>                    
                 </td>
             `;
 
             empleadosTableBody.appendChild(row);
         });
+
+        // Actualizar la paginación
+        const pagination = document.querySelector('.pagination');
+        pagination.innerHTML = '';
+
+        const totalPages = data.total_pages;
+        const currentPageGroup = Math.ceil(data.current_page / 5);
+        const startPage = (currentPageGroup - 1) * 5 + 1;
+        const endPage = Math.min(currentPageGroup * 5, totalPages);
+
+        if (startPage > 1) {
+            const prevGroupPage = document.createElement('li');
+            prevGroupPage.className = 'page-item';
+            prevGroupPage.innerHTML = `<a class="page-link" href="#" onclick="loadEmpleados(${startPage - 1}, ${pageSize})"><i class="fas fa-arrow-left"></i></a>`;
+            pagination.appendChild(prevGroupPage);
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            const pageItem = document.createElement('li');
+            pageItem.className = `page-item ${i === data.current_page ? 'active' : ''}`;
+            pageItem.innerHTML = `<a class="page-link" href="#" onclick="loadEmpleados(${i}, ${pageSize})">${i}</a>`;
+            pagination.appendChild(pageItem);
+        }
+
+        if (endPage < totalPages) {
+            const nextGroupPage = document.createElement('li');
+            nextGroupPage.className = 'page-item';
+            nextGroupPage.innerHTML = `<a class="page-link" href="#" onclick="loadEmpleados(${endPage + 1}, ${pageSize})"><i class="fas fa-arrow-right"></i></a>`;
+            pagination.appendChild(nextGroupPage);
+        }
+
+        // Actualizar la variable global de la página actual
+        currentPage = data.current_page;
     } catch (error) {
         console.error('Error al cargar empleados:', error.message);
     }
@@ -194,7 +229,7 @@ async function actualizarEmpleado() {
         const data = await response.json();
         console.log(data.message);
         $('#editarEmpleadoModal').modal('hide');
-        loadEmpleados();
+        loadEmpleados(currentPage);  // Usar la página actual
         showToast('Empleado actualizado correctamente', 'success');
     } catch (error) {
         console.error('Error al actualizar empleado:', error.message);

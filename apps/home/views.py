@@ -50,11 +50,27 @@ def pages(request):
 
 
 # ===================== EMPLEADOS ===================== #
+@csrf_exempt
 def get_empleados(request):
+    page_number = request.GET.get('page', 1)
+    page_size = request.GET.get('page_size', 10)
+    
     empleados = Employee.objects.all().values(
         'id', 'employeed_code', 'name', 'lastname', 'second_lastname', 'email', 'phone', 'client__company', 'payroll__description', 'status'
     )
-    return JsonResponse(list(empleados), safe=False)
+    
+    paginator = Paginator(empleados, page_size)
+    page_obj = paginator.get_page(page_number)
+    
+    response = {
+        'empleados': list(page_obj),
+        'total_pages': paginator.num_pages,
+        'current_page': page_obj.number,
+        'has_previous': page_obj.has_previous(),
+        'has_next': page_obj.has_next(),
+    }
+    
+    return JsonResponse(response)
     
 
 @csrf_exempt
