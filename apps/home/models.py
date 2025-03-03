@@ -72,7 +72,25 @@ class ClientDiner(models.Model):
 
     def __str__(self):
         return "Cliente: " + self.client.company + ', Comedor Asignado: ' + self.dining_room.name
-    
+
+class PayrollType(models.Model):
+    description = models.CharField(max_length=50)
+    status = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='payroll_type_created_by')
+    updated_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='payroll_type_updated_by', null=True, blank=True)
+    deleted_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='payroll_type_deleted_by', null=True, blank=True)    
+
+    class Meta:
+        db_table = 'payroll_type'
+        verbose_name = 'Payroll Type'
+        verbose_name_plural = 'Payroll Types'
+
+    def __str__(self):
+        return "Tipo de Nómina: " + self.name + ', Descripcion: ' + self.description
+
 class Employee(models.Model):
     client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='employee_client')
     employeed_code = models.CharField(max_length=25, blank=True, null=True)
@@ -81,7 +99,7 @@ class Employee(models.Model):
     second_lastname = models.CharField(max_length=50, null=True, blank=True)
     email = models.EmailField(blank=True, null=True)
     phone = models.CharField(max_length=10, blank=True, null=True)
-    payroll = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    payroll = models.ForeignKey(PayrollType, on_delete=models.SET_NULL, null=True, blank=True, related_name='employees')  # Changed field type
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
