@@ -24,7 +24,8 @@
               <option value="all">Todos</option>
               <!-- Opciones adicionales se pueden agregar aquí -->
             </select>
-            <button class="btn btn-primary rounded-pill" id="crear-comedor-btn" data-toggle="modal" data-target="#crearEmpleadoModal">Crear</button>
+            <button class="btn btn-primary rounded-pill" data-toggle="modal" data-target="#crearEmpleadoModal">Crear</button>
+            <button class="btn btn-primary rounded-pill" data-toggle="modal" data-target="#cargarEmpleadosModal">Cargar</button>
           </div>
         </div>
 
@@ -239,9 +240,36 @@
     </div>
   </div>
 </div>
+
+<!-- Modal para cargar archivo Excel -->
+<div class="modal fade" id="cargarEmpleadosModal" tabindex="-1" role="dialog" aria-labelledby="cargarEmpleadosModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="cargarEmpleadosModalLabel">Cargar Empleados desde Excel</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="cargarEmpleadosForm">
+          <div class="form-group">
+            <label for="archivoExcel">Seleccionar archivo Excel</label>
+            <input type="file" class="form-control" id="archivoExcel" accept=".xlsx, .xls">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+        <button type="button" class="btn btn-primary" id="cargarEmpleadosBtn">Cargar</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock content %}
 
 <!-- Specific JS goes HERE --> 
 {% block javascripts %}
 <script src="/static/assets/html-js/loadDataEmpleados.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
 {% endblock javascripts %}

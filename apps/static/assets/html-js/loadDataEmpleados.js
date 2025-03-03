@@ -4,7 +4,11 @@ let originalEmpleadoData = {};
 
 async function loadEmpleados() {
     try {
-        const empleados = await getEmpleados();
+        const response = await fetch('/get_empleados');
+        if (!response.ok) {
+            throw new Error('Error al cargar empleados');
+        }
+        const empleados = await response.json();
         const empleadosTableBody = document.getElementById('empleadosTableBody');
         empleadosTableBody.innerHTML = '';
 
@@ -321,7 +325,52 @@ function showToast(message, type = 'success') {
     });
 }
 
+// Función para procesar el archivo Excel
+document.getElementById('cargarEmpleadosBtn').addEventListener('click', async function() {
+    const fileInput = document.getElementById('archivoExcel');
+    const file = fileInput.files[0];
+
+    if (!file) {
+        showToast('Por favor, seleccione un archivo Excel', 'danger');
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+        try {
+            const response = await fetch('/upload_empleados', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(jsonData)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Error al cargar empleados');
+            }
+
+            const data = await response.json();
+            console.log(data.message);
+            $('#cargarEmpleadosModal').modal('hide');
+            loadEmpleados();
+            showToast('Empleados cargados correctamente', 'success');
+        } catch (error) {
+            console.error('Error al cargar empleados:', error.message);
+            showToast('Error al cargar empleados', 'danger');
+        }
+    };
+
+    reader.readAsArrayBuffer(file);
+});
+
 
 document.getElementById('guardarEmpleadoBtn').addEventListener('click', crearEmpleado);
-document.getElementById('crear-comedor-btn').addEventListener('click', openCreateModal);
 document.getElementById('actualizarEmpleadoBtn').addEventListener('click', actualizarEmpleado);

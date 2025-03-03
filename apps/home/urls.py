@@ -17,6 +17,8 @@ urlpatterns = [
     path('create_empleado', views.create_empleado, name='create_empleado'),
     path('update_empleado', views.update_empleado, name='update_empleado'),
 
+    # ARCHIVO EXCEL
+    path('upload_empleados', views.upload_empleados, name='upload_empleados'),
 
     # ===================== TIPOS DE NOMINA ===================== #
     path('get_tipos_nomina', views.get_tipos_nomina, name='get_tipos_nomina'),

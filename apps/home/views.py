@@ -12,6 +12,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator
 from .models import Employee, PayrollType, Client
 import json
+import pandas as pd
 
 
 @login_required(login_url="/login/")
@@ -49,25 +50,11 @@ def pages(request):
 
 
 # ===================== EMPLEADOS ===================== #
-@csrf_exempt
 def get_empleados(request):
-    try:
-        empleados = Employee.objects.select_related('payroll', 'client').values(
-            'id',
-            'employeed_code',
-            'name',
-            'lastname',
-            'second_lastname',
-            'email',
-            'phone',
-            'client__company',
-            'payroll__description',
-            'status'
-        )
-        empleados_list = list(empleados)
-        return JsonResponse(empleados_list, safe=False)
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+    empleados = Employee.objects.all().values(
+        'id', 'employeed_code', 'name', 'lastname', 'second_lastname', 'email', 'phone', 'client__company', 'payroll__description', 'status'
+    )
+    return JsonResponse(list(empleados), safe=False)
     
 
 @csrf_exempt
@@ -188,6 +175,37 @@ def update_empleado(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
+# ===================== ARCHIVO EXCEL ===================== #
+@csrf_exempt
+def upload_empleados(request):
+    try:
+        data = json.loads(request.body)
+        df = pd.DataFrame(data)
+
+        # Procesar los datos del DataFrame y guardarlos en la base de datos
+        for index, row in df.iterrows():
+            client = Client.objects.get(id=4)  # Asumiendo que todos los empleados cargados pertenecen a DHL
+            payroll = PayrollType.objects.get(description=row['NOMINA'])
+
+            Employee.objects.update_or_create(
+                employeed_code=row['NO. EMPLEADO'],
+                defaults={
+                    'name': row['NOMBRES'],
+                    'lastname': row['APELLIDO PATERNO'],
+                    'second_lastname': row['APELLIDO MATERNO'],
+                    'payroll': payroll,
+                    'email': 'correo@correo.com',  # Asumiendo que todos los empleados cargados tienen el mismo correo
+                    'phone': '0000000000',  # Asumiendo que todos los empleados cargados tienen el mismo teléfono
+                    'client': client,
+                    'status': True,  # Asumiendo que todos los empleados cargados están activos
+                    'created_by_id': request.user.id
+                }
+            )
+
+        return JsonResponse({'message': 'Empleados cargados correctamente'}, status=200)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+        
 # ===================== TIPOS DE NOMINA ===================== #
 @csrf_exempt
 def get_tipos_nomina(request):
