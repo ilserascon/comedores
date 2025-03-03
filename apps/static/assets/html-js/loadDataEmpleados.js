@@ -1,5 +1,7 @@
 document.addEventListener('DOMContentLoaded', loadEmpleados);
 
+let originalEmpleadoData = {};
+
 async function loadEmpleados() {
     try {
         const empleados = await getEmpleados();
@@ -43,6 +45,18 @@ async function openEditModal(empleadoId) {
             getClientes(),
             getTiposNomina()
         ]);
+
+        originalEmpleadoData = {
+            employeed_code: empleado.employeed_code,
+            name: empleado.name,
+            lastname: empleado.lastname,
+            second_lastname: empleado.second_lastname,
+            email: empleado.email,
+            phone: empleado.phone,
+            client_id: empleado.client.id,
+            payroll_id: empleado.payroll.id,
+            status: empleado.status ? '1' : '0'
+        };
 
         document.getElementById('editarEmpleadoId').value = empleado.id;
         document.getElementById('editarEmployeeCode').value = empleado.employeed_code;
@@ -103,8 +117,37 @@ function validateForm(formId) {
     return isValid;
 }
 
+function isFormModified() {
+    const employeed_code = document.getElementById('editarEmployeeCode').value;
+    const name = document.getElementById('editarEmployeeName').value;
+    const lastname = document.getElementById('editarEmployeeLastname').value;
+    const second_lastname = document.getElementById('editarEmployeeSecondLastname').value;
+    const email = document.getElementById('editarEmployeeEmail').value;
+    const phone = document.getElementById('editarEmployeePhone').value;
+    const client_id = document.getElementById('editarEmployeeClient').value;
+    const payroll_id = document.getElementById('editarEmployeePayroll').value;
+    const status = document.getElementById('editarEmployeeStatus').value;
+
+    return (
+        employeed_code !== originalEmpleadoData.employeed_code ||
+        name !== originalEmpleadoData.name ||
+        lastname !== originalEmpleadoData.lastname ||
+        second_lastname !== originalEmpleadoData.second_lastname ||
+        email !== originalEmpleadoData.email ||
+        phone !== originalEmpleadoData.phone ||
+        client_id !== originalEmpleadoData.client_id.toString() ||
+        payroll_id !== originalEmpleadoData.payroll_id.toString() ||
+        status !== originalEmpleadoData.status
+    );
+}
+
 async function actualizarEmpleado() {
     if (!validateForm('editarEmpleadoForm')) {
+        return;
+    }
+
+    if (!isFormModified()) {
+        showToast('No se han realizado cambios', 'info');
         return;
     }
 
@@ -148,8 +191,10 @@ async function actualizarEmpleado() {
         console.log(data.message);
         $('#editarEmpleadoModal').modal('hide');
         loadEmpleados();
+        showToast('Empleado actualizado correctamente', 'success');
     } catch (error) {
         console.error('Error al actualizar empleado:', error.message);
+        showToast('Error al actualizar empleado', 'danger');
     }
 }
 
@@ -227,10 +272,55 @@ async function crearEmpleado() {
         console.log(data.message);
         $('#crearEmpleadoModal').modal('hide');
         loadEmpleados();
+        showToast('Empleado creado correctamente', 'success');
     } catch (error) {
         console.error('Error al crear empleado:', error.message);
     }
 }
+
+
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    const header = type === 'success' ? 'Éxito' : type === 'info' ? 'Aviso' : 'Error';
+    // Set the toast classes with Bootstrap
+    toast.className = `toast align-items-center text-white bg-${type} border-0 shadow-sm p-2 px-3 m-1`;
+    toast.role = 'alert';
+    toast.ariaLive = 'assertive';
+    toast.ariaAtomic = 'true';
+    toast.style.zIndex = '1';
+    toast.style.opacity = '1'; // Make the toast solid
+
+    // Set the toast content (including a header, body, and close button)
+    toast.innerHTML = `
+        <div class="toast-header bg-${type} text-white d-flex align-items-center justify-content-between p-1 px-1 shadow-sm">
+            <strong class="me-auto">${header}</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body p-1 px-1">
+            ${message}
+        </div>
+    `;
+
+    // Append the toast to the container
+    const toastContainer = document.getElementById('toastContainer');
+    toastContainer.appendChild(toast);
+
+    // Initialize and show the toast with Bootstrap's Toast component
+    const bsToast = new bootstrap.Toast(toast, { delay: 4000 });
+    bsToast.show();
+
+    // Verificar que se cerró el toast sin usar addEventListener con hidden.bs.toast
+    setTimeout(() => {
+        toast.remove(); // Remove the toast manually after the delay
+    }, 4000); // Time in milliseconds, should match the delay
+
+    // Close the toast when the close button is clicked
+    toast.querySelector('.btn-close').addEventListener('click', function() {
+        toast.remove();
+        bsToast.hide();
+    });
+}
+
 
 document.getElementById('guardarEmpleadoBtn').addEventListener('click', crearEmpleado);
 document.getElementById('crear-comedor-btn').addEventListener('click', openCreateModal);
