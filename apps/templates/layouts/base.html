@@ -43,7 +43,16 @@
 
 <body class="">
 
-  {% include "includes/sidenav.html" %}
+  {% if user.role_id == 1 %}
+
+    {% include "includes/admin-sidenav.html" %}
+
+  {% else %}
+
+    {% include "includes/sidenav.html" %}
+
+  {% endif %}
+
 
   <div class="main-content" id="panel">
 
