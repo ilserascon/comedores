@@ -6,6 +6,8 @@
 {% block stylesheets %}{% endblock stylesheets %}
 
 {% block content %}
+    
+{% include "includes/footer.html" %}    
 
     <!-- Header -->
     <div class="header pb-6">
@@ -22,8 +24,6 @@
 
 <!-- Specific JS goes HERE --> 
 {% block javascripts %}
-
   <script src="/static/assets/vendor/chart.js/dist/Chart.min.js"></script>
   <script src="/static/assets/vendor/chart.js/dist/Chart.extension.js"></script>
-
 {% endblock javascripts %}
