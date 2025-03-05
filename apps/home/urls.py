@@ -22,6 +22,12 @@ urlpatterns = [
     path('get_clientes', views.get_clientes, name='get_clientes'),
     path('get_clientes_comedores', views.get_clientes_comedores, name='get_clientes_comedores'),
 
+    path('client_list', views.client_list, name='client_list'),
+    path('client_detail/<int:client_id>', views.client_detail, name='client_detail'),
+    path('users', views.user_list, name='user_list'),
+    path('users/<int:user_id>', views.user_detail, name='user_detail'),
+    path('roles', views.role_list, name='role_list'),
+
     # Matches any html file
     re_path(r'^.*\.*', views.pages, name='pages'),
 

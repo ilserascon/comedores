@@ -11,10 +11,11 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from .models import DiningRoom, ClientDiner, Client
 from apps.authentication.models import CustomUser
-from django.core.paginator import Paginator
 from django.db.models import Q
 from django.db import IntegrityError
 import json
+from django.shortcuts import get_object_or_404t
+from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 
 
 @login_required(login_url="/login/")
@@ -367,3 +368,271 @@ def get_clientes_comedores(request):
         return JsonResponse(context)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+        
+@csrf_exempt
+def client_list(request):
+    if request.method == 'GET':
+        search_query = request.GET.get('search', '')
+        clients = Client.objects.all().order_by('id').values('id', 'company', 'name', 'lastname', 'second_lastname', 'rfc', 'email', 'phone', 'address', 'status')
+
+        if search_query:
+            clients = clients.filter(
+                Q(company__icontains=search_query) |
+                Q(name__icontains=search_query) |
+                Q(lastname__icontains=search_query) |
+                Q(second_lastname__icontains=search_query)
+            )
+
+        page = request.GET.get('page', 1)
+        paginator = Paginator(clients, 10)  # 10 clientes por página
+
+        try:
+            clients_page = paginator.page(page)
+        except PageNotAnInteger:
+            clients_page = paginator.page(1)
+        except EmptyPage:
+            clients_page = paginator.page(paginator.num_pages)
+
+        return JsonResponse({
+            'clients': list(clients_page),
+            'page': clients_page.number,
+            'pages': paginator.num_pages
+        })
+    elif request.method == 'POST':
+        try:
+            id_user = request.user.id
+            if not CustomUser.objects.filter(id=id_user, role__name='Administrador').exists():
+                return JsonResponse({'error': 'No tienes permiso para crear un cliente'}, status=403)
+            data = json.loads(request.body)
+
+            if len(data['company']) < 2:
+                return JsonResponse({'error': 'El nombre de la compañía debe tener al menos 2 caracteres'}, status=400)
+            
+            if len(data['company']) > 50:
+                return JsonResponse({'error': 'El nombre de la compañía debe tener máximo 50 caracteres'}, status=400)
+
+            if len(data['name']) < 2 or len(data['lastname']) < 2 or len(data['second_lastname']) < 2:
+                return JsonResponse({'error': 'El nombre y  los apellidos deben tener al menos 2 caracteres'}, status=400)
+            
+            if len(data['rfc']) != 13:
+                return JsonResponse({'error': 'El RFC debe tener 13 caracteres'}, status=400)
+            
+            try:
+                int(data['phone'])
+            except ValueError:
+                if not data['phone'].isdigit():
+                    return JsonResponse({'error': 'El teléfono debe contener solo dígitos'}, status=400)
+            
+            if len(data['phone']) != 10:
+                return JsonResponse({'error': 'El teléfono debe tener 10 dígitos'}, status=400)
+            
+            if len(data['address']) < 5:
+                return JsonResponse({'error': 'La dirección debe tener al menos 5 caracteres'}, status=400)
+            
+            if len(data['address']) > 100:
+                return JsonResponse({'error': 'La dirección debe tener máximo 100 caracteres'}, status=400)
+                        
+            if '@' not in data['email'] or '.' not in data['email']:
+                return JsonResponse({'error': 'Correo electrónico inválido'}, status=400)
+            
+            client = Client.objects.create(
+                company=data['company'],
+                name=data['name'],
+                lastname=data['lastname'],
+                second_lastname=data.get('second_lastname', ''),
+                rfc=data['rfc'].upper(),
+                email=data['email'],
+                phone=data['phone'],
+                address=data['address'],
+                status=data.get('status', True),
+                created_by=request.user
+            )
+            return JsonResponse({'message': 'Cliente creado correctamente', 'client_id': client.id}, status=201)
+        except IntegrityError as e:
+            if 'email' in str(e):
+                return JsonResponse({'error': 'El correo electrónico ya existe'}, status=400)
+            else:
+                return JsonResponse({'error': 'Error de integridad de datos'}, status=400)
+        except KeyError as e:
+            return JsonResponse({'error': f'Campo faltante: {str(e)}'}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
+@csrf_exempt
+def client_detail(request, client_id):
+    client = get_object_or_404(Client, id=client_id)
+    if request.method == 'GET':
+        try:
+            client_data = Client.objects.filter(id=client_id).values('id', 'company', 'name', 'lastname', 'second_lastname', 'rfc', 'email', 'phone', 'address', 'status', 'created_by', 'updated_by').first()
+            return JsonResponse(client_data)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    elif request.method == 'PUT':
+        try:
+            data = json.loads(request.body)
+            if len(data['company']) < 2:
+                return JsonResponse({'error': 'El nombre de la compañía debe tener al menos 2 caracteres'}, status=400)
+            
+            if len(data['company']) > 50:
+                return JsonResponse({'error': 'El nombre de la compañía debe tener máximo 50 caracteres'}, status=400)
+
+            if len(data['name']) < 2 or len(data['lastname']) < 2 or len(data['second_lastname']) < 2:
+                return JsonResponse({'error': 'El nombre y  los apellidos deben tener al menos 2 caracteres'}, status=400)
+            
+            if len(data['rfc']) != 13:
+                return JsonResponse({'error': 'El RFC debe tener 13 caracteres'}, status=400)
+            
+            if len(data['phone']) != 10:
+                return JsonResponse({'error': 'El teléfono debe tener 10 caracteres'}, status=400)
+            
+            if len(data['address']) < 5:
+                return JsonResponse({'error': 'La dirección debe tener al menos 5 caracteres'}, status=400)
+            
+            if len(data['address']) > 100:
+                return JsonResponse({'error': 'La dirección debe tener máximo 100 caracteres'}, status=400)
+                        
+            if '@' not in data['email'] or '.' not in data['email']:
+                return JsonResponse({'error': 'Correo electrónico inválido'}, status=400)
+            
+            client.company = data.get('company', client.company)
+            client.name = data.get('name', client.name)
+            client.lastname = data.get('lastname', client.lastname)
+            client.second_lastname = data.get('second_lastname', client.second_lastname)
+            client.rfc = data.get('rfc', client.rfc).upper()
+            client.email = data.get('email', client.email)
+            client.phone = data.get('phone', client.phone)
+            client.address = data.get('address', client.address)
+            client.status = data.get('status', client.status)
+            client.save()
+            return JsonResponse({'message': 'Cliente actualizado correctamente'})
+        except IntegrityError as e:
+            if 'email' in str(e):
+                return JsonResponse({'error': 'El correo electrónico ya existe'}, status=400)
+            else:
+                return JsonResponse({'error': 'Error de integridad de datos'}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
+
+@csrf_exempt
+def user_list(request):
+    if request.method == 'GET':
+        search_query = request.GET.get('search', '')
+        users = CustomUser.objects.all().order_by('id').values('id', 'username', 'first_name', 'last_name', 'second_last_name', 'email', 'role__name', 'status')
+
+        if search_query:
+            users = users.filter(
+                Q(username__icontains=search_query) |
+                Q(first_name__icontains=search_query) |
+                Q(last_name__icontains=search_query) |
+                Q(second_last_name__icontains=search_query)
+            )
+
+        page = request.GET.get('page', 1)
+        paginator = Paginator(users, 10)  # 10 usuarios por página
+
+        try:
+            users_page = paginator.page(page)
+        except PageNotAnInteger:
+            users_page = paginator.page(1)
+        except EmptyPage:
+            users_page = paginator.page(paginator.num_pages)
+
+        return JsonResponse({
+            'users': list(users_page),
+            'page': users_page.number,
+            'pages': paginator.num_pages
+        })
+    elif request.method == 'POST':
+        try:
+            id_user = request.user.id
+            if not CustomUser.objects.filter(id=id_user, role__name='Administrador').exists():
+                return JsonResponse({'error': 'No tienes permiso para crear un usuario'}, status=403)
+            data = json.loads(request.body)
+            role = get_object_or_404(Role, id=data['role_id'])
+
+            if len(data['username']) < 5:
+                return JsonResponse({'error': 'El nombre de usuario debe tener al menos 5 caracteres'}, status=400)
+
+            if len(data['first_name']) < 2 or len(data['last_name']) < 2 or len(data['second_last_name']) < 2:
+                return JsonResponse({'error': 'El nombre, apellido paterno y apellido materno deben tener al menos 2 caracteres'}, status=400)
+                        
+            if '@' not in data['email'] or '.' not in data['email']:
+                return JsonResponse({'error': 'Correo electrónico inválido'}, status=400)
+            
+            if len(data['password']) < 8 or not any(char.isdigit() for char in data['password']) or not any(char.isalpha() for char in data['password']):
+                return JsonResponse({'error': 'La contraseña debe tener al menos 8 caracteres, una letra y un número'}, status=400)
+
+            user = CustomUser.objects.create(
+                username=data['username'],
+                first_name=data['first_name'],
+                last_name=data['last_name'],
+                second_last_name=data['second_last_name'],
+                email=data['email'],
+                password=make_password(data['password']),
+                role=role,
+                status=data.get('status', True),
+                created_by=request.user
+            )
+            return JsonResponse({'message': 'Usuario creado correctamente', 'user_id': user.id}, status=201)
+        except IntegrityError as e:
+            if 'username' in str(e):
+                return JsonResponse({'error': 'El nombre de usuario ya existe'}, status=400)
+            elif 'email' in str(e):
+                return JsonResponse({'error': 'El correo electrónico ya existe'}, status=400)
+            else:
+                return JsonResponse({'error': 'Error de integridad de datos'}, status=400)
+        except KeyError as e:
+            return JsonResponse({'error': f'Campo faltante: {str(e)}'}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
+@csrf_exempt
+def user_detail(request, user_id):
+    user = get_object_or_404(CustomUser, id=user_id)
+    if request.method == 'GET':
+        try:
+            user_data = CustomUser.objects.filter(id=user_id).values('id', 'username', 'first_name', 'last_name', 'second_last_name', 'email', 'role__name', 'status', 'created_by', 'updated_by').first()
+            return JsonResponse(user_data)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    elif request.method == 'PUT':
+        try:
+            data = json.loads(request.body)
+            user.username = data.get('username', user.username)
+            user.email = data.get('email', user.email)
+
+            if len(data['username']) < 5:
+                return JsonResponse({'error': 'El nombre de usuario debe tener al menos 5 caracteres'}, status=400)
+            
+            if len(data['first_name']) < 2 or len(data['last_name']) < 2 or len(data['second_last_name']) < 2:
+                return JsonResponse({'error': 'El nombre, apellido paterno y apellido materno deben tener al menos 2 caracteres'}, status=400)
+            
+            if '@' not in data['email'] or '.' not in data['email']:
+                return JsonResponse({'error': 'Correo electrónico inválido'}, status=400)
+
+            if len(data['password']) < 8 or not any(char.isdigit() for char in data['password']) or not any(char.isalpha() for char in data['password']):
+                return JsonResponse({'error': 'La contraseña debe tener al menos 8 caracteres, una letra y un número'}, status=400)
+            
+            if 'password' in data:
+                user.password = make_password(data['password'])
+            if 'role_id' in data:
+                user.role = get_object_or_404(Role, id=data['role_id'])
+            user.status = data.get('status', user.status)
+            user.save()
+            return JsonResponse({'message': 'Usuario actualizado correctamente'})
+        except IntegrityError as e:
+            if 'username' in str(e):
+                return JsonResponse({'error': 'El nombre de usuario ya existe'}, status=400)
+            elif 'email' in str(e):
+                return JsonResponse({'error': 'El correo electrónico ya existe'}, status=400)
+            else:
+                return JsonResponse({'error': 'Error de integridad de datos'}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
+@csrf_exempt
+def role_list(request):
+    if request.method == 'GET':
+        roles = Role.objects.all().values('id', 'name')
+        return JsonResponse(list(roles), safe=False)

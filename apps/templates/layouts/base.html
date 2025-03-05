@@ -33,6 +33,7 @@
   <link rel="stylesheet" href="/static/assets/vendor/nucleo/css/nucleo.css" type="text/css">
   <link rel="stylesheet" href="/static/assets/vendor/@fortawesome/fontawesome-free/css/all.min.css" type="text/css">
   <!-- Page plugins -->
+   <link rel="stylesheet" href="/static/assets/css/sidebar-toggler.css">
   <!-- Argon CSS -->
   <link rel="stylesheet" href="/static/assets/css/argon.css?v=1.2.0" type="text/css">
 
@@ -43,7 +44,16 @@
 
 <body class="">
 
-  {% include "includes/sidenav.html" %}
+  {% if user.role_id == 1 %}
+
+    {% include "includes/admin-sidenav.html" %}
+
+  {% else %}
+
+    {% include "includes/sidenav.html" %}
+
+  {% endif %}
+
 
   <div class="main-content" id="panel">
 
