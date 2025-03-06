@@ -11,6 +11,7 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator
 from .models import Employee, PayrollType, Client
+from django.db.models import Q
 import json
 import pandas as pd
 
@@ -54,14 +55,27 @@ def pages(request):
 def get_empleados(request):
     page_number = request.GET.get('page', 1)
     page_size = request.GET.get('page_size', 10)
-    
-    empleados = Employee.objects.all().values(
+    search_query = request.GET.get('search', '')
+
+    empleados = Employee.objects.all()
+
+    if search_query:
+        empleados = empleados.filter(
+            Q(employeed_code__icontains=search_query) |
+            Q(name__icontains=search_query) |
+            Q(lastname__icontains=search_query) |
+            Q(second_lastname__icontains=search_query) |
+            Q(client__company__icontains=search_query) |
+            Q(payroll__description__icontains=search_query)
+        )
+
+    empleados = empleados.values(
         'id', 'employeed_code', 'name', 'lastname', 'second_lastname', 'client__company', 'payroll__description', 'status'
     )
-    
+
     paginator = Paginator(empleados, page_size)
     page_obj = paginator.get_page(page_number)
-    
+
     response = {
         'empleados': list(page_obj),
         'total_pages': paginator.num_pages,
@@ -69,7 +83,7 @@ def get_empleados(request):
         'has_previous': page_obj.has_previous(),
         'has_next': page_obj.has_next(),
     }
-    
+
     return JsonResponse(response)
     
 

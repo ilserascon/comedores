@@ -3,9 +3,9 @@ document.addEventListener('DOMContentLoaded', loadEmpleados);
 let originalEmpleadoData = {};
 let currentPage = 1;
 
-async function loadEmpleados(page = currentPage, pageSize = 10) {
+async function loadEmpleados(page = currentPage, pageSize = 10, searchQuery = '') {
     try {
-        const response = await fetch(`/get_empleados?page=${page}&page_size=${pageSize}`);
+        const response = await fetch(`/get_empleados?page=${page}&page_size=${pageSize}&search=${encodeURIComponent(searchQuery)}`);
         if (!response.ok) {
             throw new Error('Error al cargar empleados');
         }
@@ -50,21 +50,21 @@ async function loadEmpleados(page = currentPage, pageSize = 10) {
         if (startPage > 1) {
             const prevGroupPage = document.createElement('li');
             prevGroupPage.className = 'page-item';
-            prevGroupPage.innerHTML = `<a class="page-link" href="#" onclick="loadEmpleados(${startPage - 1}, ${pageSize})"><i class="fas fa-arrow-left"></i></a>`;
+            prevGroupPage.innerHTML = `<a class="page-link" href="#" onclick="loadEmpleados(${startPage - 1}, ${pageSize}, '${searchQuery}')"><i class="fas fa-arrow-left"></i></a>`;
             pagination.appendChild(prevGroupPage);
         }
 
         for (let i = startPage; i <= endPage; i++) {
             const pageItem = document.createElement('li');
             pageItem.className = `page-item ${i === data.current_page ? 'active' : ''}`;
-            pageItem.innerHTML = `<a class="page-link" href="#" onclick="loadEmpleados(${i}, ${pageSize})">${i}</a>`;
+            pageItem.innerHTML = `<a class="page-link" href="#" onclick="loadEmpleados(${i}, ${pageSize}, '${searchQuery}')">${i}</a>`;
             pagination.appendChild(pageItem);
         }
 
         if (endPage < totalPages) {
             const nextGroupPage = document.createElement('li');
             nextGroupPage.className = 'page-item';
-            nextGroupPage.innerHTML = `<a class="page-link" href="#" onclick="loadEmpleados(${endPage + 1}, ${pageSize})"><i class="fas fa-arrow-right"></i></a>`;
+            nextGroupPage.innerHTML = `<a class="page-link" href="#" onclick="loadEmpleados(${endPage + 1}, ${pageSize}, '${searchQuery}')"><i class="fas fa-arrow-right"></i></a>`;
             pagination.appendChild(nextGroupPage);
         }
 
@@ -394,3 +394,7 @@ document.getElementById('cargarEmpleadosBtn').addEventListener('click', async fu
 
 document.getElementById('guardarEmpleadoBtn').addEventListener('click', crearEmpleado);
 document.getElementById('actualizarEmpleadoBtn').addEventListener('click', actualizarEmpleado);
+document.getElementById('searchUserInput').addEventListener('input', function() {
+    const searchQuery = this.value;
+    loadEmpleados(1, 10, searchQuery); // Reiniciar a la primera página al buscar
+});
