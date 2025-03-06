@@ -210,8 +210,8 @@ def upload_empleados(request):
                     'lastname': row['APELLIDO PATERNO'],
                     'second_lastname': row['APELLIDO MATERNO'],
                     'payroll': payroll,
-                    'email': 'correo@correo.com',  # Asumiendo que todos los empleados cargados tienen el mismo correo
-                    'phone': '0000000000',  # Asumiendo que todos los empleados cargados tienen el mismo teléfono
+                    'email': row.get('CORREO', ''),  # Usar el valor del Excel o vacío si no existe
+                    'phone': row.get('TELEFONO', ''),  # Usar el valor del Excel o vacío si no existe
                     'client': client,
                     'status': True,  # Asumiendo que todos los empleados cargados están activos
                     'created_by_id': request.user.id

@@ -22,8 +22,8 @@ async function loadEmpleados(page = currentPage, pageSize = 10) {
                 <td>${empleado.name}</td>
                 <td>${empleado.lastname}</td>
                 <td>${empleado.second_lastname}</td>
-                <td>${empleado.email}</td>
-                <td>${empleado.phone}</td>
+                <td>${empleado.email || 'N/A'}</td>
+                <td>${empleado.phone || 'N/A'}</td>
                 <td>${empleado.client__company}</td>
                 <td>${empleado.payroll__description}</td>
                 <td>
@@ -142,14 +142,19 @@ function validateForm(formId) {
     let isValid = true;
 
     form.querySelectorAll('input, select').forEach(input => {
-        if (!input.value.trim() || input.value === '--------') {
-            input.classList.add('is-invalid');
-            setTimeout(() => {
+        // Excluir los campos de email, teléfono y apellido materno de la validación obligatoria
+        if (input.id !== 'crearEmployeeEmail' && input.id !== 'crearEmployeePhone' &&
+            input.id !== 'editarEmployeeEmail' && input.id !== 'editarEmployeePhone' &&
+            input.id !== 'crearEmployeeSecondLastname' && input.id !== 'editarEmployeeSecondLastname') {
+            if (!input.value.trim() || input.value === '--------') {
+                input.classList.add('is-invalid');
+                setTimeout(() => {
+                    input.classList.remove('is-invalid');
+                }, 4000);
+                isValid = false;
+            } else {
                 input.classList.remove('is-invalid');
-            }, 4000);
-            isValid = false;
-        } else {
-            input.classList.remove('is-invalid');
+            }
         }
     });
 
