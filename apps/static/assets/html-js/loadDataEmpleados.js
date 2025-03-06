@@ -422,9 +422,9 @@ document.getElementById('cargarEmpleadosBtn').addEventListener('click', async fu
 });
 
 
-document.getElementById('guardarEmpleadoBtn').addEventListener('click', crearEmpleado);
-document.getElementById('actualizarEmpleadoBtn').addEventListener('click', actualizarEmpleado);
-document.getElementById('searchUserInput').addEventListener('input', function() {
+    document.getElementById('guardarEmpleadoBtn').addEventListener('click', crearEmpleado);
+    document.getElementById('actualizarEmpleadoBtn').addEventListener('click', actualizarEmpleado);
+    document.getElementById('searchUserInput').addEventListener('input', function() {
     const searchQuery = this.value;
     loadEmpleados(1, 10, searchQuery); // Reiniciar a la primera página al buscar
 });
