@@ -1,15 +1,21 @@
 document.addEventListener('DOMContentLoaded', loadEmpleados);
+document.addEventListener('DOMContentLoaded', loadClientes);
 
 let originalEmpleadoData = {};
 let currentPage = 1;
 
+/**
+ * CARGA LA LISTA DE EMPLEADOS DESDE EL SERVIDOR Y ACTUALIZA LA TABLA DE EMPLEADOS.
+ * 
+ * @param {number} [page=currentPage] - El número de página a obtener.
+ * @param {number} [pageSize=10] - El número de empleados por página.
+ * @param {string} [searchQuery=''] - La consulta de búsqueda para filtrar empleados.
+ * @returns {Promise<void>} - Una promesa que se resuelve cuando los empleados se han cargado y la tabla se ha actualizado.
+ * @throws {Error} - Lanza un error si la operación de fetch falla.
+ */
 async function loadEmpleados(page = currentPage, pageSize = 10, searchQuery = '') {
     try {
-        const response = await fetch(`/get_empleados?page=${page}&page_size=${pageSize}&search=${encodeURIComponent(searchQuery)}`);
-        if (!response.ok) {
-            throw new Error('Error al cargar empleados');
-        }
-        const data = await response.json();
+        const data = await getEmpleados(page, pageSize, searchQuery);
         const empleados = data.empleados;
         const empleadosTableBody = document.getElementById('empleadosTableBody');
         empleadosTableBody.innerHTML = '';
@@ -75,6 +81,36 @@ async function loadEmpleados(page = currentPage, pageSize = 10, searchQuery = ''
     }
 }
 
+/**
+ * CARGA LA LISTA DE CLIENTES DESDE EL SERVIDOR Y ACTUALIZA EL SELECT DE CLIENTES.
+ * 
+ * @returns {Promise<void>} - Una promesa que se resuelve cuando los clientes se han cargado y el select se ha actualizado.
+ * @throws {Error} - Lanza un error si la operación de fetch falla.
+ */
+async function loadClientes() {
+    try {
+        const clientes = await getClientes();
+        const selectCliente = document.getElementById('selectCliente');
+        selectCliente.innerHTML = '<option value="" disabled selected>Seleccione un cliente</option>';
+        clientes.forEach(cliente => {
+            const option = document.createElement('option');
+            option.value = cliente.id;
+            option.text = cliente.company;
+            selectCliente.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error al cargar clientes:', error.message);
+    }
+}
+
+
+/**
+ * ABRE EL MODAL DE EDICIÓN DE EMPLEADO Y CARGA LOS DATOS DEL EMPLEADO SELECCIONADO.
+ * 
+ * @param {number} empleadoId - El ID del empleado a editar.
+ * @returns {Promise<void>} - Una promesa que se resuelve cuando los datos del empleado se han cargado y el modal se ha abierto.
+ * @throws {Error} - Lanza un error si la operación de fetch falla.
+ */
 async function openEditModal(empleadoId) {
     try {
         const [empleado, clientes, tiposNomina] = await Promise.all([
@@ -131,6 +167,13 @@ async function openEditModal(empleadoId) {
     }
 }
 
+
+/**
+ * VALIDA LOS CAMPOS DE UN FORMULARIO.
+ * 
+ * @param {string} formId - El ID del formulario a validar.
+ * @returns {boolean} - Retorna true si el formulario es válido, de lo contrario false.
+ */
 function validateForm(formId) {
     const form = document.getElementById(formId);
     let isValid = true;
@@ -153,6 +196,12 @@ function validateForm(formId) {
     return isValid;
 }
 
+
+/**
+ * VERIFICA SI EL FORMULARIO DE EDICIÓN DE EMPLEADO HA SIDO MODIFICADO.
+ * 
+ * @returns {boolean} - Retorna true si el formulario ha sido modificado, de lo contrario false.
+ */
 function isFormModified() {
     const employeed_code = document.getElementById('editarEmployeeCode').value;
     const name = document.getElementById('editarEmployeeName').value;
@@ -173,6 +222,12 @@ function isFormModified() {
     );
 }
 
+
+/**
+ * ACTUALIZA UN EMPLEADO DESPUÉS DE VALIDAR EL FORMULARIO Y VERIFICAR SI SE HAN REALIZADO CAMBIOS.
+ * 
+ * @returns {void}
+ */
 async function actualizarEmpleado() {
     if (!validateForm('editarEmpleadoForm')) {
         return;
@@ -193,30 +248,7 @@ async function actualizarEmpleado() {
         const payroll_id = document.getElementById('editarEmployeePayroll').value;
         const status = document.getElementById('editarEmployeeStatus').value;
 
-        const response = await fetch(`/update_empleado`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                id: empleadoId,
-                employeed_code,
-                name,
-                lastname,
-                second_lastname,
-                client_id,
-                payroll_id,
-                status
-            })
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Error al actualizar empleado');
-        }
-
-        const data = await response.json();
-        console.log(data.message);
+        const data = await updateEmpleado(empleadoId, employeed_code, name, lastname, second_lastname, client_id, payroll_id, status);        
         $('#editarEmpleadoModal').modal('hide');
         loadEmpleados(currentPage);  // Usar la página actual
         showToast('Empleado actualizado correctamente', 'success');
@@ -226,6 +258,13 @@ async function actualizarEmpleado() {
     }
 }
 
+
+/**
+ * ABRE EL MODAL DE CREACIÓN DE EMPLEADO Y CARGA LOS DATOS NECESARIOS.
+ * 
+ * @returns {Promise<void>} - Una promesa que se resuelve cuando los datos necesarios se han cargado y el modal se ha abierto.
+ * @throws {Error} - Lanza un error si la operación de fetch falla.
+ */
 async function openCreateModal() {
     try {
         const [clientes, tiposNomina] = await Promise.all([
@@ -257,6 +296,13 @@ async function openCreateModal() {
     }
 }
 
+
+/**
+ * CREA UN NUEVO EMPLEADO EN EL SERVIDOR.
+ * 
+ * @returns {Promise<void>} - Una promesa que se resuelve cuando el empleado ha sido creado.
+ * @throws {Error} - Lanza un error si la operación de fetch falla.
+ */
 async function crearEmpleado() {
     if (!validateForm('crearEmpleadoForm')) {
         return;
@@ -266,33 +312,12 @@ async function crearEmpleado() {
         const employeed_code = document.getElementById('crearEmployeeCode').value;
         const name = document.getElementById('crearEmployeeName').value;
         const lastname = document.getElementById('crearEmployeeLastname').value;
-        const second_lastname = document.getElementById('crearEmployeeSecondLastname').value;        
+        const second_lastname = document.getElementById('crearEmployeeSecondLastname').value;
         const client_id = document.getElementById('crearEmployeeClient').value;
         const payroll_id = document.getElementById('crearEmployeePayroll').value;
         const status = document.getElementById('crearEmployeeStatus').value;
 
-        const response = await fetch(`/create_empleado`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                employeed_code,
-                name,
-                lastname,
-                second_lastname,                
-                client_id,
-                payroll_id,
-                status
-            })
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Error al crear empleado');
-        }
-
-        const data = await response.json();
+        const data = await createEmpleado(employeed_code, name, lastname, second_lastname, client_id, payroll_id, status);
         console.log(data.message);
         $('#crearEmpleadoModal').modal('hide');
         loadEmpleados();
@@ -303,18 +328,25 @@ async function crearEmpleado() {
 }
 
 
-function showToast(message, type = 'success') {
+/**
+ * MUESTRA UNA NOTIFICACIÓN TIPO TOAST.
+ * 
+ * @param {string} message - El mensaje a mostrar en el toast.
+ * @param {string} [type='success'] - El tipo de toast ('success', 'info', 'danger').
+ */
+function showToast(message, type = 'success') {    
     const toast = document.createElement('div');
     const header = type === 'success' ? 'Éxito' : type === 'info' ? 'Aviso' : 'Error';
-    // Set the toast classes with Bootstrap
+    
+    // Clases de diseño con Bootstrap
     toast.className = `toast align-items-center text-white bg-${type} border-0 shadow-sm p-2 px-3 m-1`;
     toast.role = 'alert';
     toast.ariaLive = 'assertive';
     toast.ariaAtomic = 'true';
     toast.style.zIndex = '1';
-    toast.style.opacity = '1'; // Make the toast solid
+    toast.style.opacity = '1';
 
-    // Set the toast content (including a header, body, and close button)
+    // Contenido del toast
     toast.innerHTML = `
         <div class="toast-header bg-${type} text-white d-flex align-items-center justify-content-between p-1 px-1 shadow-sm">
             <strong class="me-auto">${header}</strong>
@@ -325,35 +357,46 @@ function showToast(message, type = 'success') {
         </div>
     `;
 
-    // Append the toast to the container
+    // Inicializar y mostrar el toast con el componente Toast de Bootstrap
     const toastContainer = document.getElementById('toastContainer');
-    toastContainer.appendChild(toast);
-
-    // Initialize and show the toast with Bootstrap's Toast component
+    toastContainer.appendChild(toast);    
     const bsToast = new bootstrap.Toast(toast, { delay: 4000 });
     bsToast.show();
 
-    // Verificar que se cerró el toast sin usar addEventListener con hidden.bs.toast
+    // Eliminar el toast después de 4 segundos
     setTimeout(() => {
-        toast.remove(); // Remove the toast manually after the delay
-    }, 4000); // Time in milliseconds, should match the delay
+        toast.remove();
+    }, 4000);
 
-    // Close the toast when the close button is clicked
+    // Cerrar el toast al hacer clic en el botón de cerrar
     toast.querySelector('.btn-close').addEventListener('click', function() {
         toast.remove();
         bsToast.hide();
     });
 }
 
-// Función para procesar el archivo Excel
+
+/**
+ * CARGA LOS EMPLEADOS DESDE UN ARCHIVO EXCEL AL SERVIDOR.
+ * 
+ * @param {number} clienteId - El ID del cliente asociado con los empleados.
+ * @param {Array} empleados - La lista de empleados a cargar.
+ * @returns {Promise<Object>} - Una promesa que se resuelve con los datos de la respuesta del servidor. 
+ */
 document.getElementById('cargarEmpleadosBtn').addEventListener('click', async function() {
     const fileInput = document.getElementById('archivoExcel');
     const file = fileInput.files[0];
+    const clienteId = document.getElementById('selectCliente').value;
+
+    if (!clienteId) {
+        showToast('Por favor, seleccione un cliente', 'danger');
+        return;
+    }
 
     if (!file) {
         showToast('Por favor, seleccione un archivo Excel', 'danger');
         return;
-    }
+    }    
 
     const reader = new FileReader();
     reader.onload = async function(e) {
@@ -364,20 +407,7 @@ document.getElementById('cargarEmpleadosBtn').addEventListener('click', async fu
         const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
         try {
-            const response = await fetch('/upload_empleados', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(jsonData)
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Error al cargar empleados');
-            }
-
-            const data = await response.json();
+            const data = await uploadEmpleados(clienteId, jsonData);
             console.log(data.message);
             $('#cargarEmpleadosModal').modal('hide');
             loadEmpleados();
