@@ -56,7 +56,7 @@ def get_empleados(request):
     page_size = request.GET.get('page_size', 10)
     
     empleados = Employee.objects.all().values(
-        'id', 'employeed_code', 'name', 'lastname', 'second_lastname', 'email', 'phone', 'client__company', 'payroll__description', 'status'
+        'id', 'employeed_code', 'name', 'lastname', 'second_lastname', 'client__company', 'payroll__description', 'status'
     )
     
     paginator = Paginator(empleados, page_size)
@@ -84,9 +84,7 @@ def get_empleado(request):
             'employeed_code',
             'name',
             'lastname',
-            'second_lastname',
-            'email',
-            'phone',
+            'second_lastname',            
             'client__company',
             'client_id',
             'payroll__description',
@@ -112,9 +110,7 @@ def get_empleado(request):
             'employeed_code': empleado['employeed_code'],
             'name': empleado['name'],
             'lastname': empleado['lastname'],
-            'second_lastname': empleado['second_lastname'],
-            'email': empleado['email'],
-            'phone': empleado['phone'],
+            'second_lastname': empleado['second_lastname'],            
             'client': client,
             'payroll': payroll,
             'status': empleado['status']
@@ -137,11 +133,9 @@ def create_empleado(request):
             # Crear un nuevo empleado
             empleado = Employee(
                 employeed_code=data.get('employeed_code'),
-                name=data.get('name'),
-                lastname=data.get('lastname'),
-                second_lastname=data.get('second_lastname'),
-                email=data.get('email'),
-                phone=data.get('phone'),
+                name=data.get('name').upper(),
+                lastname=data.get('lastname').upper(),
+                second_lastname=data.get('second_lastname').upper(),                
                 client_id=data.get('client_id'),
                 payroll_id=data.get('payroll_id'),
                 status=data.get('status'),
@@ -171,11 +165,9 @@ def update_empleado(request):
         
         # Actualizar los campos del empleado
         empleado.employeed_code = data.get('employeed_code', empleado.employeed_code)
-        empleado.name = data.get('name', empleado.name)
-        empleado.lastname = data.get('lastname', empleado.lastname)
-        empleado.second_lastname = data.get('second_lastname', empleado.second_lastname)
-        empleado.email = data.get('email', empleado.email)
-        empleado.phone = data.get('phone', empleado.phone)
+        empleado.name = data.get('name', empleado.name).upper()
+        empleado.lastname = data.get('lastname', empleado.lastname).upper()
+        empleado.second_lastname = data.get('second_lastname', empleado.second_lastname).upper()
         empleado.client_id = data.get('client_id', empleado.client_id)
         empleado.payroll_id = data.get('payroll_id', empleado.payroll_id)
         empleado.status = data.get('status', empleado.status)
@@ -206,12 +198,10 @@ def upload_empleados(request):
             Employee.objects.update_or_create(
                 employeed_code=row['NO. EMPLEADO'],
                 defaults={
-                    'name': row['NOMBRES'],
-                    'lastname': row['APELLIDO PATERNO'],
-                    'second_lastname': row['APELLIDO MATERNO'],
-                    'payroll': payroll,
-                    'email': row.get('CORREO', ''),  # Usar el valor del Excel o vacío si no existe
-                    'phone': row.get('TELEFONO', ''),  # Usar el valor del Excel o vacío si no existe
+                    'name': row['NOMBRES'].upper(),
+                    'lastname': row['APELLIDO PATERNO'].upper(),
+                    'second_lastname': row['APELLIDO MATERNO'].upper(),
+                    'payroll': payroll,                    
                     'client': client,
                     'status': True,  # Asumiendo que todos los empleados cargados están activos
                     'created_by_id': request.user.id

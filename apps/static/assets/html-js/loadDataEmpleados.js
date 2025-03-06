@@ -21,9 +21,7 @@ async function loadEmpleados(page = currentPage, pageSize = 10) {
                 <td class="text-center">${empleado.employeed_code}</td>
                 <td>${empleado.name}</td>
                 <td>${empleado.lastname}</td>
-                <td>${empleado.second_lastname}</td>
-                <td>${empleado.email || 'N/A'}</td>
-                <td>${empleado.phone || 'N/A'}</td>
+                <td>${empleado.second_lastname}</td>                
                 <td>${empleado.client__company}</td>
                 <td>${empleado.payroll__description}</td>
                 <td>
@@ -90,8 +88,6 @@ async function openEditModal(empleadoId) {
             name: empleado.name,
             lastname: empleado.lastname,
             second_lastname: empleado.second_lastname,
-            email: empleado.email,
-            phone: empleado.phone,
             client_id: empleado.client.id,
             payroll_id: empleado.payroll.id,
             status: empleado.status ? '1' : '0'
@@ -102,8 +98,6 @@ async function openEditModal(empleadoId) {
         document.getElementById('editarEmployeeName').value = empleado.name;
         document.getElementById('editarEmployeeLastname').value = empleado.lastname;
         document.getElementById('editarEmployeeSecondLastname').value = empleado.second_lastname;
-        document.getElementById('editarEmployeeEmail').value = empleado.email;
-        document.getElementById('editarEmployeePhone').value = empleado.phone;
 
         const clientSelect = document.getElementById('editarEmployeeClient');
         clientSelect.innerHTML = '<option value="" disabled selected>--------</option>';
@@ -142,10 +136,8 @@ function validateForm(formId) {
     let isValid = true;
 
     form.querySelectorAll('input, select').forEach(input => {
-        // Excluir los campos de email, teléfono y apellido materno de la validación obligatoria
-        if (input.id !== 'crearEmployeeEmail' && input.id !== 'crearEmployeePhone' &&
-            input.id !== 'editarEmployeeEmail' && input.id !== 'editarEmployeePhone' &&
-            input.id !== 'crearEmployeeSecondLastname' && input.id !== 'editarEmployeeSecondLastname') {
+        // Excluir el campo de apellido materno de la validación obligatoria
+        if (input.id !== 'crearEmployeeSecondLastname' && input.id !== 'editarEmployeeSecondLastname') {
             if (!input.value.trim() || input.value === '--------') {
                 input.classList.add('is-invalid');
                 setTimeout(() => {
@@ -166,8 +158,6 @@ function isFormModified() {
     const name = document.getElementById('editarEmployeeName').value;
     const lastname = document.getElementById('editarEmployeeLastname').value;
     const second_lastname = document.getElementById('editarEmployeeSecondLastname').value;
-    const email = document.getElementById('editarEmployeeEmail').value;
-    const phone = document.getElementById('editarEmployeePhone').value;
     const client_id = document.getElementById('editarEmployeeClient').value;
     const payroll_id = document.getElementById('editarEmployeePayroll').value;
     const status = document.getElementById('editarEmployeeStatus').value;
@@ -177,8 +167,6 @@ function isFormModified() {
         name !== originalEmpleadoData.name ||
         lastname !== originalEmpleadoData.lastname ||
         second_lastname !== originalEmpleadoData.second_lastname ||
-        email !== originalEmpleadoData.email ||
-        phone !== originalEmpleadoData.phone ||
         client_id !== originalEmpleadoData.client_id.toString() ||
         payroll_id !== originalEmpleadoData.payroll_id.toString() ||
         status !== originalEmpleadoData.status
@@ -201,8 +189,6 @@ async function actualizarEmpleado() {
         const name = document.getElementById('editarEmployeeName').value;
         const lastname = document.getElementById('editarEmployeeLastname').value;
         const second_lastname = document.getElementById('editarEmployeeSecondLastname').value;
-        const email = document.getElementById('editarEmployeeEmail').value;
-        const phone = document.getElementById('editarEmployeePhone').value;
         const client_id = document.getElementById('editarEmployeeClient').value;
         const payroll_id = document.getElementById('editarEmployeePayroll').value;
         const status = document.getElementById('editarEmployeeStatus').value;
@@ -218,8 +204,6 @@ async function actualizarEmpleado() {
                 name,
                 lastname,
                 second_lastname,
-                email,
-                phone,
                 client_id,
                 payroll_id,
                 status
@@ -282,9 +266,7 @@ async function crearEmpleado() {
         const employeed_code = document.getElementById('crearEmployeeCode').value;
         const name = document.getElementById('crearEmployeeName').value;
         const lastname = document.getElementById('crearEmployeeLastname').value;
-        const second_lastname = document.getElementById('crearEmployeeSecondLastname').value;
-        const email = document.getElementById('crearEmployeeEmail').value;
-        const phone = document.getElementById('crearEmployeePhone').value;
+        const second_lastname = document.getElementById('crearEmployeeSecondLastname').value;        
         const client_id = document.getElementById('crearEmployeeClient').value;
         const payroll_id = document.getElementById('crearEmployeePayroll').value;
         const status = document.getElementById('crearEmployeeStatus').value;
@@ -298,9 +280,7 @@ async function crearEmpleado() {
                 employeed_code,
                 name,
                 lastname,
-                second_lastname,
-                email,
-                phone,
+                second_lastname,                
                 client_id,
                 payroll_id,
                 status
