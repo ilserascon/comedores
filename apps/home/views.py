@@ -10,11 +10,12 @@ from django.template import loader
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from .models import DiningRoom, ClientDiner, Client
-from apps.authentication.models import CustomUser
+from apps.authentication.models import CustomUser, Role
 from django.db.models import Q
 from django.db import IntegrityError
 import json
-from django.shortcuts import get_object_or_404t
+from django.contrib.auth.hashers import make_password
+from django.shortcuts import get_object_or_404
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 
 
@@ -599,6 +600,7 @@ def user_detail(request, user_id):
     elif request.method == 'PUT':
         try:
             data = json.loads(request.body)
+            print(data)
             user.username = data.get('username', user.username)
             user.email = data.get('email', user.email)
 
@@ -610,11 +612,10 @@ def user_detail(request, user_id):
             
             if '@' not in data['email'] or '.' not in data['email']:
                 return JsonResponse({'error': 'Correo electrónico inválido'}, status=400)
-
-            if len(data['password']) < 8 or not any(char.isdigit() for char in data['password']) or not any(char.isalpha() for char in data['password']):
-                return JsonResponse({'error': 'La contraseña debe tener al menos 8 caracteres, una letra y un número'}, status=400)
             
-            if 'password' in data:
+            if 'password' in data or 'password' is not None:
+                if len(data['password']) < 8 or not any(char.isdigit() for char in data['password']) or not any(char.isalpha() for char in data['password']):
+                    return JsonResponse({'error': 'La contraseña debe tener al menos 8 caracteres, una letra y un número'}, status=400)
                 user.password = make_password(data['password'])
             if 'role_id' in data:
                 user.role = get_object_or_404(Role, id=data['role_id'])
@@ -629,6 +630,7 @@ def user_detail(request, user_id):
             else:
                 return JsonResponse({'error': 'Error de integridad de datos'}, status=400)
         except Exception as e:
+            print(e)
             return JsonResponse({'error': str(e)}, status=400)
 
 @csrf_exempt
