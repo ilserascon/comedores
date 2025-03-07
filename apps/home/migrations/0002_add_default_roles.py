@@ -4,10 +4,17 @@ from django.db import migrations
 
 def create_default_voucher_type(apps, schema_editor):
     voucher_type = apps.get_model('home', 'VoucherType')
-    types = ['CATORCENAL', 'SEMANAL', 'QUINCENAL', 'MENSUAL']
+    types = ['UNICO', 'PERPETUO']
     for type in types:
         if not voucher_type.objects.filter(description=type).exists():
             voucher_type.objects.create(description=type)
+
+def create_default_payroll_type(apps, schema_editor):
+    payroll_type = apps.get_model('home', 'PayrollType')
+    types = ['CATORCENAL', 'SEMANAL', 'QUINCENAL', 'MENSUAL']
+    for type in types:
+        if not payroll_type.objects.filter(description=type).exists():
+            payroll_type.objects.create(description=type)
 
 class Migration(migrations.Migration):
 
@@ -17,4 +24,5 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunPython(create_default_voucher_type),
+        migrations.RunPython(create_default_payroll_type),
     ]
