@@ -446,7 +446,8 @@ def client_list(request):
                 phone=data['phone'],
                 address=data['address'],
                 status=data.get('status', True),
-                created_by=request.user
+                created_by=request.user,
+                updated_by_id=request.user.id
             )
             return JsonResponse({'message': 'Cliente creado correctamente', 'client_id': client.id}, status=201)
         except IntegrityError as e:
