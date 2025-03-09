@@ -124,7 +124,7 @@ def get_empleado(request):
             'employeed_code': empleado['employeed_code'],
             'name': empleado['name'],
             'lastname': empleado['lastname'],
-            'second_lastname': empleado['second_lastname'],            
+            'second_lastname': empleado['second_lastname'],
             'client': client,
             'payroll': payroll,
             'status': empleado['status']
@@ -144,14 +144,17 @@ def create_empleado(request):
         try:
             data = json.loads(request.body)
             
+            # Obtener la instancia de PayrollType
+            payroll = PayrollType.objects.get(id=data.get('payroll_id'))
+            
             # Crear un nuevo empleado
             empleado = Employee(
                 employeed_code=data.get('employeed_code'),
                 name=data.get('name').upper(),
                 lastname=data.get('lastname').upper(),
-                second_lastname=data.get('second_lastname').upper(),                
+                second_lastname=data.get('second_lastname').upper(),
                 client_id=data.get('client_id'),
-                payroll_id=data.get('payroll_id'),
+                payroll=payroll,  # Asignar la instancia de PayrollType
                 status=data.get('status'),
                 created_by_id=request.user.id
             )
@@ -160,6 +163,8 @@ def create_empleado(request):
             empleado.save()
             
             return JsonResponse({'message': 'Empleado creado correctamente'})
+        except PayrollType.DoesNotExist:
+            return JsonResponse({'error': 'Tipo de nómina no encontrado'}, status=404)
         except Exception as e:
             print(f"Error: {e}")
             return JsonResponse({'error': str(e)}, status=500)
@@ -169,7 +174,6 @@ def create_empleado(request):
 
 @csrf_exempt
 def update_empleado(request):
-
     try:
         data = json.loads(request.body)
         empleado_id = data.get('id')
@@ -177,13 +181,16 @@ def update_empleado(request):
         # Obtener el empleado existente
         empleado = Employee.objects.get(id=empleado_id)
         
+        # Obtener la instancia de PayrollType si se proporciona
+        payroll = PayrollType.objects.get(id=data.get('payroll_id')) if data.get('payroll_id') else empleado.payroll
+        
         # Actualizar los campos del empleado
         empleado.employeed_code = data.get('employeed_code', empleado.employeed_code)
         empleado.name = data.get('name', empleado.name).upper()
         empleado.lastname = data.get('lastname', empleado.lastname).upper()
         empleado.second_lastname = data.get('second_lastname', empleado.second_lastname).upper()
         empleado.client_id = data.get('client_id', empleado.client_id)
-        empleado.payroll_id = data.get('payroll_id', empleado.payroll_id)
+        empleado.payroll = payroll  # Asignar la instancia de PayrollType
         empleado.status = data.get('status', empleado.status)
         
         # Guardar los cambios
@@ -192,6 +199,8 @@ def update_empleado(request):
         return JsonResponse({'message': 'Empleado actualizado correctamente'})
     except Employee.DoesNotExist:
         return JsonResponse({'error': 'Empleado no encontrado'}, status=404)
+    except PayrollType.DoesNotExist:
+        return JsonResponse({'error': 'Tipo de nómina no encontrado'}, status=404)
     except Exception as e:
         print(f"Error: {e}")
         return JsonResponse({'error': str(e)}, status=500)
