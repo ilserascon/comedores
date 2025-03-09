@@ -242,7 +242,6 @@ def get_comedor(request):
     except DiningRoom.DoesNotExist:
         return JsonResponse({'error': 'Comedor no encontrado'}, status=404)
     except Exception as e:
-        print(f"Error: {e}")
         return JsonResponse({'error': str(e)}, status=500)
 
 
