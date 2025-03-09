@@ -21,6 +21,11 @@
           <h3 class="mb-0">Empleados</h3>
           <div class="d-flex">
             <input type="text" class="form-control rounded-pill mr-2 ml-3" id="searchUserInput" placeholder="Buscar">
+            <select class="form-control mr-3 ml-1" id="filterEmployeeSelect">
+              <option value="all">Todos</option>
+              <!-- Opciones adicionales se pueden agregar aquí -->
+            </select>
+            
             <button class="btn btn-primary rounded-pill" data-toggle="modal" data-target="#crearEmpleadoModal" onclick="openCreateModal()">Crear</button>
             <button class="btn btn-primary rounded-pill" data-toggle="modal" data-target="#cargarEmpleadosModal">Cargar</button>
           </div>

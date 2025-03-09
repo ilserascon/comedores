@@ -209,32 +209,55 @@ def update_empleado(request):
 # ===================== ARCHIVO EXCEL ===================== #
 @csrf_exempt
 def upload_empleados(request):
-    try:
-        data = json.loads(request.body)
-        df = pd.DataFrame(data)
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            cliente_id = data.get('cliente_id')
+            empleados = data.get('empleados')
 
-        # Procesar los datos del DataFrame y guardarlos en la base de datos
-        for index, row in df.iterrows():
-            client = Client.objects.get(id=4)  # Asumiendo que todos los empleados cargados pertenecen a DHL
-            payroll = PayrollType.objects.get(description=row['NOMINA'])
+            # Procesar los empleados
+            for empleado_data in empleados:
+                # Validar los datos del empleado
+                if not empleado_data.get('NOMBRES'):
+                    return JsonResponse({'error': 'El campo NOMBRES es obligatorio'}, status=400)
+                if not empleado_data.get('NO. EMPLEADO'):
+                    return JsonResponse({'error': 'El campo NO. EMPLEADO es obligatorio'}, status=400)
+                if not empleado_data.get('APELLIDO PATERNO'):
+                    return JsonResponse({'error': 'El campo APELLIDO PATERNO es obligatorio'}, status=400)
+                if not empleado_data.get('NOMINA'):
+                    return JsonResponse({'error': 'El campo NOMINA es obligatorio'}, status=400)
 
-            Employee.objects.update_or_create(
-                employeed_code=row['NO. EMPLEADO'],
-                defaults={
-                    'name': row['NOMBRES'].upper(),
-                    'lastname': row['APELLIDO PATERNO'].upper(),
-                    'second_lastname': row['APELLIDO MATERNO'].upper(),
-                    'payroll': payroll,                    
-                    'client': client,
-                    'status': True,  # Asumiendo que todos los empleados cargados están activos
-                    'created_by_id': request.user.id
-                }
-            )
+                # Obtener la instancia de PayrollType
+                payroll = PayrollType.objects.get(description=empleado_data.get('NOMINA'))
 
-        return JsonResponse({'message': 'Empleados cargados correctamente'}, status=200)
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=400)
+                # Asignar valores predeterminados si los campos son None
+                nombre = empleado_data.get('NOMBRES', '').upper()
+                apellido_paterno = empleado_data.get('APELLIDO PATERNO', '').upper()
+                apellido_materno = empleado_data.get('APELLIDO MATERNO', '').upper()
+
+                # Crear un nuevo empleado
+                empleado = Employee(
+                    employeed_code=empleado_data.get('NO. EMPLEADO'),
+                    name=nombre,
+                    lastname=apellido_paterno,
+                    second_lastname=apellido_materno,
+                    client_id=cliente_id,
+                    payroll=payroll,
+                    status=empleado_data.get('ESTADO', True),
+                    created_by_id=request.user.id
+                )
+                empleado.save()
+
+            return JsonResponse({'message': 'Empleados cargados correctamente'})
+        except PayrollType.DoesNotExist:
+            return JsonResponse({'error': 'Tipo de nómina no encontrado'}, status=404)
+        except Exception as e:
+            print(f"Error: {e}")
+            return JsonResponse({'error': str(e)}, status=500)
+    else:
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
         
+
 # ===================== TIPOS DE NOMINA ===================== #
 @csrf_exempt
 def get_tipos_nomina(request):
