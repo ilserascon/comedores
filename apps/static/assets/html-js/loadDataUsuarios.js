@@ -78,9 +78,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (diners.length === 0) {
             createDiningRoomInput.innerHTML = `<option value="" disabled hidden>No hay comedores disponibles</option>`;
             editDiningRoomInput.innerHTML = `<option value="" disabled hidden>No hay comedores disponibles</option>`;
+            return { message: 'No hay comedores disponibles' };
         } else {
             createDiningRoomInput.innerHTML = `<option value="no">Sin Asignar</option>` + diners.map(diner => `<option value="${diner.id}">${diner.name}</option>`).join('');
             editDiningRoomInput.innerHTML = `<option value="no">Sin Asignar</option>` + diners.map(diner => `<option value="${diner.id}">${diner.name}</option>`).join('');
+            return { message: 'Comedores cargados correctamentem', diners };
         }
     }
 
@@ -294,7 +296,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (user.dining_room_in_charge__name) {
             editDiningRoomInput.innerHTML = `<option value="${user.dining_room_in_charge}">${user.dining_room_in_charge__name}</option><option value="no">Sin Asignar</option>`;
         } else {
-            populateDiningRooms();
+            const result = await populateDiningRooms();
+            if(result.message === 'No hay comedores disponibles') {
+                editDiningRoomInput.innerHTML = `<option value="no">No hay comedores disponibles</option>`;
+            }else {
+                editDiningRoomInput.innerHTML = `<option value="no">Sin Asignar</option>` + result.diners.map(diner => `<option value="${diner.id}">${diner.name}</option>`).join('');
+            }
         }
         if (user) {
             editUserIdInput.value = user.id;
