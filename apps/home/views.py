@@ -88,7 +88,7 @@ def get_comedores(request):
             'client__company',
             'dining_room__id',
             'dining_room__name',
-            'dining_room__description',
+            'dining_room__location',
             'dining_room__in_charge__first_name',
             'dining_room__in_charge__last_name',
             'dining_room__status'
@@ -104,7 +104,7 @@ def get_comedores(request):
                 'company': dr['client__company'],
                 'id': dr['dining_room__id'],
                 'name': dr['dining_room__name'],
-                'description': dr['dining_room__description'],
+                'location': dr['dining_room__location'],
                 'in_charge_first_name': dr['dining_room__in_charge__first_name'],
                 'in_charge_last_name': dr['dining_room__in_charge__last_name'],
                 'status': dr['dining_room__status']
@@ -139,7 +139,7 @@ def get_comedor(request):
     try:
         dining_room_id = request.GET.get('dining_room_id')
         dining_room = DiningRoom.objects.select_related('in_charge', 'clientdiner__client').values(
-            'id', 'name', 'description', 'status', 'in_charge__first_name', 'in_charge__last_name', 'in_charge_id', 'clientdiner__client__company', 'clientdiner__client__id'
+            'id', 'name', 'location', 'status', 'in_charge__first_name', 'in_charge__last_name', 'in_charge_id', 'clientdiner__client__company', 'clientdiner__client__id'
         ).get(id=dining_room_id)
 
         in_charge = {
@@ -151,7 +151,7 @@ def get_comedor(request):
         context = {
             'dining_room_id': dining_room['id'],
             'name': dining_room['name'],
-            'description': dining_room['description'],
+            'location': dining_room['location'],
             'status': dining_room['status'],
             'in_charge': in_charge,
             'company': dining_room['clientdiner__client__company'],
@@ -171,7 +171,7 @@ def create_comedor(request):
     try:
         data = json.loads(request.body)
         name = data.get('name')
-        description = data.get('description')
+        location = data.get('location')
         status = data.get('status')
         in_charge = data.get('in_charge')
         client_id = data.get('client')  # Obtener el client_id del request
@@ -186,13 +186,13 @@ def create_comedor(request):
         # Crear el comedor en el modelo DiningRoom
         dining_room = DiningRoom(
             name=name,
-            description=description,
+            location=location,
             status=status,
             in_charge_id=in_charge,
             created_by_id=created_by_id
         )
 
-        if len(dining_room.description) > 100:
+        if len(dining_room.location) > 100:
             return JsonResponse({'error': 'La descripción no puede tener más de 100 caracteres'}, status=400)
 
         dining_room.save()
@@ -215,17 +215,17 @@ def update_comedor(request):
         data = json.loads(request.body)
         dining_room_id = data.get('dining_room_id')
         name = data.get('name')
-        description = data.get('description')
+        location = data.get('location')
         status = data.get('status')
         in_charge = data.get('inCharge')
         client_id = data.get('client')  # Obtener el client_id del request
 
         dining_room = DiningRoom.objects.get(id=dining_room_id)
         dining_room.name = name
-        dining_room.description = description
+        dining_room.location = location
         dining_room.status = status
 
-        if len(dining_room.description) > 100:
+        if len(dining_room.location) > 100:
             return JsonResponse({'error': 'La descripción no puede tener más de 100 caracteres'}, status=400)
 
         if in_charge:

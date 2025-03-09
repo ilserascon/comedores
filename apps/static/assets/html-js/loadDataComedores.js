@@ -26,7 +26,7 @@ async function actualizarTablaComedores(page = 1, filter = 'all') {
                     </div>
                 </th>
                 <td class="budget text-muted">
-                    ${comedor.description}
+                    ${comedor.location}
                 </td>
                 <td class="text-muted">
                     ${comedor.company}
@@ -107,7 +107,7 @@ async function openEditModal(id) {
         const comedor = await getComedor(id);
 
         document.getElementById('editarComedorName').value = comedor.name;
-        document.getElementById('editarComedorDescription').value = comedor.description;
+        document.getElementById('editarComedorLocation').value = comedor.location;
         document.getElementById('editarComedorClient').value = comedor.company;
         document.getElementById('editarComedorStatus').value = comedor.status ? '1' : '0';
         document.getElementById('editarComedorId').value = comedor.dining_room_id;
@@ -132,19 +132,19 @@ async function openEditModal(id) {
  * @throws {Error} - Error al crear comedor.
  */
 async function crearComedor() {
-    if (!validarCampos('comedorName', 'comedorDescription', 'selectCliente', 'comedorInCharge')) {
+    if (!validarCampos('comedorName', 'comedorLocation', 'selectCliente', 'comedorInCharge')) {
         return;
     }
 
     const name = document.getElementById('comedorName').value.trim();
-    const description = document.getElementById('comedorDescription').value.trim();
+    const location = document.getElementById('comedorLocation').value.trim();
     const client = document.getElementById('selectCliente').value;
     const inCharge = document.getElementById('comedorInCharge').value;
     const status = document.getElementById('comedorStatus').value;
 
     const data = {
         name,
-        description,
+        location,
         client,
         in_charge: inCharge,
         status
@@ -184,13 +184,13 @@ async function crearComedor() {
  * @throws {Error} - Error al actualizar comedor.
  */
 async function actualizarComedor() {
-    if (!validarCampos('editarComedorName', 'editarComedorDescription', 'editarComedorClient', 'editarComedorInCharge')) {        
+    if (!validarCampos('editarComedorName', 'editarComedorLocation', 'editarComedorClient', 'editarComedorInCharge')) {        
         return;
     }
 
     const id = document.getElementById('editarComedorId').value;
     const name = document.getElementById('editarComedorName').value.trim();
-    const description = document.getElementById('editarComedorDescription').value.trim();
+    const location = document.getElementById('editarComedorLocation').value.trim();
     const client = document.getElementById('editarComedorClient').value;
     const inCharge = document.getElementById('editarComedorInCharge').value;
     const status = document.getElementById('editarComedorStatus').value;
@@ -198,7 +198,7 @@ async function actualizarComedor() {
     const data = {
         dining_room_id: id,
         name,
-        description,
+        location,
         client,
         inCharge,
         status
@@ -209,7 +209,7 @@ async function actualizarComedor() {
 
         const hasChanged = (
             data.name !== originalComedor.name ||
-            data.description !== originalComedor.description ||
+            data.location !== originalComedor.location ||
             data.client !== originalComedor.client_id.toString() ||
             data.inCharge !== originalComedor.in_charge.id.toString() ||
             data.status !== (originalComedor.status ? '1' : '0')
@@ -381,14 +381,14 @@ function showToast(message, type = 'success') {
 /**
  * VALIDA LOS CAMPOS DEL FORMULARIO DE COMEDOR.
  * @param {string} nameId - ID del campo de nombre.
- * @param {string} descriptionId - ID del campo de descripción.
+ * @param {string} locationId - ID del campo de descripción.
  * @param {string} clientId - ID del campo de cliente.
  * @param {string} inChargeId - ID del campo de encargado.
  * @returns {boolean} - TRUE SI TODOS LOS CAMPOS SON VÁLIDOS, FALSE EN CASO CONTRARIO.
  */
-function validarCampos(nameId, descriptionId, clientId, inChargeId) {
+function validarCampos(nameId, locationId, clientId, inChargeId) {
     const name = document.getElementById(nameId).value.trim();
-    const description = document.getElementById(descriptionId).value.trim();
+    const location = document.getElementById(locationId).value.trim();
     const client = document.getElementById(clientId).value;
     const inCharge = document.getElementById(inChargeId).value;
 
@@ -405,15 +405,15 @@ function validarCampos(nameId, descriptionId, clientId, inChargeId) {
         document.getElementById(nameId).classList.remove('is-invalid');
     }
 
-    if (!description) {
-        const descriptionField = document.getElementById(descriptionId);
-        descriptionField.classList.add('is-invalid');
+    if (!location) {
+        const locationField = document.getElementById(locationId);
+        locationField.classList.add('is-invalid');
         setTimeout(() => {
-            descriptionField.classList.remove('is-invalid');
+            locationField.classList.remove('is-invalid');
         }, 4000);
         isValid = false;
     } else {
-        document.getElementById(descriptionId).classList.remove('is-invalid');
+        document.getElementById(locationId).classList.remove('is-invalid');
     }
 
     if (!client) {
@@ -449,7 +449,7 @@ function validarCampos(nameId, descriptionId, clientId, inChargeId) {
 function resetCrearComedorForm() {        
     // Eliminar la clase 'is-invalid' de los campos del formulario
     document.getElementById('comedorName').classList.remove('is-invalid');        
-    document.getElementById('comedorDescription').classList.remove('is-invalid');
+    document.getElementById('comedorLocation').classList.remove('is-invalid');
     document.getElementById('selectCliente').classList.remove('is-invalid');
     document.getElementById('comedorInCharge').classList.remove('is-invalid');
     

@@ -37,7 +37,7 @@ class Client(models.Model):
 class DiningRoom(models.Model):
     name = models.CharField(max_length=50)
     in_charge = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='dining_room_in_charge')
-    description = models.CharField(max_length=100, null=True, blank=True)
+    location = models.CharField(max_length=100, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
@@ -52,7 +52,7 @@ class DiningRoom(models.Model):
         verbose_name_plural = 'Dining Rooms'
 
     def __str__(self):
-        return "Comedor: " + self.name + ', Descripción: ' + self.description
+        return "Comedor: " + self.name + ', Ubicación: ' + self.location
     
 class ClientDiner(models.Model):
     client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='client_diner_client')
