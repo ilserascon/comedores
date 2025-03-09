@@ -53,7 +53,6 @@ def pages(request):
         html_template = loader.get_template('home/page-500.html')
         return HttpResponse(html_template.render(context, request))
     
-
 # ============================= COMEDORES =============================
 @csrf_exempt
 def get_comedores(request):
@@ -111,12 +110,13 @@ def get_comedores(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
+
 @csrf_exempt
 def get_comedor(request):
     try:
         dining_room_id = request.GET.get('dining_room_id')
-        dining_room = DiningRoom.objects.select_related('in_charge').values(
-            'id', 'name', 'description', 'status', 'in_charge__first_name', 'in_charge__last_name', 'in_charge_id'
+        dining_room = DiningRoom.objects.select_related('in_charge', 'clientdiner__client').values(
+            'id', 'name', 'description', 'status', 'in_charge__first_name', 'in_charge__last_name', 'in_charge_id', 'clientdiner__client__company', 'clientdiner__client__id'
         ).get(id=dining_room_id)
 
         in_charge = {
@@ -234,7 +234,7 @@ def get_comedor(request):
             'status': dining_room['status'],
             'in_charge': in_charge,
             'client_id': dining_room['clientdiner__client__id']
-        }        
+        }
 
         return JsonResponse(context)
     except DiningRoom.DoesNotExist:
@@ -242,6 +242,7 @@ def get_comedor(request):
     except Exception as e:
         print(f"Error: {e}")
         return JsonResponse({'error': str(e)}, status=500)
+
 
 @csrf_exempt
 def create_comedor(request):
@@ -265,7 +266,7 @@ def create_comedor(request):
             name=name,
             description=description,
             status=status,
-            in_charge_id=in_charge,
+            in_charge_id=in_charge if in_charge else None,
             created_by_id=created_by_id,
             updated_by_id=created_by_id
         )
@@ -308,8 +309,8 @@ def update_comedor(request):
         if len(dining_room.description) > 100:
             return JsonResponse({'error': 'La descripción no puede tener más de 100 caracteres'}, status=400)
 
-        if in_charge:
-            dining_room.in_charge_id = in_charge
+        # Permitir que in_charge sea nulo
+        dining_room.in_charge_id = in_charge if in_charge else None        
 
         dining_room.save()
 

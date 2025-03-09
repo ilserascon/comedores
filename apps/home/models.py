@@ -47,7 +47,7 @@ class DiningRoom(models.Model):
         verbose_name_plural = 'Dining Rooms'
 
     def __str__(self):
-        return "Comedor: " + self.name + ', Descripción: ' + self.description
+        return "Comedor: " + self.name + ', Ubicación: ' + self.description
     
 class ClientDiner(models.Model):
     client = models.ForeignKey(Client, on_delete=models.PROTECT, related_name='client_diner_client')
