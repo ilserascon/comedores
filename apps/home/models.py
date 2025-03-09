@@ -22,10 +22,8 @@ class Client(models.Model):
     address = models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    deleted_at = models.DateTimeField(null=True, blank=True)
-    created_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='client_created_by')
-    updated_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='client_updated_by', null=True, blank=True)
-    deleted_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='client_deleted_by', null=True, blank=True)
+    created_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='client_created_by')
+    updated_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='client_updated_by')
     status = models.BooleanField(default=True)
 
     class Meta:
@@ -38,14 +36,12 @@ class Client(models.Model):
     
 class DiningRoom(models.Model):
     name = models.CharField(max_length=50)
-    in_charge = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='dining_room_in_charge', null=True, blank=True)
-    location = models.CharField(max_length=100, null=True, blank=True)
+    in_charge = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='dining_room_in_charge', null=True, blank=True)
+    description = models.CharField(max_length=100, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    deleted_at = models.DateTimeField(null=True, blank=True)
-    created_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='dining_room_created_by')
-    updated_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='dining_room_updated_by', null=True, blank=True)
-    deleted_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='dining_room_deleted_by', null=True, blank=True)
+    created_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='dining_room_created_by')
+    updated_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='dining_room_updated_by')
     status = models.BooleanField(default=True)
 
     class Meta:
@@ -54,17 +50,15 @@ class DiningRoom(models.Model):
         verbose_name_plural = 'Dining Rooms'
 
     def __str__(self):
-        return "Comedor: " + self.name + ', Ubicación: ' + self.location
+        return "Comedor: " + self.name + ', Ubicación: ' + self.description
     
 class ClientDiner(models.Model):
-    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='client_diner_client')
-    dining_room = models.ForeignKey(DiningRoom, on_delete=models.CASCADE)
+    client = models.ForeignKey(Client, on_delete=models.PROTECT, related_name='client_diner_client')
+    dining_room = models.ForeignKey(DiningRoom, on_delete=models.PROTECT, related_name='client_diner_dining_room')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    deleted_at = models.DateTimeField(null=True, blank=True)
-    created_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='client_diner_created_by')
-    updated_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='client_diner_updated_by', null=True, blank=True)
-    deleted_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='client_diner_deleted_by', null=True, blank=True)
+    created_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='client_diner_created_by')
+    updated_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='client_diner_updated_by')
     status = models.BooleanField(default=True)
 
     class Meta:
@@ -74,16 +68,10 @@ class ClientDiner(models.Model):
 
     def __str__(self):
         return "Cliente: " + self.client.company + ', Comedor Asignado: ' + self.dining_room.name
-
+    
 class PayrollType(models.Model):
     description = models.CharField(max_length=50)
     status = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    deleted_at = models.DateTimeField(null=True, blank=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='payroll_type_created_by')
-    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='payroll_type_updated_by', null=True, blank=True)
-    deleted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='payroll_type_deleted_by', null=True, blank=True)
 
     class Meta:
         db_table = 'payroll_type'
@@ -91,20 +79,16 @@ class PayrollType(models.Model):
         verbose_name_plural = 'Payroll Types'
 
 class Employee(models.Model):
-    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='employee_client')
+    client = models.ForeignKey(Client, on_delete=models.PROTECT, related_name='employee_client')
     employeed_code = models.CharField(max_length=25, blank=True, null=True)
     name = models.CharField(max_length=50)
     lastname = models.CharField(max_length=50)
     second_lastname = models.CharField(max_length=50, null=True, blank=True)
-    email = models.EmailField(blank=True, null=True)
-    phone = models.CharField(max_length=10, blank=True, null=True)
-    payroll = models.ForeignKey(PayrollType, on_delete=models.CASCADE, related_name='employee_payroll')  # Cambiar a ForeignKey
+    payroll = models.ForeignKey(PayrollType, on_delete=models.PROTECT, related_name='employee_payroll')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    deleted_at = models.DateTimeField(null=True, blank=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='employee_created_by')
-    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='employee_updated_by', null=True, blank=True)
-    deleted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='employee_deleted_by', null=True, blank=True)
+    created_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='employee_created_by')
+    updated_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='employee_updated_by', null=True, blank=True)
     status = models.BooleanField(default=True)
 
     class Meta:
@@ -116,14 +100,12 @@ class Employee(models.Model):
         return "Empleado: " + self.name + ' ' + self.lastname + ' ' + self.second_lastname
     
 class EmployeeClientDiner(models.Model):
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='employee_client_diner_employee')
-    client_diner = models.ForeignKey(ClientDiner, on_delete=models.CASCADE, related_name='employee_client_diner_client_diner')
+    employee = models.ForeignKey(Employee, on_delete=models.PROTECT, related_name='employee_client_diner_employee')
+    client_diner = models.ForeignKey(ClientDiner, on_delete=models.PROTECT, related_name='employee_client_diner_client_diner')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    deleted_at = models.DateTimeField(null=True, blank=True)
-    created_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='employee_diner_created_by')
-    updated_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='employee_diner_updated_by', null=True, blank=True)
-    deleted_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='employee_diner_deleted_by', null=True, blank=True)
+    created_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='employee_diner_created_by')
+    updated_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='employee_diner_updated_by', null=True, blank=True)
     status = models.BooleanField(default=True)
 
     class Meta:
@@ -133,3 +115,50 @@ class EmployeeClientDiner(models.Model):
 
     def __str__(self):
         return "Empleado: " + self.employee.name + ' ' + self.employee.lastname + ' ' + self.employee.second_lastname + ', Cliente Asignado: ' + self.client_diner.client.company + ', Comedor Asignado: ' + self.client_diner.dining_room.name
+    
+class VoucherType(models.Model):
+    description = models.CharField(max_length=50)
+
+    class Meta:
+        db_table = 'voucher_type'
+        verbose_name = 'Voucher Type'
+        verbose_name_plural = 'Voucher Types'
+
+class Lots(models.Model):
+    client_diner = models.ForeignKey(ClientDiner, on_delete=models.PROTECT, related_name='lots_client_diner')
+    voucher_type = models.ForeignKey(VoucherType, on_delete=models.PROTECT, related_name='lots_voucher_type')
+    quantity = models.IntegerField()
+    email = models.EmailField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'lots'
+        verbose_name = 'Lot'
+        verbose_name_plural = 'Lots'
+
+class Voucher(models.Model):
+    lots = models.ForeignKey(Lots, on_delete=models.PROTECT, related_name='voucher_lots')
+    folio = models.CharField(max_length=100, blank=True)
+    employee = models.CharField(max_length=100, null=True, blank=True)
+    status = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = 'voucher'
+        verbose_name = 'Voucher'
+        verbose_name_plural = 'Vouchers'
+
+    def save(self, *args, **kwargs):
+        if not self.folio:
+            self.folio = f"{self.lots.id}-{self.id}"
+        super().save(*args, **kwargs)
+
+class Entry(models.Model):
+    employee_client_diner = models.ForeignKey(EmployeeClientDiner, on_delete=models.PROTECT, related_name='entry_employee_client_diner', null=True, blank=True)
+    voucher = models.ForeignKey(Voucher, on_delete=models.PROTECT, related_name='entry_voucher', null=True, blank=True)
+    client_diner = models.ForeignKey(ClientDiner, on_delete=models.PROTECT, related_name='entry_client_diner')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'entry'
+        verbose_name = 'Entry'
+        verbose_name_plural = 'Entries'

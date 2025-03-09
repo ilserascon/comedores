@@ -1,8 +1,15 @@
+from django.http import HttpResponseForbidden
 # -*- encoding: utf-8 -*-
 """
 Copyright (c) 2019 - present AppSeed.us
 """
 
-from django.contrib import admin
-
-# Register your models here.
+admin_views = [
+  'administrador_vales',
+  'clientes',
+  'comedores',
+  'empleados',
+  'historico-vales',
+  'reportes',
+  'usuarios' 
+]
