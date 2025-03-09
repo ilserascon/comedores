@@ -181,6 +181,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const result = await saveClient(clientId, formData);
         if (result.message) {
+            editClientModal.hide()
             populateClients();
             showToast('Cliente actualizado correctamente', 'success');
         } else {

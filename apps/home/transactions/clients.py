@@ -5,9 +5,6 @@ from apps.authentication.models import CustomUser
 
 @transaction.atomic
 def change_client_status(user: CustomUser, client: Client, status: bool):
-  print('change_client_status')
-  print(client)
-  print(status)
   employees = Employee.objects.filter(client=client).all()
   client_diners = ClientDiner.objects.filter(client=client).all()
   
