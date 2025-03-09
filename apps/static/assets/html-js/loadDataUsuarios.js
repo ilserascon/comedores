@@ -338,8 +338,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    createUserBtn.addEventListener('click', function() {
+    createUserBtn.addEventListener('click', async function() {
         createUserForm.reset();
+        const result = await populateDiningRooms();
+        if(result.message === 'No hay comedores disponibles') {
+            createDiningRoomInput.innerHTML = `<option value="no">No hay comedores disponibles</option>`;
+        }else {
+            createDiningRoomInput.innerHTML = `<option value="no">Sin Asignar</option>` + result.diners.map(diner => `<option value="${diner.id}">${diner.name}</option>`).join('');
+        }
         handleRoleStatusChange(createRoleInput, createDiningRoomInput, createStatusInput);
     });
 
