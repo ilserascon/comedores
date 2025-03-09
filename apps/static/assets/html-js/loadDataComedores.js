@@ -18,6 +18,7 @@ async function actualizarTablaComedores(page = 1, filter = 'all') {
         data.dining_rooms.forEach(comedor => {
             const inChargeFirstName = comedor.in_charge_first_name ? comedor.in_charge_first_name : '';
             const inChargeLastName = comedor.in_charge_last_name ? comedor.in_charge_last_name : '';
+            const inChargeFullName = inChargeFirstName || inChargeLastName ? `${inChargeFirstName} ${inChargeLastName}` : 'Sin asignar';
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -35,7 +36,7 @@ async function actualizarTablaComedores(page = 1, filter = 'all') {
                     ${comedor.company}
                 </td>
                 <td class="text-muted">
-                    ${inChargeFirstName} ${inChargeLastName}
+                    ${inChargeFullName}
                 </td>
                 <td>
                     <span class="badge badge-dot mr-4">
