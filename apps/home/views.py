@@ -175,10 +175,7 @@ def create_comedor(request):
         status = data.get('status')
         in_charge = data.get('in_charge')
         client_id = data.get('client')  # Obtener el client_id del request
-        created_by_id = in_charge
-
-        if not in_charge:
-            return JsonResponse({'error': 'El campo in_charge es obligatorio'}, status=400)
+        created_by_id = request.user.id
 
         if not client_id:
             return JsonResponse({'error': 'El campo client es obligatorio'}, status=400)
@@ -188,7 +185,7 @@ def create_comedor(request):
             name=name,
             location=location,
             status=status,
-            in_charge_id=in_charge,
+            in_charge_id=in_charge if in_charge else None,
             created_by_id=created_by_id
         )
 
@@ -201,7 +198,7 @@ def create_comedor(request):
         client_diner = ClientDiner(
             dining_room_id=dining_room.id,
             client_id=client_id,
-            created_by_id=in_charge
+            created_by_id=created_by_id
         )
         client_diner.save()
 
@@ -228,8 +225,8 @@ def update_comedor(request):
         if len(dining_room.location) > 100:
             return JsonResponse({'error': 'La descripción no puede tener más de 100 caracteres'}, status=400)
 
-        if in_charge:
-            dining_room.in_charge_id = in_charge
+        # Permitir que in_charge sea nulo
+        dining_room.in_charge_id = in_charge if in_charge else None        
 
         dining_room.save()
 

@@ -16,6 +16,9 @@ async function actualizarTablaComedores(page = 1, filter = 'all') {
         tbody.innerHTML = '';
 
         data.dining_rooms.forEach(comedor => {
+            const inChargeFirstName = comedor.in_charge_first_name ? comedor.in_charge_first_name : '';
+            const inChargeLastName = comedor.in_charge_last_name ? comedor.in_charge_last_name : '';
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <th scope="row">
@@ -32,7 +35,7 @@ async function actualizarTablaComedores(page = 1, filter = 'all') {
                     ${comedor.company}
                 </td>
                 <td class="text-muted">
-                    ${comedor.in_charge_first_name} ${comedor.in_charge_last_name}
+                    ${inChargeFirstName} ${inChargeLastName}
                 </td>
                 <td>
                     <span class="badge badge-dot mr-4">
@@ -132,7 +135,7 @@ async function openEditModal(id) {
  * @throws {Error} - Error al crear comedor.
  */
 async function crearComedor() {
-    if (!validarCampos('comedorName', 'comedorLocation', 'selectCliente', 'comedorInCharge')) {
+    if (!validarCampos('comedorName', 'comedorLocation', 'selectCliente')) {
         return;
     }
 
@@ -184,7 +187,7 @@ async function crearComedor() {
  * @throws {Error} - Error al actualizar comedor.
  */
 async function actualizarComedor() {
-    if (!validarCampos('editarComedorName', 'editarComedorLocation', 'editarComedorClient', 'editarComedorInCharge')) {        
+    if (!validarCampos('editarComedorName', 'editarComedorLocation', 'editarComedorClient')) {        
         return;
     }
 
@@ -211,7 +214,7 @@ async function actualizarComedor() {
             data.name !== originalComedor.name ||
             data.location !== originalComedor.location ||
             data.client !== originalComedor.client_id.toString() ||
-            data.inCharge !== originalComedor.in_charge.id.toString() ||
+            (data.inCharge || '') !== (originalComedor.in_charge ? originalComedor.in_charge.id?.toString() : '') ||
             data.status !== (originalComedor.status ? '1' : '0')
         );
 
@@ -249,8 +252,7 @@ async function llenarSelectEncargados(selectId) {
     // Agregar opción por defecto "-------"
     const defaultOption = document.createElement('option');
     defaultOption.value = '';
-    defaultOption.textContent = '-------';
-    defaultOption.disabled = true;
+    defaultOption.textContent = '-------';    
     defaultOption.selected = true;
     select.appendChild(defaultOption);
 
@@ -386,11 +388,10 @@ function showToast(message, type = 'success') {
  * @param {string} inChargeId - ID del campo de encargado.
  * @returns {boolean} - TRUE SI TODOS LOS CAMPOS SON VÁLIDOS, FALSE EN CASO CONTRARIO.
  */
-function validarCampos(nameId, locationId, clientId, inChargeId) {
+function validarCampos(nameId, locationId, clientId) {
     const name = document.getElementById(nameId).value.trim();
     const location = document.getElementById(locationId).value.trim();
-    const client = document.getElementById(clientId).value;
-    const inCharge = document.getElementById(inChargeId).value;
+    const client = document.getElementById(clientId).value;    
 
     let isValid = true;
 
@@ -425,18 +426,7 @@ function validarCampos(nameId, locationId, clientId, inChargeId) {
         isValid = false;
     } else {
         document.getElementById(clientId).classList.remove('is-invalid');
-    }
-
-    if (!inCharge) {
-        const inChargeField = document.getElementById(inChargeId);
-        inChargeField.classList.add('is-invalid');
-        setTimeout(() => {
-            inChargeField.classList.remove('is-invalid');
-        }, 4000);
-        isValid = false;
-    } else {
-        document.getElementById(inChargeId).classList.remove('is-invalid');
-    }
+    }        
 
     return isValid;
 }

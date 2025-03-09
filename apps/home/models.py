@@ -36,7 +36,7 @@ class Client(models.Model):
     
 class DiningRoom(models.Model):
     name = models.CharField(max_length=50)
-    in_charge = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='dining_room_in_charge')
+    in_charge = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='dining_room_in_charge', null=True, blank=True)
     location = models.CharField(max_length=100, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
