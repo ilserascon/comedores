@@ -294,7 +294,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (user.dining_room_in_charge__name) {
             editDiningRoomInput.innerHTML = `<option value="${user.dining_room_in_charge}">${user.dining_room_in_charge__name}</option>`;
         }
-        editDiningRoomInput.innerHTML +=`<option value="no">Sin Asignar</option>` + result.diners.map(diner => `<option value="${diner.id}">${diner.name}</option>`).join('');
+        if(result.message === 'No hay comedores disponibles' && user.dining_room_in_charge__name) {
+            editDiningRoomInput.innerHTML +=`<option value="no">Sin Asignar</option>`;
+        }else if(result.message === 'No hay comedores disponibles') {
+            editDiningRoomInput.innerHTML +=`<option value="no">No hay comedores disponibles</option>`;
+        }else {
+            editDiningRoomInput.innerHTML +=`<option value="no">Sin Asignar</option>` + result.diners.map(diner => `<option value="${diner.id}">${diner.name}</option>`).join('');
+        }
         if (user) {
             editUserIdInput.value = user.id;
             editUsernameInput.value = user.username;
