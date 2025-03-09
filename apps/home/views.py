@@ -416,8 +416,8 @@ def client_list(request):
             if len(data['company']) > 50:
                 return JsonResponse({'error': 'El nombre de la compañía debe tener máximo 50 caracteres'}, status=400)
 
-            if len(data['name']) < 2 or len(data['lastname']) < 2 or len(data['second_lastname']) < 2:
-                return JsonResponse({'error': 'El nombre y  los apellidos deben tener al menos 2 caracteres'}, status=400)
+            if len(data['name']) < 2 or len(data['lastname']) < 2:
+                return JsonResponse({'error': 'El nombre y apellido paterno deben tener al menos 2 caracteres'}, status=400)
             
             if len(data['rfc']) != 13:
                 return JsonResponse({'error': 'El RFC debe tener 13 caracteres'}, status=400)
@@ -482,8 +482,8 @@ def client_detail(request, client_id):
             if len(data['company']) > 50:
                 return JsonResponse({'error': 'El nombre de la compañía debe tener máximo 50 caracteres'}, status=400)
 
-            if len(data['name']) < 2 or len(data['lastname']) < 2 or len(data['second_lastname']) < 2:
-                return JsonResponse({'error': 'El nombre y  los apellidos deben tener al menos 2 caracteres'}, status=400)
+            if len(data['name']) < 2 or len(data['lastname']) < 2:
+                return JsonResponse({'error': 'El nombre y apellido paterno deben tener al menos 2 caracteres'}, status=400)
             
             if len(data['rfc']) != 13:
                 return JsonResponse({'error': 'El RFC debe tener 13 caracteres'}, status=400)
@@ -567,8 +567,8 @@ def user_list(request):
             if len(data['username']) < 5:
                 return JsonResponse({'error': 'El nombre de usuario debe tener al menos 5 caracteres'}, status=400)
 
-            if len(data['first_name']) < 2 or len(data['last_name']) < 2 or len(data['second_last_name']) < 2:
-                return JsonResponse({'error': 'El nombre, apellido paterno y apellido materno deben tener al menos 2 caracteres'}, status=400)
+            if len(data['first_name']) < 2 or len(data['last_name']) < 2:
+                return JsonResponse({'error': 'El nombre y apellido paterno deben tener al menos 2 caracteres'}, status=400)
                         
             if '@' not in data['email'] or '.' not in data['email']:
                 return JsonResponse({'error': 'Correo electrónico inválido'}, status=400)
@@ -638,8 +638,8 @@ def user_detail(request, user_id):
             if len(data['username']) < 5:
                 return JsonResponse({'error': 'El nombre de usuario debe tener al menos 5 caracteres'}, status=400)
             
-            if len(data['first_name']) < 2 or len(data['last_name']) < 2 or len(data['second_last_name']) < 2:
-                return JsonResponse({'error': 'El nombre, apellido paterno y apellido materno deben tener al menos 2 caracteres'}, status=400)
+            if len(data['first_name']) < 2 or len(data['last_name']) < 2:
+                return JsonResponse({'error': 'El nombre y apellido paterno deben tener al menos 2 caracteres'}, status=400)
             
             if '@' not in data['email'] or '.' not in data['email']:
                 return JsonResponse({'error': 'Correo electrónico inválido'}, status=400)

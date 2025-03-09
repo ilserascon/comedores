@@ -118,28 +118,62 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         pagination.innerHTML = createPagination(data.page, data.pages);
     }
-
+    
     // Create pagination links
     function createPagination(currentPage, totalPages) {
         let paginationHTML = '';
-        for (let i = 1; i <= totalPages; i++) {
-            paginationHTML += 
-                `<li class="page-item ${i === currentPage ? 'active' : ''}" style="z-index: 0;">
+        const maxPagesToShow = 5;
+        const halfPagesToShow = Math.floor(maxPagesToShow / 2);
+        let startPage = Math.max(1, currentPage - halfPagesToShow);
+        let endPage = Math.min(totalPages, currentPage + halfPagesToShow);
+    
+        if (currentPage <= halfPagesToShow) {
+            endPage = Math.min(totalPages, maxPagesToShow);
+        } else if (currentPage + halfPagesToShow >= totalPages) {
+            startPage = Math.max(1, totalPages - maxPagesToShow + 1);
+        }
+    
+        if (currentPage > 1) {
+            paginationHTML += `
+                <li class="page-item">
+                    <a class="page-link" href="javascript:void(0);" page-number="${currentPage - 1}">
+                        <i class="fas fa-angle-left"></i>
+                        <span class="sr-only">Previous</span>
+                    </a>
+                </li>`;
+        }
+    
+        for (let i = startPage; i <= endPage; i++) {
+            paginationHTML += `
+                <li class="page-item ${i === currentPage ? 'active' : ''}" style="z-index: 0;">
                     <a class="page-link" href="javascript:void(0);" page-number="${i}">${i}</a>
                 </li>`;
         }
+    
+        if (currentPage < totalPages) {
+            paginationHTML += `
+                <li class="page-item">
+                    <a class="page-link" href="javascript:void(0);" page-number="${currentPage + 1}">
+                        <i class="fas fa-angle-right"></i>
+                        <span class="sr-only">Next</span>
+                    </a>
+                </li>`;
+        }
+    
         pagination.innerHTML = paginationHTML;
-
+    
         pagination.addEventListener('click', async function(event) {
             if (event.target.tagName === 'A') {
                 const pageNumber = event.target.getAttribute('page-number');
+                pagination.removeEventListener('click', arguments.callee); // Desactivar evento
                 await populateUsers(pageNumber, searchUserInput.value, roleFilter.value);
+                pagination.addEventListener('click', arguments.callee); // Reactivar evento
             }
         });
-        
+    
         return paginationHTML;
     }
-
+    
     // Create user
     createUserForm.addEventListener('submit', async function(event) {
         event.preventDefault();
@@ -160,8 +194,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         const result = await saveUser(null, data);
+        console.log(result);
         if (result.message) {
-            createUserModal.hide();
+            $('#createUserModal').modal('toggle');
             populateUsers();
             showToast('Usuario creado correctamente', 'success');
         } else {
@@ -230,15 +265,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-
     function validateFormData(data) {
         if (data.username.length < 5) {
             showToast('El nombre de usuario debe tener al menos 5 caracteres', 'danger');
             return false;
         }
 
-        if (data.first_name.length < 2 || data.last_name.length < 2 || data.second_last_name.length < 2) {
-            showToast('El nombre, apellido paterno y apellido materno deben tener al menos 2 caracteres', 'danger');
+        if (data.first_name.length < 2 || data.last_name.length < 2) {
+            showToast('El nombre y apellido paterno deben tener al menos 2 caracteres', 'danger');
             return false;
         }
 
@@ -290,17 +324,16 @@ document.addEventListener('DOMContentLoaded', function() {
     populateDiningRooms();
     populateUsers();
 
-    createUserBtn.addEventListener('click', function() {
-        createUserForm.reset();
-        createUserModal.show();
-        handleRoleStatusChange(createRoleInput, createDiningRoomInput, createStatusInput);
-    });
-
+    // Close modal on button click
     document.querySelectorAll('.btn-close').forEach(button => {
         button.addEventListener('click', function() {
-            createUserModal.hide();
             editUserModal.hide();
         });
+    });
+
+    createUserBtn.addEventListener('click', function() {
+        createUserForm.reset();
+        handleRoleStatusChange(createRoleInput, createDiningRoomInput, createStatusInput);
     });
 
     searchUserInput.addEventListener('input', function() {
