@@ -268,8 +268,6 @@ def create_comedor(request):
             in_charge_id=in_charge,
             created_by_id=created_by_id,
             updated_by_id=created_by_id
-            created_by_id=created_by_id,
-            updated_by_id=created_by_id
         )
 
         if len(dining_room.description) > 100:
