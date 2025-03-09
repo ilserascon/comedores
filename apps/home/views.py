@@ -17,6 +17,7 @@ import json
 from django.contrib.auth.hashers import make_password
 from django.shortcuts import get_object_or_404
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
+from .transactions.clients import change_client_status
 
 
 @login_required(login_url="/login/")
@@ -266,7 +267,8 @@ def create_comedor(request):
             description=description,
             status=status,
             in_charge_id=in_charge,
-            created_by_id=created_by_id
+            created_by_id=created_by_id,
+            updated_by_id=created_by_id
         )
 
         if len(dining_room.description) > 100:
@@ -278,7 +280,8 @@ def create_comedor(request):
         client_diner = ClientDiner(
             dining_room_id=dining_room.id,
             client_id=client_id,
-            created_by_id=in_charge
+            created_by_id=in_charge,
+            updated_by_id=request.user.id
         )
         client_diner.save()
 
@@ -504,7 +507,15 @@ def client_detail(request, client_id):
             client.email = data.get('email', client.email)
             client.phone = data.get('phone', client.phone)
             client.address = data.get('address', client.address)
-            client.status = data.get('status', client.status)
+            
+            user_who_updated = CustomUser.objects.filter(id=request.user.id).first()
+            if user_who_updated is None:
+                return JsonResponse({'error': 'Usuario no encontrado'})
+            
+            if client.status != data['status']:
+                change_client_status(user_who_updated, client, data['status'])
+            
+            client.updated_by = user_who_updated
             client.save()
             return JsonResponse({'message': 'Cliente actualizado correctamente'})
         except IntegrityError as e:
