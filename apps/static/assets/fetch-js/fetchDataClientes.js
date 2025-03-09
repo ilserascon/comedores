@@ -84,7 +84,7 @@ async function getClientes() {
 
         const data = await response.json();        
 
-        return data;
+        return data.clientes;
     } catch (error) {
         console.error('Error:', error.message);
         throw new Error(error.message || 'Error al obtener clientes');
