@@ -10,9 +10,9 @@ async function fetchRoles() {
 }
 
 // Fetch and populate users
-async function fetchUsers(page = 1, search = '') {
+async function fetchUsers(page = 1, search = '', role = '') {
     try {
-        const response = await fetch(`/users?page=${page}&search=${encodeURIComponent(search)}`);
+        const response = await fetch(`/users?page=${page}&search=${encodeURIComponent(search)}&role=${role}`);
         const data = await response.json();
         return data;
     } catch (error) {
@@ -53,6 +53,17 @@ async function fetchUserDetails(userId) {
         return user;
     } catch (error) {
         return null;
+    }
+}
+
+// Fetch dining rooms without in charge
+async function fetchDinersWithoutInCharge() {
+    try {
+        const response = await fetch('/diners-without-in-charge');
+        const diners = await response.json();
+        return diners;
+    } catch (error) {
+        return [];
     }
 }
 

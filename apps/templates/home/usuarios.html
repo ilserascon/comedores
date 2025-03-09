@@ -1,7 +1,6 @@
-
 {% extends 'layouts/base.html' %}
 
-{% block title %} Tables {% endblock title %}
+{% block title %} Usuarios {% endblock title %}
 
 {% block content %}
 
@@ -22,8 +21,12 @@
             <h3 class="mb-0">Usuarios</h3>
             <!-- Search for username or name or first name or second name -->
             <div class="d-flex">
-              <input type="text" class="form-control rounded-pill mr-2 ml-3 " id="searchUserInput" placeholder="Buscar">
-              <button class="btn btn-primary rounded-pill" id="createUserBtn" data-toggle="modal" data-target="#crearComedorModal">Crear</button>
+              <input type="text" class="form-control rounded-pill mr-2 ml-3" id="searchUserInput" placeholder="Buscar">
+              <select class="form-control rounded-pill mr-2" id="roleFilter" name="roleFilter" title="Filtrar por rol">
+                <option value="">Todos los roles</option>
+                <!-- Roles will be populated here -->
+              </select>
+              <button class="btn btn-primary rounded-pill" id="createUserBtn" data-toggle="modal" data-target="#createUserModal">Crear</button>
             </div>
           </div>
                 <!-- Light table -->
@@ -37,6 +40,7 @@
                                 <th scope="col">Segundo Apellido</th>
                                 <th scope="col">Correo</th>
                                 <th scope="col">Rol</th>
+                                <th scope="col">Comedor</th>
                                 <th scope="col">Estado</th>
                                 <th scope="col">Acciones</th>
                             </tr>
@@ -118,6 +122,14 @@
                                 </select>
                             </div>
                         </div>
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label for="create_dining_room" class="form-label">Comedor</label>
+                                <select class="form-control" id="create_dining_room">
+                                    <!-- Dining rooms without in charge will be populated here -->
+                                </select>
+                            </div>
+                        </div>
                         <div class="modal-footer p-0">
                           <button type="submit" class="btn btn-primary">Guardar</button>
                         </div>
@@ -192,6 +204,14 @@
                                 <select class="form-control" id="edit_status" required>
                                     <option value="true">Activo</option>
                                     <option value="false">Inactivo</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label for="edit_dining_room" class="form-label">Comedor</label>
+                                <select class="form-control" id="edit_dining_room">
+                                    <!-- Dining rooms without in charge will be populated here -->
                                 </select>
                             </div>
                         </div>

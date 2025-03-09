@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const createPasswordInput = document.getElementById('create_password');
     const createRoleInput = document.getElementById('create_role');
     const createStatusInput = document.getElementById('create_status');
+    const createDiningRoomInput = document.getElementById('create_dining_room');
     const editUsernameInput = document.getElementById('edit_username');
     const editFirstNameInput = document.getElementById('edit_first_name');
     const editLastNameInput = document.getElementById('edit_last_name');
@@ -22,20 +23,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const editPasswordInput = document.getElementById('edit_password');
     const editRoleInput = document.getElementById('edit_role');
     const editStatusInput = document.getElementById('edit_status');
+    const editDiningRoomInput = document.getElementById('edit_dining_room');
     const pagination = document.getElementById('pagination');
+    const roleFilter = document.getElementById('roleFilter');
+    const searchUserInput = document.getElementById('searchUserInput');
 
     // Function to show toast
     function showToast(message, type = 'success') {
         const toast = document.createElement('div');
         const header = type === 'success' ? 'Éxito' : type === 'info' ? 'Aviso' : 'Error';
-        // Set the toast classes with Bootstrap
         toast.className = `toast align-items-center text-white bg-${type} border-0 rounded-pill shadow-sm p-2 px-3 m-1`;
         toast.role = 'alert';
         toast.ariaLive = 'assertive';
         toast.ariaAtomic = 'true';
         toast.style.zIndex = '1';
     
-        // Set the toast content (including a header, body, and close button)
         toast.innerHTML = `
             <div class="toast-header bg-${type} text-white d-flex align-items-center justify-content-between p-1 px-1 rounded-pill shadow-sm">
                 <strong class="me-auto">${header}</strong>
@@ -46,20 +48,16 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         `;
     
-        // Append the toast to the container
         const toastContainer = document.getElementById('toastContainer');
         toastContainer.appendChild(toast);
     
-        // Initialize and show the toast with Bootstrap's Toast component
         const bsToast = new bootstrap.Toast(toast, { delay: 4000 });
         bsToast.show();
     
-        // Verificar que se cerró el toast sin usar addEventListener con hidden.bs.toast
         setTimeout(() => {
-            toast.remove(); // Remove the toast manually after the delay
-        }, 4000); // Time in milliseconds, should match the delay
+            toast.remove();
+        }, 4000);
     
-        // Close the toast when the close button is clicked
         toast.querySelector('.btn-close').addEventListener('click', function() {
             toast.remove();
             bsToast.hide();
@@ -71,20 +69,33 @@ document.addEventListener('DOMContentLoaded', function() {
         const roles = await fetchRoles();
         createRoleInput.innerHTML = roles.map(role => `<option value="${role.id}">${role.name}</option>`).join('');
         editRoleInput.innerHTML = roles.map(role => `<option value="${role.id}">${role.name}</option>`).join('');
+        roleFilter.innerHTML = `<option value="">Todos los roles</option>` + roles.map(role => `<option value="${role.id}">${role.name}</option>`).join('');
+    }
+
+    // Populate dining rooms without in charge
+    async function populateDiningRooms() {
+        const diners = await fetchDinersWithoutInCharge();
+        if (diners.length === 0) {
+            createDiningRoomInput.innerHTML = `<option value="" disabled hidden>No hay comedores disponibles</option>`;
+            editDiningRoomInput.innerHTML = `<option value="" disabled hidden>No hay comedores disponibles</option>`;
+        } else {
+            createDiningRoomInput.innerHTML = `<option value="no">Sin Asignar</option>` + diners.map(diner => `<option value="${diner.id}">${diner.name}</option>`).join('');
+            editDiningRoomInput.innerHTML = `<option value="no">Sin Asignar</option>` + diners.map(diner => `<option value="${diner.id}">${diner.name}</option>`).join('');
+        }
     }
 
     // Populate users
-    async function populateUsers(page = 1, search = '') {
-        const data = await fetchUsers(page, search);
+    async function populateUsers(page = 1, search = '', role = '') {
+        const data = await fetchUsers(page, search, role);
         if(data.users.length === 0) {
             userTableBody.innerHTML = `
                 <tr>
-                    <td colspan="8" class="text-center">No se encontraron usuarios</td>
+                    <td colspan="9" class="text-center">No se encontraron usuarios</td>
                 </tr>
             `;
             pagination.innerHTML = '';
             return;
-        }else{
+        } else {
             userTableBody.innerHTML = data.users.map(user => `
                 <tr>
                     <td>${user.username ? user.username : 'N/A'}</td>
@@ -93,7 +104,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td>${user.second_last_name ? user.second_last_name : 'N/A'}</td>
                     <td>${user.email}</td>
                     <td>${user.role__name}</td>
-                    <td>${user.status ? 'Activo' : 'Inactivo'}</td>
+                    <td>${user.dining_room_in_charge__name ? user.dining_room_in_charge__name : 'Sin asignar'}</td>
+                    <td>
+                        <span class="badge badge-dot mr-4">
+                            <i class="${user.status ? 'bg-success' : 'bg-danger'}"></i>
+                            <span class="status">${user.status ? 'Activo' : 'Inactivo'}</span>
+                        </span>
                     <td>
                         <button class="btn btn-sm btn-primary" onclick="editUser(${user.id})">Editar</button>
                     </td>
@@ -112,17 +128,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     <a class="page-link" href="javascript:void(0);" page-number="${i}">${i}</a>
                 </li>`;
         }
-        pagination.innerHTML = paginationHTML; // Set the inner HTML once
+        pagination.innerHTML = paginationHTML;
 
-        // Add a single event listener to the pagination element
         pagination.addEventListener('click', async function(event) {
             if (event.target.tagName === 'A') {
                 const pageNumber = event.target.getAttribute('page-number');
-                await populateUsers(pageNumber); // Ensure to await the function call
+                await populateUsers(pageNumber, searchUserInput.value, roleFilter.value);
             }
         });
         
-        return paginationHTML; // This return is optional now
+        return paginationHTML;
     }
 
     // Create user
@@ -136,10 +151,10 @@ document.addEventListener('DOMContentLoaded', function() {
             email: createEmailInput.value,
             password: createPasswordInput.value,
             role_id: createRoleInput.value,
-            status: createStatusInput.value === 'true'
+            status: createStatusInput.value === 'true',
+            dining_room_id: createRoleInput.value == 1 ? null : createDiningRoomInput.value // No asignar comedor si es Administrador
         };
 
-        // Validate form data
         if (!validateFormData(data)) {
             return;
         }
@@ -156,7 +171,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const enablePasswordEditCheckbox = document.getElementById('enablePasswordEdit');
 
-    // Enable/disable password field based on checkbox
     enablePasswordEditCheckbox.addEventListener('change', function() {
         editPasswordInput.disabled = !this.checked;
         if (!this.checked) {
@@ -164,10 +178,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-
     // Edit user
     editUserForm.addEventListener('submit', async function(event) {
-        console.log('Edit user form submitted');
         event.preventDefault();
         const userId = editUserIdInput.value;
         const originalData = await fetchUserDetails(userId);
@@ -179,20 +191,21 @@ document.addEventListener('DOMContentLoaded', function() {
             email: editEmailInput.value,
             password: editPasswordInput.disabled ? null : editPasswordInput.value,
             role_id: editRoleInput.value,
-            status: editStatusInput.value === 'true'
+            role__name: editRoleInput.options[editRoleInput.selectedIndex].text,
+            status: editStatusInput.value === 'true',
+            dining_room_in_charge: editRoleInput.value == "no" ? "no" : (editDiningRoomInput.value === 'no' ? "no" : editDiningRoomInput.value) // No asignar comedor si es Administrador
         };
 
-        // Validate form data
         if (!validateFormData(formData)) {
             return;
         }
         
-        // Check if form data has changed
         if (!hasFormChanged(originalData, formData)) {
             showToast('No hay cambios para guardar', 'info');
             return;
         }
 
+        formData.dining_room_in_charge = editDiningRoomInput.value;
         const result = await saveUser(userId, formData);
         if (result.message) {
             editUserModal.hide();
@@ -203,12 +216,21 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Function to check if any value has changed
     function hasFormChanged(originalData, formData) {
-        return Object.keys(formData).some(key => formData[key] !== originalData[key]);
-    }   
+        // Check if any field has changed
+        formData['dining_room_in_charge'] = formData['dining_room_in_charge'] === 'no' ? null : formData['dining_room_in_charge'];
+        return Object.keys(formData).some(key => {
+            if (key in originalData) {
+                return originalData[key] != formData[key];
+            } else if (key === 'password' && formData[key] != null) {
+                return true; // If password is set, treat it as a change
+            }else {
+                return false;
+            }
+        });
+    }
+    
 
-    // Validate form data
     function validateFormData(data) {
         if (data.username.length < 5) {
             showToast('El nombre de usuario debe tener al menos 5 caracteres', 'danger');
@@ -232,9 +254,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
         return true;
     }
-    // Edit user
+
     window.editUser = async function(userId) {
         const user = await fetchUserDetails(userId);
+        if (user.dining_room_in_charge__name) {
+            editDiningRoomInput.innerHTML = `<option value="${user.dining_room_in_charge}">${user.dining_room_in_charge__name}</option><option value="no">Sin Asignar</option>`;
+        } else {
+            populateDiningRooms();
+        }
         if (user) {
             editUserIdInput.value = user.id;
             editUsernameInput.value = user.username;
@@ -242,23 +269,33 @@ document.addEventListener('DOMContentLoaded', function() {
             editLastNameInput.value = user.last_name;
             editSecondLastNameInput.value = user.second_last_name;
             editEmailInput.value = user.email;
-            editRoleInput.value = user.role__name == 'Administrador' ? 1 : 2;
+            editRoleInput.value = user.role;
             editStatusInput.value = user.status;
+            editDiningRoomInput.value = user.dining_room_in_charge ? user.dining_room_in_charge : 'no';
             editUserModal.show();
+            handleRoleStatusChange(editRoleInput, editDiningRoomInput, editStatusInput);
         }
     };
 
-    // Initialize
+    function handleRoleStatusChange(roleInput, diningRoomInput, statusInput) {
+        if (roleInput.value == 1 || statusInput.value == 'false') {
+            diningRoomInput.value = 'no';
+            diningRoomInput.disabled = true;
+        } else {
+            diningRoomInput.disabled = false;
+        }
+    }
+
     populateRoles();
+    populateDiningRooms();
     populateUsers();
 
-    // Show modal for creating new user
     createUserBtn.addEventListener('click', function() {
         createUserForm.reset();
         createUserModal.show();
+        handleRoleStatusChange(createRoleInput, createDiningRoomInput, createStatusInput);
     });
 
-    // Close modal on button click
     document.querySelectorAll('.btn-close').forEach(button => {
         button.addEventListener('click', function() {
             createUserModal.hide();
@@ -266,45 +303,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Search users
-    const searchUserInput = document.getElementById('searchUserInput');
-
     searchUserInput.addEventListener('input', function() {
         const searchValue = this.value.trim();
-        if (searchValue) {
-            fetchUsers(1, searchValue).then(data => {
-                if(data.users.length === 0) {
-                    userTableBody.innerHTML = `
-                        <tr>
-                            <td colspan="8" class="text-center">No se encontraron usuarios</td>
-                        </tr>
-                    `;
-                    pagination.innerHTML = '';
-                    return;
-                }else{
-                userTableBody.innerHTML = data.users.map(user => `
-                    <tr>
-                        <td>${user.username ? user.username : 'N/A'}</td>
-                        <td>${user.first_name ? user.first_name : 'N/A'}</td>
-                        <td>${user.last_name ? user.last_name : 'N/A'}</td>
-                        <td>${user.second_last_name ? user.second_last_name : 'N/A'}</td>
-                        <td>${user.email}</td>
-                        <td>${user.role__name}</td>
-                        <td>${user.status ? 'Activo' : 'Inactivo'}</td>
-                        <td>
-                            <button class="btn btn-sm btn-primary" onclick="editUser(${user.id})">Editar</button>
-                        </td>
-                    </tr>
-                `).join('');
-                }
-                pagination.innerHTML = '';
-            });
-        } else {
-            populateUsers();
-        }
+        populateUsers(1, searchValue, roleFilter.value);
     });
 
-    // Toggle password visibility for create user form
+    roleFilter.addEventListener('change', function() {
+        const roleValue = this.value;
+        populateUsers(1, searchUserInput.value, roleValue);
+    });
+
     const toggleCreatePassword = document.getElementById('toggleCreatePassword');
     toggleCreatePassword.addEventListener('mousedown', function() {
         createPasswordInput.type = 'text';
@@ -316,7 +324,6 @@ document.addEventListener('DOMContentLoaded', function() {
         createPasswordInput.type = 'password';
     });
 
-    // Toggle password visibility for edit user form
     const toggleEditPassword = document.getElementById('toggleEditPassword');
     toggleEditPassword.addEventListener('mousedown', function() {
         editPasswordInput.type = 'text';
@@ -328,8 +335,27 @@ document.addEventListener('DOMContentLoaded', function() {
         editPasswordInput.type = 'password';
     });
 
-    // Enable/disable password field based on checkbox
     enablePasswordEditCheckbox.addEventListener('change', function() {
         editPasswordInput.disabled = !this.checked;
+    });
+
+    // Disable dining room selection if role is Admin
+    createRoleInput.addEventListener('change', function() {
+        handleRoleStatusChange(createRoleInput, createDiningRoomInput, createStatusInput);
+    });
+
+    editRoleInput.addEventListener('change', function() {
+        handleRoleStatusChange(editRoleInput, editDiningRoomInput, editStatusInput);
+        if(editRoleInput.value == 1){
+            editDiningRoomInput.value = 'no';
+        }
+    });
+
+    createStatusInput.addEventListener('change', function() {
+        handleRoleStatusChange(createRoleInput, createDiningRoomInput, createStatusInput);
+    });
+
+    editStatusInput.addEventListener('change', function() {
+        handleRoleStatusChange(editRoleInput, editDiningRoomInput, editStatusInput);
     });
 });

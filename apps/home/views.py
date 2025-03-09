@@ -12,7 +12,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import DiningRoom, ClientDiner, Client
 from apps.authentication.models import CustomUser, Role
 from django.db.models import Q
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 import json
 from django.contrib.auth.hashers import make_password
 from django.shortcuts import get_object_or_404
@@ -136,7 +136,6 @@ def get_comedor(request):
     except DiningRoom.DoesNotExist:
         return JsonResponse({'error': 'Comedor no encontrado'}, status=404)
     except Exception as e:
-        print(f"Error: {e}")
         return JsonResponse({'error': str(e)}, status=500)
 
 @login_required(login_url="/login/")
@@ -252,7 +251,7 @@ def create_comedor(request):
         status = data.get('status')
         in_charge = data.get('in_charge')
         client_id = data.get('client')  # Obtener el client_id del request
-        created_by_id = in_charge
+        created_by_id = request.user.id
 
         if not in_charge:
             return JsonResponse({'error': 'El campo in_charge es obligatorio'}, status=400)
@@ -266,7 +265,8 @@ def create_comedor(request):
             description=description,
             status=status,
             in_charge_id=in_charge,
-            created_by_id=created_by_id
+            created_by_id=created_by_id,
+            updated_by_id=created_by_id
         )
 
         if len(dining_room.description) > 100:
@@ -278,7 +278,8 @@ def create_comedor(request):
         client_diner = ClientDiner(
             dining_room_id=dining_room.id,
             client_id=client_id,
-            created_by_id=in_charge
+            created_by_id= request.user.id,
+            updated_by_id= request.user.id
         )
         client_diner.save()
 
@@ -289,6 +290,7 @@ def create_comedor(request):
 @csrf_exempt
 def update_comedor(request):
     try:
+        user_id = request.user.id
         data = json.loads(request.body)
         dining_room_id = data.get('dining_room_id')
         name = data.get('name')
@@ -313,7 +315,8 @@ def update_comedor(request):
         # Actualizar la entrada en el modelo ClientDiner
         client_diner, created = ClientDiner.objects.update_or_create(
             dining_room_id=dining_room_id,
-            defaults={'client_id': client_id}
+            defaults={'client_id': client_id},
+            updated_by_id=user_id
         )
 
         return JsonResponse({'message': 'Comedor actualizado correctamente'})
@@ -370,6 +373,7 @@ def get_clientes_comedores(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
         
+# ================================== Clientes ================================== #
 @csrf_exempt
 def client_list(request):
     if request.method == 'GET':
@@ -514,13 +518,17 @@ def client_detail(request, client_id):
                 return JsonResponse({'error': 'Error de integridad de datos'}, status=400)
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
-
-
+        
+# ================================== Usuarios ================================== #
 @csrf_exempt
 def user_list(request):
     if request.method == 'GET':
         search_query = request.GET.get('search', '')
-        users = CustomUser.objects.all().order_by('id').values('id', 'username', 'first_name', 'last_name', 'second_last_name', 'email', 'role__name', 'status')
+        role_filter = request.GET.get('role', '')
+
+        users = CustomUser.objects.all().order_by('id').values(
+            'id', 'username', 'first_name', 'last_name', 'second_last_name', 'email', 'role__name', 'dining_room_in_charge__name', 'status'
+        ).distinct()
 
         if search_query:
             users = users.filter(
@@ -529,6 +537,9 @@ def user_list(request):
                 Q(last_name__icontains=search_query) |
                 Q(second_last_name__icontains=search_query)
             )
+
+        if role_filter:
+            users = users.filter(role__id=role_filter)
 
         page = request.GET.get('page', 1)
         paginator = Paginator(users, 10)  # 10 usuarios por página
@@ -565,17 +576,39 @@ def user_list(request):
             if len(data['password']) < 8 or not any(char.isdigit() for char in data['password']) or not any(char.isalpha() for char in data['password']):
                 return JsonResponse({'error': 'La contraseña debe tener al menos 8 caracteres, una letra y un número'}, status=400)
 
-            user = CustomUser.objects.create(
-                username=data['username'],
-                first_name=data['first_name'],
-                last_name=data['last_name'],
-                second_last_name=data['second_last_name'],
-                email=data['email'],
-                password=make_password(data['password']),
-                role=role,
-                status=data.get('status', True),
-                created_by=request.user
-            )
+            with transaction.atomic():
+                user = CustomUser.objects.create(
+                    username=data['username'],
+                    first_name=data['first_name'],
+                    last_name=data['last_name'],
+                    second_last_name=data['second_last_name'],
+                    email=data['email'],
+                    password=make_password(data['password']),
+                    role=role,
+                    status=data.get('status', True),
+                    created_by=request.user
+                )
+                if 'dining_room_in_charge' in data and data['dining_room_in_charge'] is not None:
+                    if data['dining_room_in_charge'] == 'null' or data['dining_room_in_charge'] == 'no':
+                        if user.dining_room_in_charge.exists():
+                            dining_room = user.dining_room_in_charge.first()
+                            dining_room.in_charge = None
+                            dining_room.save()
+                        user.dining_room_in_charge.clear()
+                    else:
+                        dining_room = get_object_or_404(DiningRoom, id=data['dining_room_in_charge'])
+                        dining_room.in_charge = user
+                        dining_room.save()
+                        user.dining_room_in_charge.set([dining_room])
+
+                if data['status'] == False:
+                    dining_rooms = DiningRoom.objects.filter(in_charge=user)
+                    for dining_room in dining_rooms:
+                        dining_room.in_charge = None
+                        dining_room.save()
+                        user.dining_room_in_charge.clear()
+                user.save()
+
             return JsonResponse({'message': 'Usuario creado correctamente', 'user_id': user.id}, status=201)
         except IntegrityError as e:
             if 'username' in str(e):
@@ -594,16 +627,13 @@ def user_detail(request, user_id):
     user = get_object_or_404(CustomUser, id=user_id)
     if request.method == 'GET':
         try:
-            user_data = CustomUser.objects.filter(id=user_id).values('id', 'username', 'first_name', 'last_name', 'second_last_name', 'email', 'role__name', 'status', 'created_by', 'updated_by').first()
+            user_data = CustomUser.objects.filter(id=user_id).values('id', 'username', 'first_name', 'last_name', 'second_last_name', 'email', 'role', 'role__name', 'dining_room_in_charge','dining_room_in_charge__name','status', 'created_by', 'updated_by').first()
             return JsonResponse(user_data)
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
     elif request.method == 'PUT':
         try:
             data = json.loads(request.body)
-            print(data)
-            user.username = data.get('username', user.username)
-            user.email = data.get('email', user.email)
 
             if len(data['username']) < 5:
                 return JsonResponse({'error': 'El nombre de usuario debe tener al menos 5 caracteres'}, status=400)
@@ -614,14 +644,43 @@ def user_detail(request, user_id):
             if '@' not in data['email'] or '.' not in data['email']:
                 return JsonResponse({'error': 'Correo electrónico inválido'}, status=400)
             
-            if 'password' in data or 'password' is not None:
+            if 'password' in data and data['password'] is not None:
                 if len(data['password']) < 8 or not any(char.isdigit() for char in data['password']) or not any(char.isalpha() for char in data['password']):
                     return JsonResponse({'error': 'La contraseña debe tener al menos 8 caracteres, una letra y un número'}, status=400)
                 user.password = make_password(data['password'])
-            if 'role_id' in data:
-                user.role = get_object_or_404(Role, id=data['role_id'])
-            user.status = data.get('status', user.status)
-            user.save()
+
+            with transaction.atomic():
+                user.username = data.get('username', user.username)
+                user.email = data.get('email', user.email)
+                user.first_name = data.get('first_name', user.first_name)
+                user.last_name = data.get('last_name', user.last_name)
+                user.second_last_name = data.get('second_last_name', user.second_last_name)
+                user.status = data.get('status', user.status)
+                if 'role_id' in data:
+                    user.role = get_object_or_404(Role, id=data['role_id'])
+                user.save()
+
+                if 'dining_room_in_charge' in data and data['dining_room_in_charge'] is not None:
+                    if data['dining_room_in_charge'] == 'null' or data['dining_room_in_charge'] == 'no':
+                        if user.dining_room_in_charge.exists():
+                            dining_room = user.dining_room_in_charge.first()
+                            dining_room.in_charge = None
+                            dining_room.save()
+                        user.dining_room_in_charge.clear()
+                    else:
+                        dining_room = get_object_or_404(DiningRoom, id=data['dining_room_in_charge'])
+                        dining_room.in_charge = user
+                        dining_room.save()
+                        user.dining_room_in_charge.set([dining_room])
+
+                if data['status'] == False:
+                    dining_rooms = DiningRoom.objects.filter(in_charge=user)
+                    for dining_room in dining_rooms:
+                        dining_room.in_charge = None
+                        dining_room.save()
+                        user.dining_room_in_charge.clear()
+                user.save()
+
             return JsonResponse({'message': 'Usuario actualizado correctamente'})
         except IntegrityError as e:
             if 'username' in str(e):
@@ -630,8 +689,9 @@ def user_detail(request, user_id):
                 return JsonResponse({'error': 'El correo electrónico ya existe'}, status=400)
             else:
                 return JsonResponse({'error': 'Error de integridad de datos'}, status=400)
+        except KeyError as e:
+            return JsonResponse({'error': f'Campo faltante: {str(e)}'}, status=400)
         except Exception as e:
-            print(e)
             return JsonResponse({'error': str(e)}, status=400)
 
 @csrf_exempt
@@ -639,3 +699,11 @@ def role_list(request):
     if request.method == 'GET':
         roles = Role.objects.all().values('id', 'name')
         return JsonResponse(list(roles), safe=False)
+    
+@csrf_exempt
+def get_diner_without_in_charge(request):
+    try:
+        diners = DiningRoom.objects.filter(in_charge=None).values('id', 'name')
+        return JsonResponse(list(diners), safe=False)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

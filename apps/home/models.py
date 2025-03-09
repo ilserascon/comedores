@@ -149,8 +149,6 @@ class Voucher(models.Model):
             self.folio = f"{self.lots.id}-{self.id}"
         super().save(*args, **kwargs)
 
-# ...existing code...
-
 class Entry(models.Model):
     employee_client_diner = models.ForeignKey(EmployeeClientDiner, on_delete=models.PROTECT, related_name='entry_employee_client_diner', null=True, blank=True)
     voucher = models.ForeignKey(Voucher, on_delete=models.PROTECT, related_name='entry_voucher', null=True, blank=True)
