@@ -5,7 +5,8 @@ Copyright (c) 2019 - present AppSeed.us
 
 from django import template
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse, HttpResponseForbidden
+from django.shortcuts import render
 from django.template import loader
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
@@ -19,7 +20,7 @@ from django.shortcuts import get_object_or_404
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from .transactions.clients import change_client_status
 import pandas as pd
-
+from .admin import admin_views, user_views
 
 @login_required(login_url="/login/")
 def index(request):
@@ -31,22 +32,30 @@ def index(request):
 
 @login_required(login_url="/login/")
 def pages(request):
-    context = {}
+    
+    context = {'segment': request.path.split('/')[-1]}
     # All resource paths end in .html.
     # Pick out the html file name from the url. And load that template.
     try:
 
         load_template = request.path.split('/')[-1]
 
-        if load_template == 'admin':
-            return HttpResponseRedirect(reverse('admin:index'))
-        context['segment'] = load_template
+        if load_template in map(lambda x: x + '.html', admin_views) and request.user.role_id != 1:
+           response = render(request, 'home/page-403.html') 
+           return HttpResponseForbidden(response.content)
 
-        html_template = loader.get_template('home/' + load_template)
+        if load_template in map(lambda x: x + '.html', user_views) and request.user.role_id != 2:
+            response = render(request, 'home/page-403.html')
+            return HttpResponseForbidden(response.content)
+
+        if 'reporte' in load_template and request.user.role_id == 1:
+            html_template = loader.get_template('home/reportes/' + load_template)
+        else:
+            html_template = loader.get_template('home/' + load_template)
+        
         return HttpResponse(html_template.render(context, request))
 
     except template.TemplateDoesNotExist:
-
         html_template = loader.get_template('home/page-404.html')
         return HttpResponse(html_template.render(context, request))
 
@@ -54,7 +63,6 @@ def pages(request):
         html_template = loader.get_template('home/page-500.html')
         return HttpResponse(html_template.render(context, request))
 
-    
 # ============================= COMEDORES =============================
 @csrf_exempt
 def get_comedores(request):
@@ -140,30 +148,6 @@ def get_comedor(request):
         return JsonResponse({'error': 'Comedor no encontrado'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
-@login_required(login_url="/login/")
-def index(request):
-    context = {'segment': 'index'}
-
-    html_template = loader.get_template('home/index.html')
-    return HttpResponse(html_template.render(context, request))
-
-@login_required(login_url="/login/")
-def pages(request):
-    context = {}
-    try:
-        load_template = request.path.split('/')[-1]
-        if load_template == 'admin':
-            return HttpResponseRedirect(reverse('admin:index'))
-        context['segment'] = load_template
-        html_template = loader.get_template('home/' + load_template)
-        return HttpResponse(html_template.render(context, request))
-    except template.TemplateDoesNotExist:
-        html_template = loader.get_template('home/page-404.html')
-        return HttpResponse(html_template.render(context, request))
-    except:
-        html_template = loader.get_template('home/page-500.html')
-        return HttpResponse(html_template.render(context, request))
 
 # ================================== COMEDORES ================================== #
 @csrf_exempt

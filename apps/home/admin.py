@@ -10,6 +10,12 @@ admin_views = [
   'comedores',
   'empleados',
   'historico-vales',
-  'reportes',
-  'usuarios' 
+  'reporte-empleados',
+  'usuarios',
+  'reporte-unicos',
+  'reporte-perpetuos',
+]
+
+user_views = [
+  'entradas',
 ]
