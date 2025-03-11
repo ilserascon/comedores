@@ -5,7 +5,8 @@ Copyright (c) 2019 - present AppSeed.us
 
 from django import template
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse, HttpResponseForbidden
+from django.shortcuts import render
 from django.template import loader
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
@@ -19,7 +20,7 @@ from django.shortcuts import get_object_or_404
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from .transactions.clients import change_client_status
 import pandas as pd
-
+from .admin import admin_views, user_views
 
 @login_required(login_url="/login/")
 def index(request):
@@ -31,28 +32,122 @@ def index(request):
 
 @login_required(login_url="/login/")
 def pages(request):
-    context = {}
+    
+    context = {'segment': request.path.split('/')[-1]}
     # All resource paths end in .html.
     # Pick out the html file name from the url. And load that template.
     try:
 
         load_template = request.path.split('/')[-1]
 
-        if load_template == 'admin':
-            return HttpResponseRedirect(reverse('admin:index'))
-        context['segment'] = load_template
+        if load_template in map(lambda x: x + '.html', admin_views) and request.user.role_id != 1:
+           response = render(request, 'home/page-403.html') 
+           return HttpResponseForbidden(response.content)
 
-        html_template = loader.get_template('home/' + load_template)
+        if load_template in map(lambda x: x + '.html', user_views) and request.user.role_id != 2:
+            response = render(request, 'home/page-403.html')
+            return HttpResponseForbidden(response.content)
+
+        if 'reporte' in load_template and request.user.role_id == 1:
+            html_template = loader.get_template('home/reportes/' + load_template)
+        else:
+            html_template = loader.get_template('home/' + load_template)
+        
         return HttpResponse(html_template.render(context, request))
 
     except template.TemplateDoesNotExist:
-
         html_template = loader.get_template('home/page-404.html')
         return HttpResponse(html_template.render(context, request))
 
     except:
         html_template = loader.get_template('home/page-500.html')
         return HttpResponse(html_template.render(context, request))
+
+# ============================= COMEDORES =============================
+@csrf_exempt
+def get_comedores(request):
+    try:
+        # Obtener el valor del filtro de la solicitud
+        filter_value = request.GET.get('filter', 'all')
+
+        # Obtener todos los comedores con la información del cliente y del encargado
+        dining_rooms_query = ClientDiner.objects.select_related('client', 'dining_room', 'dining_room__in_charge').values(
+            'client__company',
+            'dining_room__id',
+            'dining_room__name',
+            'dining_room__description',
+            'dining_room__in_charge__first_name',
+            'dining_room__in_charge__last_name',
+            'dining_room__status'
+        ).distinct()
+
+        # Aplicar el filtro si no es 'all'
+        if filter_value != 'all':
+            dining_rooms_query = dining_rooms_query.filter(client__id=filter_value)
+
+        # Renombrar campos para evitar confusión
+        dining_rooms_list = [
+            {
+                'company': dr['client__company'],
+                'id': dr['dining_room__id'],
+                'name': dr['dining_room__name'],
+                'description': dr['dining_room__description'],
+                'in_charge_first_name': dr['dining_room__in_charge__first_name'],
+                'in_charge_last_name': dr['dining_room__in_charge__last_name'],
+                'status': dr['dining_room__status']
+            }
+            for dr in dining_rooms_query
+        ]
+
+        # Obtener lista de clientes únicos
+        clients = Client.objects.values('id', 'company').distinct()
+
+        # Paginación
+        page_number = request.GET.get('page', 1)
+        paginator = Paginator(dining_rooms_list, 10)  # 10 comedores por página
+        page_obj = paginator.get_page(page_number)
+
+        context = {
+            'dining_rooms': list(page_obj),
+            'clients': list(clients),
+            'page_number': page_obj.number,
+            'num_pages': paginator.num_pages,
+            'has_next': page_obj.has_next(),
+            'has_previous': page_obj.has_previous(),
+        }
+
+        return JsonResponse(context)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def get_comedor(request):
+    try:
+        dining_room_id = request.GET.get('dining_room_id')
+        dining_room = DiningRoom.objects.select_related('in_charge', 'clientdiner__client').values(
+            'id', 'name', 'description', 'status', 'in_charge__first_name', 'in_charge__last_name', 'in_charge_id', 'clientdiner__client__company', 'clientdiner__client__id'
+        ).get(id=dining_room_id)
+
+        in_charge = {
+            'id': dining_room['in_charge_id'],
+            'first_name': dining_room['in_charge__first_name'],
+            'last_name': dining_room['in_charge__last_name']
+        }
+
+        context = {
+            'dining_room_id': dining_room['id'],
+            'name': dining_room['name'],
+            'description': dining_room['description'],
+            'status': dining_room['status'],
+            'in_charge': in_charge,
+        }
+
+        return JsonResponse(context)
+    except DiningRoom.DoesNotExist:
+        return JsonResponse({'error': 'Comedor no encontrado'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 # ================================== COMEDORES ================================== #
 @csrf_exempt
