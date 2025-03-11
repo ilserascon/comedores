@@ -727,6 +727,7 @@ def get_empleados(request):
     page_number = request.GET.get('page', 1)
     page_size = request.GET.get('page_size', 10)
     search_query = request.GET.get('search', '')
+    filter_value = request.GET.get('filter', 'all')
 
     empleados = Employee.objects.all()
 
@@ -739,6 +740,9 @@ def get_empleados(request):
             Q(client__company__icontains=search_query) |
             Q(payroll__description__icontains=search_query)
         )
+
+    if filter_value != 'all':
+        empleados = empleados.filter(client__id=filter_value)
 
     empleados = empleados.values(
         'id', 'employeed_code', 'name', 'lastname', 'second_lastname', 'client__company', 'payroll__description', 'status'
