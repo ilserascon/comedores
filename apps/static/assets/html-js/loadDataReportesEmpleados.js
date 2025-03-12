@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const filterForm = document.getElementById('filterForm');
+    const btnCleanFilters = document.getElementById('dropFiltersBtn');
     const applyFiltersBtn = document.getElementById('applyFiltersBtn');
     const generalReportsTableBody = document.getElementById('generalReportsTableBody');
     const summaryReportsTableBody = document.getElementById('summaryReportsTableBody');
@@ -129,7 +129,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Fetch and display employee details
     async function viewEmployeeDetails(filters) {
-        console.log('filtros detalle', filters);
         const data = await fetchEmployeeReportSummaryDetails({ ...filters });   
         document.getElementById('detail_code').value = data.employee_detail.employee_code;
         document.getElementById('detail_first_name').value = data.employee_detail.employee_name;
@@ -213,8 +212,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (event.target.tagName === 'A') {
                 const pageNumber = event.target.getAttribute('page-number');
                 pagination.removeEventListener('click', arguments.callee); // Desactivar evento
-                console.log('filtros paginacion', filters);
-                console.log('pagina', pageNumber);
                 await fetchFunction({...filters, page:pageNumber});
                 pagination.addEventListener('click', arguments.callee); // Reactivar evento
             }
@@ -248,7 +245,6 @@ document.addEventListener('DOMContentLoaded', function() {
             filterEndDate: document.getElementById('filterEndDate').value
         };
 
-        console.log('filtros boton', filters);
         fetchAndDisplayGeneralReports(filters);
         fetchAndDisplaySummaryReports(filters);
     });
@@ -256,6 +252,18 @@ document.addEventListener('DOMContentLoaded', function() {
     // Cerrar modal con esc o picando afuera
     viewDetailsModal._element.addEventListener('hidden.bs.modal', function() {
         paginationDetalle.innerHTML = '';
+    });
+
+    // Clear filters
+    btnCleanFilters.addEventListener('click', function() {
+        document.getElementById('filterClient').value = '';
+        document.getElementById('filterDiningRoom').value = '';
+        document.getElementById('filterEmployeeNumber').value = '';
+        document.getElementById('filterStatus').value = '';
+        document.getElementById('filterStartDate').value = '';
+        document.getElementById('filterEndDate').value = '';
+        fetchAndDisplayGeneralReports({});
+        fetchAndDisplaySummaryReports({});
     });
 
     // Initial population of filters and reports
