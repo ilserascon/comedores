@@ -803,7 +803,6 @@ def get_empleado(request):
     except Employee.DoesNotExist:
         return JsonResponse({'error': 'Empleado no encontrado'}, status=404)
     except Exception as e:
-        print(f"Error: {e}")
         return JsonResponse({'error': str(e)}, status=500)
 
 
@@ -835,7 +834,6 @@ def create_empleado(request):
         except PayrollType.DoesNotExist:
             return JsonResponse({'error': 'Tipo de nómina no encontrado'}, status=404)
         except Exception as e:
-            print(f"Error: {e}")
             return JsonResponse({'error': str(e)}, status=500)
     else:
         return JsonResponse({'error': 'Método no permitido'}, status=405)
@@ -871,7 +869,6 @@ def update_empleado(request):
     except PayrollType.DoesNotExist:
         return JsonResponse({'error': 'Tipo de nómina no encontrado'}, status=404)
     except Exception as e:
-        print(f"Error: {e}")
         return JsonResponse({'error': str(e)}, status=500)
 
 
@@ -921,7 +918,6 @@ def upload_empleados(request):
         except PayrollType.DoesNotExist:
             return JsonResponse({'error': 'Tipo de nómina no encontrado'}, status=404)
         except Exception as e:
-            print(f"Error: {e}")
             return JsonResponse({'error': str(e)}, status=500)
     else:
         return JsonResponse({'error': 'Método no permitido'}, status=405)
@@ -1210,5 +1206,4 @@ def get_employee_report_summary_details(request):
     except Employee.DoesNotExist:
         return JsonResponse({'error': 'Empleado no encontrado'}, status=404)
     except Exception as e:
-        print(f"Error: {e}")
         return JsonResponse({'error': str(e)}, status=500)
