@@ -10,9 +10,9 @@ from django.shortcuts import render
 from django.template import loader
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
-from .models import DiningRoom, ClientDiner, Client, Employee, PayrollType
+from .models import DiningRoom, ClientDiner, Client, Employee, PayrollType, Entry, EmployeeClientDiner
 from apps.authentication.models import CustomUser, Role
-from django.db.models import Q
+from django.db.models import Q, F, Count
 from django.db import IntegrityError, transaction
 import json
 from django.contrib.auth.hashers import make_password
@@ -935,4 +935,265 @@ def get_clientes(request):
         }        
         return JsonResponse(context)
     except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+# ===================== REPORTE EMPLEADOS ===================== #
+@csrf_exempt
+def get_employee_report_general(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    page = request.GET.get('page', 1)
+    page_size = request.GET.get('page_size', 10)
+
+    try:
+        filters = {
+            'employee_client_diner__client_diner__client__id': request.GET.get('filterClient'),
+            'employee_client_diner__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
+            'employee_client_diner__employee__employeed_code__icontains': request.GET.get('filterEmployeeNumber'),
+            'employee_client_diner__employee__status': request.GET.get('filterStatus'),
+            'created_at__gte': request.GET.get('filterStartDate'),
+            'created_at__lte': request.GET.get('filterEndDate')
+        }
+        filters = {k: v for k, v in filters.items() if v}
+
+        entry_employee = Entry.objects.select_related(
+            'employee_client_diner__employee',
+            'employee_client_diner__client_diner__client',
+            'employee_client_diner__client_diner__dining_room'
+        ).filter(**filters).values(
+            client_company=F('employee_client_diner__client_diner__client__company'),
+            client_name=F('employee_client_diner__client_diner__client__name'),
+            client_lastname=F('employee_client_diner__client_diner__client__lastname'),
+            client_second_lastname=F('employee_client_diner__client_diner__client__second_lastname'),
+            dining_room_name=F('employee_client_diner__client_diner__dining_room__name'),
+            employee_code=F('employee_client_diner__employee__employeed_code'),
+            employee_name=F('employee_client_diner__employee__name'),
+            employee_lastname=F('employee_client_diner__employee__lastname'),
+            employee_second_lastname=F('employee_client_diner__employee__second_lastname'),
+            employee_status=F('employee_client_diner__employee__status'),
+            entry_created_at=F('created_at')
+        ).order_by('created_at')
+
+        paginator = Paginator(entry_employee, page_size)
+
+        try:
+            entry_employee = paginator.page(page)
+        except PageNotAnInteger:
+            entry_employee = paginator.page(1)
+        except EmptyPage:
+            entry_employee = paginator.page(paginator.num_pages)
+
+        context = {
+            'entry_employee': list(entry_employee),
+            'page': entry_employee.number,
+            'pages': paginator.num_pages,
+            'has_previous': entry_employee.has_previous(),
+            'has_next': entry_employee.has_next()
+        }
+
+        return JsonResponse(context)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def get_clients_employee_reports(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        filters = {
+            'employee_client_diner__client_diner__client__id': request.GET.get('filterClient'),
+            'employee_client_diner__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
+            'employee_client_diner__employee__employeed_code__icontains': request.GET.get('filterEmployeeNumber'),
+            'employee_client_diner__employee__status': request.GET.get('filterStatus'),
+            'created_at__gte': request.GET.get('filterStartDate'),
+            'created_at__lte': request.GET.get('filterEndDate')
+        }
+        filters = {k: v for k, v in filters.items() if v}
+
+        clients = Entry.objects.select_related(
+            'employee_client_diner__client_diner__client'
+        ).filter(**filters).values(
+            'employee_client_diner__client_diner__client__id',
+            'employee_client_diner__client_diner__client__company'
+        ).distinct()
+
+        context = {
+            'clients': list(clients)
+        }
+
+        return JsonResponse(context)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def get_diner_employee_reports(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        filters = {
+            'employee_client_diner__client_diner__client__id': request.GET.get('filterClient'),
+            'employee_client_diner__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
+            'employee_client_diner__employee__employeed_code__icontains': request.GET.get('filterEmployeeNumber'),
+            'employee_client_diner__employee__status': request.GET.get('filterStatus'),
+            'created_at__gte': request.GET.get('filterStartDate'),
+            'created_at__lte': request.GET.get('filterEndDate')
+        }
+        filters = {k: v for k, v in filters.items() if v}
+
+        diners = Entry.objects.select_related(
+            'employee_client_diner__client_diner__dining_room'
+        ).filter(**filters).values(
+            'employee_client_diner__client_diner__dining_room__id',
+            'employee_client_diner__client_diner__dining_room__name'
+        ).distinct()
+
+        context = {
+            'diners': list(diners)
+        }
+
+        return JsonResponse(context)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def get_employee_report_summary(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    page_number = request.GET.get('page', 1)
+    page_size = request.GET.get('page_size', 10)
+    try:
+        filters = {
+            'employee_client_diner__client_diner__client__id': request.GET.get('filterClient'),
+            'employee_client_diner__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
+            'employee_client_diner__employee__employeed_code__icontains': request.GET.get('filterEmployeeNumber'),
+            'employee_client_diner__employee__status': request.GET.get('filterStatus'),
+            'created_at__gte': request.GET.get('filterStartDate'),
+            'created_at__lte': request.GET.get('filterEndDate')
+        }
+        filters = {k: v for k, v in filters.items() if v}
+
+        employee_report_summary = Entry.objects.select_related(
+            'employee_client_diner__employee',
+            'employee_client_diner__client_diner__client',
+            'employee_client_diner__client_diner__dining_room'
+        ).filter(**filters).values(
+            employee_id=F('employee_client_diner__employee__id'),
+            dining_room_id=F('employee_client_diner__client_diner__dining_room__id'),
+            client_company=F('employee_client_diner__client_diner__client__company'),
+            client_name=F('employee_client_diner__client_diner__client__name'),
+            client_lastname=F('employee_client_diner__client_diner__client__lastname'),
+            client_second_lastname=F('employee_client_diner__client_diner__client__second_lastname'),
+            dining_room_name=F('employee_client_diner__client_diner__dining_room__name'),
+            employee_code=F('employee_client_diner__employee__employeed_code'),
+            employee_name=F('employee_client_diner__employee__name'),
+            employee_lastname=F('employee_client_diner__employee__lastname'),
+            employee_second_lastname=F('employee_client_diner__employee__second_lastname'),
+            employee_status=F('employee_client_diner__employee__status')
+        ).annotate(
+            entry_count=Count('id')
+        ).order_by('employee_code')
+
+        paginator = Paginator(employee_report_summary, page_size)
+        try:
+            employee_report_summary = paginator.page(page_number)
+        except PageNotAnInteger:
+            employee_report_summary = paginator.page(1)
+        except EmptyPage:
+            employee_report_summary = paginator.page(paginator.num_pages)
+
+        context = {
+            'employee_report_summary': list(employee_report_summary),
+            'page': employee_report_summary.number,
+            'pages': paginator.num_pages,
+            'has_previous': employee_report_summary.has_previous(),
+            'has_next': employee_report_summary.has_next()
+        }
+
+        return JsonResponse(context)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def get_employee_report_summary_details(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    employee_id = request.GET.get('employeeId')
+    diner_id = request.GET.get('dinerId')
+    page_number = request.GET.get('page', 1)
+    page_size = request.GET.get('page_size', 5)
+
+    if not employee_id:
+        return JsonResponse({'error': 'employee_id es requerido'}, status=400)
+    
+    try:
+        filters = {
+            'employee_client_diner__client_diner__client__id': request.GET.get('filterClient'),
+            'employee_client_diner__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
+            'employee_client_diner__employee__employeed_code__icontains': request.GET.get('filterEmployeeNumber'),
+            'employee_client_diner__employee__status': request.GET.get('filterStatus'),
+            'created_at__gte': request.GET.get('filterStartDate'),
+            'created_at__lte': request.GET.get('filterEndDate'),
+            'employee_client_diner__employee__id': employee_id
+        }
+        filters = {k: v for k, v in filters.items() if v}
+
+        employee_detail = Entry.objects.select_related(
+            'employee_client_diner__employee',
+            'employee_client_diner__client_diner__client',
+            'employee_client_diner__client_diner__dining_room'
+        ).filter(**filters).values(
+            employee_code=F('employee_client_diner__employee__employeed_code'),
+            employee_name=F('employee_client_diner__employee__name'),
+            employee_lastname=F('employee_client_diner__employee__lastname'),
+            employee_second_lastname=F('employee_client_diner__employee__second_lastname'),
+            employee_status=F('employee_client_diner__employee__status'),
+        ).annotate(
+            entry=Count('id')
+        ).first()
+
+        filters['employee_client_diner__client_diner__dining_room__id'] = diner_id
+        
+        # Traer las entradas del empleado
+        employee_entries = Entry.objects.select_related(
+            'employee_client_diner__client_diner__client',
+            'employee_client_diner__client_diner__dining_room'
+        ).filter(**filters).values(
+            client_company=F('employee_client_diner__client_diner__client__company'),
+            client_name=F('employee_client_diner__client_diner__client__name'),
+            client_lastname=F('employee_client_diner__client_diner__client__lastname'),
+            client_second_lastname=F('employee_client_diner__client_diner__client__second_lastname'),
+            dining_room_name=F('employee_client_diner__client_diner__dining_room__name'),
+            entry_created_at=F('created_at')
+        ).order_by('created_at')
+
+        employee_entries_len = len(employee_entries)
+        employee_detail['entry_count'] = employee_entries_len
+
+        paginator = Paginator(employee_entries, page_size)
+        try:
+            employee_entries = paginator.page(page_number)
+        except PageNotAnInteger:
+            employee_entries = paginator.page(1)
+        except EmptyPage:
+            employee_entries = paginator.page(paginator.num_pages)
+
+        context = {
+            'employee_detail': employee_detail,
+            'employee_entries': list(employee_entries),
+            'page': employee_entries.number,
+            'pages': paginator.num_pages,
+            'has_previous': employee_entries.has_previous(),
+            'has_next': employee_entries.has_next()
+        }
+
+        return JsonResponse(context)
+    except Employee.DoesNotExist:
+        return JsonResponse({'error': 'Empleado no encontrado'}, status=404)
+    except Exception as e:
+        print(f"Error: {e}")
         return JsonResponse({'error': str(e)}, status=500)

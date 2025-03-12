@@ -31,12 +31,14 @@
                             <div class="col-md-3 mb-3">
                                 <label for="filterClient" class="form-label">Cliente</label>
                                 <select class="form-control" id="filterClient">
+                                    <option value="">Todos</option>
                                     <!-- Clientes will be populated here -->
                                 </select>
                             </div>
                             <div class="col-md-3 mb-3">
                                 <label for="filterDiningRoom" class="form-label">Comedor</label>
                                 <select class="form-control" id="filterDiningRoom">
+                                    <option value="">Todos</option>
                                     <!-- Comedores will be populated here -->
                                 </select>
                             </div>
@@ -48,8 +50,8 @@
                                 <label for="filterStatus" class="form-label">Estatus de Empleado</label>
                                 <select class="form-control" id="filterStatus">
                                     <option value="">Todos</option>
-                                    <option value="activo">Activo</option>
-                                    <option value="inactivo">Inactivo</option>
+                                    <option value="1">Activo</option>
+                                    <option value="0">Inactivo</option>
                                 </select>
                             </div>
                         </div>
@@ -96,6 +98,7 @@
                                 <table class="table align-items-center table-flush">
                                     <thead class="thead-light">
                                         <tr>
+                                            <th scope="col">Compañía</th>
                                             <th scope="col">Cliente</th>
                                             <th scope="col">Comedor</th>
                                             <th scope="col">Número de Empleado</th>
@@ -111,7 +114,7 @@
                             </div>
                             <div class="card-footer py-4">
                               <nav aria-label="...">
-                                  <ul class="pagination justify-content-end mb-0" id="pagination-general">
+                                  <ul class="pagination justify-content-end mb-0 pt-0" id="pagination-general">
                                       <!-- Pagination links will be populated here -->
                                   </ul>
                               </nav>
@@ -123,6 +126,7 @@
                                 <table class="table align-items-center table-flush">
                                     <thead class="thead-light">
                                         <tr>
+                                            <th scope="col">Compañía</th>
                                             <th scope="col">Cliente</th>
                                             <th scope="col">Comedor</th>
                                             <th scope="col">Número de Empleado</th>
@@ -139,7 +143,7 @@
                             </div>
                             <div class="card-footer py-4">
                               <nav aria-label="...">
-                                  <ul class="pagination justify-content-end mb-0" id="pagination-resumen">
+                                  <ul class="pagination justify-content-end mb-0 pt-0" id="pagination-resumen">
                                       <!-- Pagination links will be populated here -->
                                   </ul>
                               </nav>
@@ -157,30 +161,34 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="viewDetailsModalLabel">Detalles del Empleado</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body pb-1">
                     <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="detail_code" class="form-label">Número de Empleado</label>
+                            <input type="text" class="form-control" id="detail_code" disabled>
+                        </div>
                         <div class="col-md-6 mb-3">
                             <label for="detail_first_name" class="form-label">Nombre</label>
                             <input type="text" class="form-control" id="detail_first_name" disabled>
                         </div>
+                    </div>
+                    <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="detail_last_name" class="form-label">Apellido Paterno</label>
                             <input type="text" class="form-control" id="detail_last_name" disabled>
                         </div>
-                    </div>
-                    <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="detail_second_last_name" class="form-label">Apellido Materno</label>
                             <input type="text" class="form-control" id="detail_second_last_name" disabled>
                         </div>
+                    </div>
+                    <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="detail_status" class="form-label">Estado</label>
                             <input type="text" class="form-control" id="detail_status" disabled>
                         </div>
-                    </div>
-                    <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="detail_entries" class="form-label">Número de Entradas</label>
                             <input type="text" class="form-control" id="detail_entries" disabled>
@@ -190,6 +198,7 @@
                         <table class="table align-items-center table-flush">
                             <thead class="thead-light">
                                 <tr>
+                                    <th scope="col">Compañía</th>
                                     <th scope="col">Cliente</th>
                                     <th scope="col">Comedor</th>
                                     <th scope="col">Fecha y Hora de Entrada</th>
@@ -202,14 +211,14 @@
                     </div>
                     <div class="card-footer py-4">
                       <nav aria-label="...">
-                          <ul class="pagination justify-content-end mb-0" id="pagination-detalle">
+                          <ul class="pagination justify-content-end mb-0 pt-0" id="pagination-detalle">
                               <!-- Pagination links will be populated here -->
                           </ul>
                       </nav>
                   </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <div class="modal-footer pt-1">
+                    <button type="button" class="btn btn-secondary mt-0" data-dismiss="modal">Cerrar</button>
                 </div>
             </div>
         </div>
