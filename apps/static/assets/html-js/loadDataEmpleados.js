@@ -15,7 +15,8 @@ let currentPage = 1;
  */
 async function loadEmpleados(page = currentPage, pageSize = 10, searchQuery = '') {
     try {
-        const data = await getEmpleados(page, pageSize, searchQuery);
+        const filterValue = document.getElementById('filterEmployeeSelect').value;
+        const data = await getEmpleados(page, pageSize, searchQuery, filterValue);
         const empleados = data.empleados;
         const empleadosTableBody = document.getElementById('empleadosTableBody');
         empleadosTableBody.innerHTML = '';
@@ -327,6 +328,26 @@ async function crearEmpleado() {
     }
 }
 
+async function llenarSelectClientes() {
+    try {
+        const clientes = await getClientes();
+        const filterEmployeeSelect = document.getElementById('filterEmployeeSelect');
+
+        // Limpiar las opciones existentes
+        filterEmployeeSelect.innerHTML = '<option value="all">Todos</option>';
+
+        // Agregar las nuevas opciones
+        clientes.forEach(cliente => {
+            const option = document.createElement('option');
+            option.value = cliente.id;
+            option.textContent = cliente.company;
+            filterEmployeeSelect.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error al llenar el select de clientes:', error.message);
+    }
+}
+
 
 /**
  * MUESTRA UNA NOTIFICACIÓN TIPO TOAST.
@@ -429,4 +450,12 @@ document.getElementById('actualizarEmpleadoBtn').addEventListener('click', actua
 document.getElementById('searchUserInput').addEventListener('input', function() {
     const searchQuery = this.value;
     loadEmpleados(1, 10, searchQuery); // Reiniciar a la primera página al buscar
+});
+
+document.getElementById('filterEmployeeSelect').addEventListener('change', function() {
+    loadEmpleados(1, 10, document.getElementById('searchUserInput').value);
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    llenarSelectClientes();
 });
