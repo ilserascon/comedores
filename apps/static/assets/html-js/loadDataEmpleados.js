@@ -90,7 +90,8 @@ async function loadEmpleados(page = currentPage, pageSize = 10, searchQuery = ''
  */
 async function loadClientes() {
     try {
-        const clientes = await getClientes();
+        const response = await getClientes();
+        const clientes = response.clientes;
         const selectCliente = document.getElementById('selectCliente');
         selectCliente.innerHTML = '<option value="" disabled selected>Seleccione un cliente</option>';
         clientes.forEach(cliente => {
@@ -114,12 +115,14 @@ async function loadClientes() {
  */
 async function openEditModal(empleadoId) {
     try {
-        const [empleado, clientes, tiposNomina] = await Promise.all([
+        const [empleado, responseClientes, tiposNomina] = await Promise.all([
             getEmpleado(empleadoId),
             getClientes(),
             getTiposNomina()
         ]);
 
+        const clientes = responseClientes.clientes;  // Acceder a la propiedad 'clientes'
+        
         originalEmpleadoData = {
             employeed_code: empleado.employeed_code,
             name: empleado.name,
@@ -268,11 +271,12 @@ async function actualizarEmpleado() {
  */
 async function openCreateModal() {
     try {
-        const [clientes, tiposNomina] = await Promise.all([
+        const [responseClientes, tiposNomina] = await Promise.all([
             getClientes(),
             getTiposNomina()
         ]);
 
+        const clientes = responseClientes.clientes;
         const clientSelect = document.getElementById('crearEmployeeClient');
         clientSelect.innerHTML = '<option value="" disabled selected>--------</option>';
         clientes.forEach(cliente => {
@@ -330,7 +334,8 @@ async function crearEmpleado() {
 
 async function llenarSelectClientes() {
     try {
-        const clientes = await getClientes();
+        const response = await getClientes();
+        const clientes = response.clientes;
         const filterEmployeeSelect = document.getElementById('filterEmployeeSelect');
 
         // Limpiar las opciones existentes
