@@ -45,11 +45,11 @@
                                 <input type="text" class="form-control" id="filterVoucherNumber">
                             </div>
                             <div class="col-md-3 mb-3">
-                                <label for="filterStatus" class="form-label">Estatus del Vale</label>
+                                <label for="filterStatus" class="form-label">Estado del Vale</label>
                                 <select class="form-control" id="filterStatus">
                                     <option value="">Todos</option>
-                                    <option value="activo">Activo</option>
-                                    <option value="inactivo">Inactivo</option>
+                                    <option value="1">No Usados</option>
+                                    <option value="0">Usados</option>
                                 </select>
                             </div>
                         </div>
@@ -88,6 +88,7 @@
                         <table class="table align-items-center table-flush">
                             <thead class="thead-light">
                                 <tr>
+                                    <th scope="col">Compañía</th>
                                     <th scope="col">Cliente</th>
                                     <th scope="col">Comedor</th>
                                     <th scope="col">Folio</th>
@@ -124,5 +125,5 @@
 {% endblock content %}
 
 {% block javascripts %}
-<script src="/static/assets/html-js/loadDataReportesValesUnicos.js"></script>
+<script src="/static/assets/html-js/loadDataUnicosReportes.js"></script>
 {% endblock javascripts %}

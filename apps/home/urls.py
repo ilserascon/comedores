@@ -52,6 +52,11 @@ urlpatterns = [
     path('get_employee_report_summary', views.get_employee_report_summary, name='get_employee_report_summary'),
     path('get_employee_report_summary_details', views.get_employee_report_summary_details, name='get_employee_report_summary_details'),
 
+    # ===================== REPORTE VALES UNICOS ===================== #
+    path('get_unique_reports', views.get_unique_reports, name='get_unique_reports'),
+    path('get_clients_unique_reports', views.get_clients_unique_reports, name='get_clients_unique_reports'),
+    path('get_diners_unique_reports', views.get_diners_unique_reports, name='get_diners_unique_reports'),
+
     # Matches any html file
     re_path(r'^.*\.*', views.pages, name='pages'),
 

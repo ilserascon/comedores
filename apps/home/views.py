@@ -2,7 +2,7 @@
 """
 Copyright (c) 2019 - present AppSeed.us
 """
-
+from datetime import datetime
 from django import template
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse, HttpResponseForbidden
@@ -10,9 +10,9 @@ from django.shortcuts import render
 from django.template import loader
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
-from .models import DiningRoom, ClientDiner, Client, Employee, PayrollType, Entry, EmployeeClientDiner
+from .models import DiningRoom, ClientDiner, Client, Employee, PayrollType, Entry, EmployeeClientDiner, Voucher
 from apps.authentication.models import CustomUser, Role
-from django.db.models import Q, F, Count
+from django.db.models import Q, F, Count, Exists, OuterRef
 from django.db import IntegrityError, transaction
 import json
 from django.contrib.auth.hashers import make_password
@@ -565,8 +565,9 @@ def user_list(request):
             if len(data['first_name']) < 2 or len(data['last_name']) < 2:
                 return JsonResponse({'error': 'El nombre y apellido paterno deben tener al menos 2 caracteres'}, status=400)
                         
-            if '@' not in data['email'] or '.' not in data['email']:
-                return JsonResponse({'error': 'Correo electrónico inválido'}, status=400)
+            if 'email' in data and data['email']:
+                if '@' not in data['email'] or '.' not in data['email']:
+                    return JsonResponse({'error': 'Correo electrónico inválido'}, status=400)
             
             if len(data['password']) < 8 or not any(char.isdigit() for char in data['password']) or not any(char.isalpha() for char in data['password']):
                 return JsonResponse({'error': 'La contraseña debe tener al menos 8 caracteres, una letra y un número'}, status=400)
@@ -577,7 +578,7 @@ def user_list(request):
                     first_name=data['first_name'],
                     last_name=data['last_name'],
                     second_last_name=data['second_last_name'],
-                    email=data['email'],
+                    email=data.get('email', ''),
                     password=make_password(data['password']),
                     role=role,
                     status=data.get('status', True),
@@ -636,8 +637,9 @@ def user_detail(request, user_id):
             if len(data['first_name']) < 2 or len(data['last_name']) < 2:
                 return JsonResponse({'error': 'El nombre y apellido paterno deben tener al menos 2 caracteres'}, status=400)
             
-            if '@' not in data['email'] or '.' not in data['email']:
-                return JsonResponse({'error': 'Correo electrónico inválido'}, status=400)
+            if 'email' in data and data['email']:
+                if '@' not in data['email'] or '.' not in data['email']:
+                    return JsonResponse({'error': 'Correo electrónico inválido'}, status=400)
             
             if 'password' in data and data['password'] is not None:
                 if len(data['password']) < 8 or not any(char.isdigit() for char in data['password']) or not any(char.isalpha() for char in data['password']):
@@ -1192,3 +1194,212 @@ def get_employee_report_summary_details(request):
         return JsonResponse({'error': 'Empleado no encontrado'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+# ===================== REPORTE VALES UNICOS ===================== #
+@csrf_exempt
+def get_unique_reports(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    page_number = request.GET.get('page', 1)
+    page_size = request.GET.get('page_size', 10)    
+
+    try:
+        # Filtros de vales
+        filters = {
+            'lots__client_diner__client__id': request.GET.get('filterClient'),
+            'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
+            'folio__icontains': request.GET.get('filterVoucherNumber'),
+            'status': request.GET.get('filterStatus'),
+            'lots__voucher_type_id': 2
+        }
+
+        filters = {k: v for k, v in filters.items() if v}
+
+        # Convertir las fechas a datetime si están presentes
+        start_date = request.GET.get('filterStartDate')
+        end_date = request.GET.get('filterEndDate')
+        
+        if start_date:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+        if end_date:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+
+        # Filtro de entradas solo cuando se han proporcionado fechas
+        entry_filter = {}
+        if start_date:
+            entry_filter['created_at__gte'] = start_date
+        if end_date:
+            entry_filter['created_at__lte'] = end_date
+
+        # Si se especifica alguna fecha, se filtran solo los vales con entradas dentro del rango
+        if entry_filter:
+            vouchers = Voucher.objects.select_related(
+                'lots__client_diner__client',
+                'lots__client_diner__dining_room',
+            ).filter(**filters).filter(
+                Exists(
+                    Entry.objects.filter(voucher_id=OuterRef('id')).filter(**entry_filter)
+                )
+            ).values(
+                'id',
+                client_company=F('lots__client_diner__client__company'),
+                client_name=F('lots__client_diner__client__name'),
+                client_lastname=F('lots__client_diner__client__lastname'),
+                client_second_lastname=F('lots__client_diner__client__second_lastname'),
+                dining_room_name=F('lots__client_diner__dining_room__name'),
+                voucher_folio=F('folio'),
+                voucher_status=F('status')
+            ).order_by('-id')
+        else:
+            # Si no hay fechas, no aplicamos el filtro de entradas
+            vouchers = Voucher.objects.select_related(
+                'lots__client_diner__client',
+                'lots__client_diner__dining_room',
+            ).filter(**filters).values(
+                'id',
+                client_company=F('lots__client_diner__client__company'),
+                client_name=F('lots__client_diner__client__name'),
+                client_lastname=F('lots__client_diner__client__lastname'),
+                client_second_lastname=F('lots__client_diner__client__second_lastname'),
+                dining_room_name=F('lots__client_diner__dining_room__name'),
+                voucher_folio=F('folio'),
+                voucher_status=F('status')
+            ).order_by('-id')
+
+        # Obtener los IDs de los vales para buscar las entradas
+        voucher_ids = [voucher['id'] for voucher in vouchers]
+        
+        # Obtener las entradas dentro del rango de fechas si existen fechas
+        entry_filters = {
+            'voucher_id__in': voucher_ids
+        }
+        if start_date:
+            entry_filters['created_at__gte'] = start_date
+        if end_date:
+            entry_filters['created_at__lte'] = end_date
+
+        entries = Entry.objects.filter(**entry_filters).values(
+            'voucher_id',
+            'created_at'
+        )
+
+        # Crear un diccionario para mapear las entradas a los vales
+        entry_map = {entry['voucher_id']: entry['created_at'] for entry in entries}
+
+        # Añadir la información de las entradas a los vales
+        for voucher in vouchers:
+            voucher['entry_created_at'] = entry_map.get(voucher['id'], None)
+
+        paginator = Paginator(vouchers, page_size)
+
+        try:
+            vouchers = paginator.page(page_number)
+        except PageNotAnInteger:
+            vouchers = paginator.page(1)
+        except EmptyPage:
+            vouchers = paginator.page(paginator.num_pages)
+
+        context = {
+            'unique_reports': list(vouchers),
+            'page': vouchers.number,
+            'pages': paginator.num_pages,
+            'has_previous': vouchers.has_previous(),
+            'has_next': vouchers.has_next()
+        }
+
+        return JsonResponse(context)
+    except Exception as e:
+        print(e)
+        return JsonResponse({'error': str(e)}, status=500)
+    
+@csrf_exempt
+def get_clients_unique_reports(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+    try:
+        # Filtros para los vales
+        filters = {
+            'lots__client_diner__client__id': request.GET.get('filterClient'),
+            'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
+            'folio__icontains': request.GET.get('filterVoucherNumber'),
+            'status': request.GET.get('filterStatus'),
+            'lots__voucher_type_id': 2
+        }
+        filters = {k: v for k, v in filters.items() if v}
+
+        # Convertir las fechas a datetime si están presentes
+        start_date = request.GET.get('filterStartDate')
+        end_date = request.GET.get('filterEndDate')
+        
+        if start_date:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+        if end_date:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+
+        # Filtrar los vales
+        vouchers = Voucher.objects.select_related(
+            'lots__client_diner__client'
+        ).filter(**filters)
+
+        # Filtrar los clientes únicos de los vales
+        clients = vouchers.values(
+            client_id=F('lots__client_diner__client__id'),
+            client_company=F('lots__client_diner__client__company')
+        ).distinct()
+
+        context = {
+            'clients': list(clients)
+        }
+
+        return JsonResponse(context)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def get_diners_unique_reports(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        # Filtros para los vales
+        filters = {
+            'lots__client_diner__client__id': request.GET.get('filterClient'),
+            'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
+            'folio__icontains': request.GET.get('filterVoucherNumber'),
+            'status': request.GET.get('filterStatus'),
+            'lots__voucher_type_id': 2
+        }
+        filters = {k: v for k, v in filters.items() if v}
+
+        # Convertir las fechas a datetime si están presentes
+        start_date = request.GET.get('filterStartDate')
+        end_date = request.GET.get('filterEndDate')
+        
+        if start_date:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+        if end_date:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+
+        # Filtrar los vales
+        vouchers = Voucher.objects.select_related(
+            'lots__client_diner__dining_room'
+        ).filter(**filters)
+
+        # Filtrar los comensales únicos de los vales
+        diners = vouchers.values(
+            diner_id=F('lots__client_diner__dining_room__id'),
+            diner_name=F('lots__client_diner__dining_room__name')
+        ).distinct()
+
+        context = {
+            'diners': list(diners)
+        }
+
+        return JsonResponse(context)
+    except Exception as e:
+        print(e)
+        return JsonResponse({'error': str(e)}, status=500)
+
+# ===================== REPORTE VALES PERPETUOS ===================== #
