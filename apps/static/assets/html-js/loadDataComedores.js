@@ -110,18 +110,16 @@ async function openEditModal(id) {
     try {
         const comedor = await getComedor(id);
 
+        // Llenar los selects antes de asignar los valores
+        await llenarSelectEncargados('editarComedorInCharge', comedor.in_charge);
+        await llenarSelectClientes('editarComedorClient');        
+
+        // Asignar los valores a los campos del modal
         document.getElementById('editarComedorName').value = comedor.name;
         document.getElementById('editarComedorDescription').value = comedor.description;
-        document.getElementById('editarComedorClient').value = comedor.company;
         document.getElementById('editarComedorStatus').value = comedor.status ? '1' : '0';
         document.getElementById('editarComedorId').value = comedor.dining_room_id;
-        document.getElementById('editarComedorClient').value = comedor.client_id;
-
-        await llenarSelectClientes('editarComedorClient');
-        document.getElementById('editarComedorClient').value = comedor.client_id;
-
-        await llenarSelectEncargados('editarComedorInCharge');
-        document.getElementById('editarComedorInCharge').value = comedor.in_charge.id;
+        document.getElementById('editarComedorClient').value = comedor.client.id;        
 
         $('#editarComedorModal').modal('show');
     } catch (error) {
@@ -166,6 +164,10 @@ async function crearComedor() {
 
         // Mantener el valor actual del filtro seleccionado
         document.getElementById('filterComedorSelect').value = currentFilter;
+
+        // Llenar los selects de encargados con la nueva información
+        await llenarSelectEncargados('comedorInCharge');
+        await llenarSelectEncargados('editarComedorInCharge');
 
         // Cerrar el modal de creación
         $('#crearComedorModal').modal('hide');
@@ -214,19 +216,21 @@ async function actualizarComedor() {
         const hasChanged = (
             data.name !== originalComedor.name ||
             data.description !== originalComedor.description ||
-            data.client !== originalComedor.client_id.toString() ||
-            (data.inCharge || '') !== (originalComedor.in_charge ? originalComedor.in_charge.id?.toString() : '') ||
+            data.client !== (originalComedor.client ? originalComedor.client.id.toString() : '') ||
+            (data.inCharge || '') !== (originalComedor.in_charge && originalComedor.in_charge.id ? originalComedor.in_charge.id.toString() : '') ||
             data.status !== (originalComedor.status ? '1' : '0')
         );
-
-        await updateComedor(data);
 
         if (!hasChanged) {
             showToast('No se han realizado cambios', 'info');
             return;
-        } else {
-            showToast('Comedor actualizado exitosamente', 'success');
         }
+
+        await updateComedor(data);
+        showToast('Comedor actualizado exitosamente', 'success');
+
+        await llenarSelectEncargados('comedorInCharge');
+        await llenarSelectEncargados('editarComedorInCharge');
 
         await llenarSelectClientesComedores('filterComedorSelect');
         document.getElementById('filterComedorSelect').value = currentFilter;
@@ -245,24 +249,32 @@ async function actualizarComedor() {
  * @param {string} selectId - ID del select a llenar.
  * @throws {Error} - Error al obtener encargados.
  */
-async function llenarSelectEncargados(selectId) {
-    const select = document.getElementById(selectId);
-    const encargados = await getEncargados();
-    select.innerHTML = ''; // Limpiar opciones anteriores    
+async function llenarSelectEncargados(selectId, currentInCharge) {
+    try {
+        const encargados = await getEncargados();
+        const select = document.getElementById(selectId);
+        select.innerHTML = '<option value="" selected="selected">Sin asignar</option>'; // Limpiar opciones anteriores y agregar opción por defecto
 
-    // Agregar opción por defecto "-------"
-    const defaultOption = document.createElement('option');
-    defaultOption.value = '';
-    defaultOption.textContent = '-------';    
-    defaultOption.selected = true;
-    select.appendChild(defaultOption);
+        encargados.forEach(encargado => {
+            const option = document.createElement('option');
+            option.value = encargado.id;
+            option.textContent = `${encargado.first_name} ${encargado.last_name}`;
+            select.appendChild(option);
+        });
 
-    encargados.forEach(encargado => {
-        const option = document.createElement('option');
-        option.value = encargado.id;
-        option.textContent = `${encargado.first_name} ${encargado.last_name}`;
-        select.appendChild(option);
-    });
+        if (currentInCharge && currentInCharge.id) {
+            if (!encargados.some(encargado => encargado.id === currentInCharge.id)) {
+                const currentOption = document.createElement('option');
+                currentOption.value = currentInCharge.id;
+                currentOption.textContent = `${currentInCharge.first_name} ${currentInCharge.last_name}`;
+                select.appendChild(currentOption);
+            }
+            select.value = currentInCharge.id;
+        }
+
+    } catch (error) {
+        console.error('Error al llenar el select de encargados:', error.message);
+    }
 }
 
 
