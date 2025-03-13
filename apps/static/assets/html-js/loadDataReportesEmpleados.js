@@ -160,7 +160,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Assign viewEmployeeDetails to window object to make it globally accessible
     window.viewEmployeeDetails = viewEmployeeDetails;
-    // Function to create pagination links
+    
+    let isFetching = false; // Variable para controlar si se está haciendo una solicitud
+
     function createPagination(currentPage, totalPages, fetchFunction, filters, paginationId = 'pagination-general') {
         let paginationHTML = '';
         const pagination = document.getElementById(paginationId);
@@ -168,15 +170,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const halfPagesToShow = Math.floor(maxPagesToShow / 2);
         let startPage = Math.max(1, currentPage - halfPagesToShow);
         let endPage = Math.min(totalPages, currentPage + halfPagesToShow);
-
-        // Adjust the page range when near the start or end
+    
+        // Ajustar el rango de páginas cuando se está cerca del principio o final
         if (currentPage <= halfPagesToShow) {
             endPage = Math.min(totalPages, maxPagesToShow);
         } else if (currentPage + halfPagesToShow >= totalPages) {
             startPage = Math.max(1, totalPages - maxPagesToShow + 1);
         }
-
-        // Add the "Previous" button
+    
+        // Agregar el botón de "Anterior"
         if (currentPage > 1) {
             paginationHTML += `
                 <li class="page-item">
@@ -186,16 +188,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     </a>
                 </li>`;
         }
-
-        // Add the page number buttons
+    
+        // Agregar los botones de número de página
         for (let i = startPage; i <= endPage; i++) {
             paginationHTML += `
                 <li class="page-item ${i === currentPage ? 'active' : ''}" style="z-index: 0;">
                     <a class="page-link" href="javascript:void(0);" page-number="${i}">${i}</a>
                 </li>`;
         }
-
-        // Add the "Next" button
+    
+        // Agregar el botón de "Siguiente"
         if (currentPage < totalPages) {
             paginationHTML += `
                 <li class="page-item">
@@ -205,20 +207,31 @@ document.addEventListener('DOMContentLoaded', function() {
                     </a>
                 </li>`;
         }
-
+    
         pagination.innerHTML = paginationHTML;
     
-        pagination.addEventListener('click', async function(event) {
-            if (event.target.tagName === 'A') {
+        const handlePaginationClick = async function(event) {
+            if (event.target.tagName === 'A' && !isFetching) {
                 const pageNumber = event.target.getAttribute('page-number');
-                pagination.removeEventListener('click', arguments.callee); // Desactivar evento
-                await fetchFunction({...filters, page:pageNumber});
-                pagination.addEventListener('click', arguments.callee); // Reactivar evento
+                
+                // Marcar que estamos en una solicitud para evitar duplicados
+                isFetching = true;
+                
+                // Hacer la solicitud para obtener los datos de la página
+                await fetchFunction({ ...filters, page: pageNumber });
+    
+                // Marcar que la solicitud ha terminado
+                isFetching = false;
             }
-        });
+        };
+    
+        // Asegurarse de que no haya múltiples listeners
+        pagination.removeEventListener('click', handlePaginationClick);
+        pagination.addEventListener('click', handlePaginationClick);
     
         return paginationHTML;
     }
+    
 
 
     function formateDate(date){
