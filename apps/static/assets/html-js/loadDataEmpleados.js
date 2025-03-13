@@ -1,6 +1,3 @@
-document.addEventListener('DOMContentLoaded', loadEmpleados);
-document.addEventListener('DOMContentLoaded', loadClientes);
-
 let originalEmpleadoData = {};
 let currentPage = 1;
 
@@ -353,6 +350,28 @@ async function llenarSelectClientes() {
     }
 }
 
+async function llenarSelectComedoresClientes(clienteId) {
+    try {
+        const response = await getComedoresClientes(clienteId);
+        const comedoresClientes = response.comedores;
+        console.log(comedoresClientes);
+        const selectComedoresCliente = document.getElementById('selectComedor');
+
+        // Limpiar las opciones existentes
+        selectComedoresCliente.innerHTML = '<option value="" disabled selected>--------</option>';
+
+        // Agregar las nuevas opciones
+        comedoresClientes.forEach(comedorCliente => {
+            const option = document.createElement('option');
+            option.value = comedorCliente.id;
+            option.textContent = comedorCliente.name;
+            selectComedoresCliente.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error al llenar el select de los comedores de un cliente:', error.message);
+    }
+}
+
 
 /**
  * MUESTRA UNA NOTIFICACIÓN TIPO TOAST.
@@ -409,21 +428,37 @@ function showToast(message, type = 'success') {
  * @param {Array} empleados - La lista de empleados a cargar.
  * @returns {Promise<Object>} - Una promesa que se resuelve con los datos de la respuesta del servidor. 
  */
-document.getElementById('cargarEmpleadosBtn').addEventListener('click', async function() {
-    const fileInput = document.getElementById('archivoExcel');
-    const file = fileInput.files[0];
-    const clienteId = document.getElementById('selectCliente').value;
-
-    if (!clienteId) {
+function validarCampos(selectCliente, selectComedor, file) {
+    if (!selectCliente.value) {
         showToast('Por favor, seleccione un cliente', 'danger');
-        return;
+        return false;
+    }
+
+    if (!selectComedor.value) {
+        showToast('Por favor, seleccione un comedor', 'danger');
+        return false;
     }
 
     if (!file) {
         showToast('Por favor, seleccione un archivo Excel', 'danger');
-        return;
-    }    
+        return false;
+    }
 
+    return true;
+}
+
+function manejarSelectComedor(selectCliente, selectComedor) {
+    selectCliente.addEventListener('change', function() {
+        if (selectCliente.value) {
+            selectComedor.disabled = false;
+            llenarSelectComedoresClientes(selectCliente.value);
+        } else {
+            selectComedor.disabled = true;
+        }
+    });
+}
+
+async function manejarCargaEmpleados(file, selectCliente) {
     const reader = new FileReader();
     reader.onload = async function(e) {
         const data = new Uint8Array(e.target.result);
@@ -435,7 +470,7 @@ document.getElementById('cargarEmpleadosBtn').addEventListener('click', async fu
         console.log('Datos extraídos del archivo Excel:', jsonData);
 
         try {
-            const data = await uploadEmpleados(clienteId, jsonData);
+            const data = await uploadEmpleados(selectCliente.value, jsonData);
             console.log(data.message);
             $('#cargarEmpleadosModal').modal('hide');
             loadEmpleados();
@@ -447,20 +482,38 @@ document.getElementById('cargarEmpleadosBtn').addEventListener('click', async fu
     };
 
     reader.readAsArrayBuffer(file);
-});
-
-
-document.getElementById('guardarEmpleadoBtn').addEventListener('click', crearEmpleado);
-document.getElementById('actualizarEmpleadoBtn').addEventListener('click', actualizarEmpleado);
-document.getElementById('searchUserInput').addEventListener('input', function() {
-    const searchQuery = this.value;
-    loadEmpleados(1, 10, searchQuery); // Reiniciar a la primera página al buscar
-});
-
-document.getElementById('filterEmployeeSelect').addEventListener('change', function() {
-    loadEmpleados(1, 10, document.getElementById('searchUserInput').value);
-});
+}
 
 document.addEventListener('DOMContentLoaded', function() {
+    const selectCliente = document.getElementById('selectCliente');
+    const selectComedor = document.getElementById('selectComedor');
+
+    // Llamar a manejarSelectComedor cuando se cargue el DOM
+    manejarSelectComedor(selectCliente, selectComedor);
+
+    document.getElementById('cargarEmpleadosBtn').addEventListener('click', async function() {
+        const fileInput = document.getElementById('archivoExcel');
+        const file = fileInput.files[0];
+
+        if (!validarCampos(selectCliente, selectComedor, file)) {
+            return;
+        }
+
+        await manejarCargaEmpleados(file, selectCliente);
+    });
+
+    document.getElementById('guardarEmpleadoBtn').addEventListener('click', crearEmpleado);
+    document.getElementById('actualizarEmpleadoBtn').addEventListener('click', actualizarEmpleado);
+    document.getElementById('searchUserInput').addEventListener('input', function() {
+        const searchQuery = this.value;
+        loadEmpleados(1, 10, searchQuery); // Reiniciar a la primera página al buscar
+    });
+
+    document.getElementById('filterEmployeeSelect').addEventListener('change', function() {
+        loadEmpleados(1, 10, document.getElementById('searchUserInput').value);
+    });
+
     llenarSelectClientes();
+    loadEmpleados();
+    loadClientes();
 });

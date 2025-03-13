@@ -780,6 +780,31 @@ def update_empleado(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
+@csrf_exempt
+def get_comedores_clientes(request):
+    try:
+        client_id = request.GET.get('client_id')
+        
+        if not client_id:
+            return JsonResponse({'error': 'El parámetro client_id es obligatorio'}, status=400)
+        
+        # Realizar la consulta utilizando el ORM de Django
+        comedores = DiningRoom.objects.filter(
+            client_diner_dining_room__client_id=client_id,
+            status=True
+        ).values('id', 'name')
+        
+        comedores_list = list(comedores)
+        
+        context = {
+            'comedores': comedores_list
+        }
+        
+        return JsonResponse(context)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
 # ===================== ARCHIVO EXCEL ===================== #
 @csrf_exempt
 def upload_empleados(request):
