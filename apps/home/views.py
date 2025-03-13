@@ -984,7 +984,7 @@ def get_employee_report_general(request):
             employee_second_lastname=F('employee_client_diner__employee__second_lastname'),
             employee_status=F('employee_client_diner__employee__status'),
             entry_created_at=F('created_at')
-        ).order_by('created_at')
+        ).order_by('-created_at')
 
         paginator = Paginator(entry_employee, page_size)
 
@@ -1180,7 +1180,7 @@ def get_employee_report_summary_details(request):
             client_second_lastname=F('employee_client_diner__client_diner__client__second_lastname'),
             dining_room_name=F('employee_client_diner__client_diner__dining_room__name'),
             entry_created_at=F('created_at')
-        ).order_by('created_at')
+        ).order_by('-created_at')
 
         employee_entries_len = len(employee_entries)
         employee_detail['entry_count'] = employee_entries_len
