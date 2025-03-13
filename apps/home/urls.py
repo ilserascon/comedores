@@ -57,6 +57,15 @@ urlpatterns = [
     path('get_clients_unique_reports', views.get_clients_unique_reports, name='get_clients_unique_reports'),
     path('get_diners_unique_reports', views.get_diners_unique_reports, name='get_diners_unique_reports'),
 
+    # ===================== REPORTE VALES PERPETUOS ===================== #
+    path('get_perpetual_reports', views.get_perpetual_reports, name='get_perpetual_reports'),
+    path('get_clients_perpetual_reports', views.get_clients_perpetual_reports, name='get_clients_perpetual_reports'),
+    path('get_diners_perpetual_reports', views.get_diners_perpetual_reports, name='get_diners_perpetual_reports'),
+    path('get_perpetual_report_summary', views.get_perpetual_report_summary, name='get_perpetual_report_summary'),
+    path('get_perpetual_report_summary_details', views.get_perpetual_report_summary_details, name='get_perpetual_report_summary_details'),
+
+
+
     # Matches any html file
     re_path(r'^.*\.*', views.pages, name='pages'),
 

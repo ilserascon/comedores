@@ -42,16 +42,14 @@
                             </div>
                             <div class="col-md-3 mb-3">
                                 <label for="filterEmployeeName" class="form-label">Nombre de Empleado</label>
-                                <select class="form-control" id="filterEmployeeName">
-                                    <option value="">Todos</option>
-                                </select>
+                                <input type="text" class="form-control" id="filterEmployeeName">
                             </div>
                             <div class="col-md-3 mb-3">
-                                <label for="filterStatus" class="form-label">Estatus del Vale</label>
+                                <label for="filterStatus" class="form-label">Estado del Vale</label>
                                 <select class="form-control" id="filterStatus">
                                     <option value="">Todos</option>
-                                    <option value="activo">Activo</option>
-                                    <option value="inactivo">Inactivo</option>
+                                    <option value="1">Activo</option>
+                                    <option value="0">Inactivo</option>
                                 </select>
                             </div>
                         </div>
@@ -99,6 +97,7 @@
                                 <table class="table align-items-center table-flush">
                                     <thead class="thead-light">
                                         <tr>
+                                            <th scope="col">Compañía</th>
                                             <th scope="col">Cliente</th>
                                             <th scope="col">Comedor</th>
                                             <th scope="col">Folio</th>
@@ -126,6 +125,7 @@
                                 <table class="table align-items-center table-flush">
                                     <thead class="thead-light">
                                         <tr>
+                                            <th scope="col">Compañía</th>
                                             <th scope="col">Cliente</th>
                                             <th scope="col">Comedor</th>
                                             <th scope="col">Folio</th>
@@ -160,7 +160,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="viewDetailsModalLabel">Detalles del Vale</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="row">
@@ -169,11 +169,15 @@
                             <input type="text" class="form-control" id="detail_voucher_name" disabled>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="detail_status" class="form-label">Estado</label>
-                            <input type="text" class="form-control" id="detail_status" disabled>
+                            <label for="detail_name" class="form-label">Empleado</label>
+                            <input type="text" class="form-control" id="detail_name" disabled>
                         </div>
                     </div>
                     <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="detail_status" class="form-label">Estado</label>
+                            <input type="text" class="form-control" id="detail_status" disabled>
+                        </div>
                         <div class="col-md-6 mb-3">
                             <label for="detail_uses" class="form-label">Número de Usos</label>
                             <input type="text" class="form-control" id="detail_uses" disabled>
@@ -183,6 +187,7 @@
                         <table class="table align-items-center table-flush">
                             <thead class="thead-light">
                                 <tr>
+                                    <th scope="col">Compañía</th>
                                     <th scope="col">Cliente</th>
                                     <th scope="col">Comedor</th>
                                     <th scope="col">Fecha y Hora de Uso</th>
@@ -202,7 +207,7 @@
                   </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
                 </div>
             </div>
         </div>
@@ -220,5 +225,5 @@
 {% endblock content %}
 
 {% block javascripts %}
-<script src="/static/assets/html-js/loadDataReportesVales.js"></script>
+<script src="/static/assets/html-js/loadDataReportesPerpetuos.js"></script>
 {% endblock javascripts %}

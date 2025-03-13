@@ -951,8 +951,11 @@ def get_employee_report_general(request):
             'employee_client_diner__employee__employeed_code__icontains': request.GET.get('filterEmployeeNumber'),
             'employee_client_diner__employee__status': request.GET.get('filterStatus'),
             'created_at__gte': request.GET.get('filterStartDate'),
-            'created_at__lte': request.GET.get('filterEndDate')
+            'created_at__lte': request.GET.get('filterEndDate'),
+            'employee_client_diner__isnull': False,
+            'voucher__isnull': True
         }
+
         filters = {k: v for k, v in filters.items() if v}
 
         entry_employee = Entry.objects.select_related(
@@ -994,6 +997,7 @@ def get_employee_report_general(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
+
 @csrf_exempt
 def get_clients_employee_reports(request):
     if request.method != 'GET':
@@ -1006,7 +1010,9 @@ def get_clients_employee_reports(request):
             'employee_client_diner__employee__employeed_code__icontains': request.GET.get('filterEmployeeNumber'),
             'employee_client_diner__employee__status': request.GET.get('filterStatus'),
             'created_at__gte': request.GET.get('filterStartDate'),
-            'created_at__lte': request.GET.get('filterEndDate')
+            'created_at__lte': request.GET.get('filterEndDate'),
+            'employee_client_diner__isnull': False,
+            'voucher__isnull': True
         }
         filters = {k: v for k, v in filters.items() if v}
 
@@ -1037,7 +1043,9 @@ def get_diner_employee_reports(request):
             'employee_client_diner__employee__employeed_code__icontains': request.GET.get('filterEmployeeNumber'),
             'employee_client_diner__employee__status': request.GET.get('filterStatus'),
             'created_at__gte': request.GET.get('filterStartDate'),
-            'created_at__lte': request.GET.get('filterEndDate')
+            'created_at__lte': request.GET.get('filterEndDate'),
+            'employee_client_diner__isnull': False,
+            'voucher__isnull': True
         }
         filters = {k: v for k, v in filters.items() if v}
 
@@ -1070,7 +1078,9 @@ def get_employee_report_summary(request):
             'employee_client_diner__employee__employeed_code__icontains': request.GET.get('filterEmployeeNumber'),
             'employee_client_diner__employee__status': request.GET.get('filterStatus'),
             'created_at__gte': request.GET.get('filterStartDate'),
-            'created_at__lte': request.GET.get('filterEndDate')
+            'created_at__lte': request.GET.get('filterEndDate'),
+            'employee_client_diner__isnull': False,
+            'voucher__isnull': True
         }
         filters = {k: v for k, v in filters.items() if v}
 
@@ -1136,7 +1146,8 @@ def get_employee_report_summary_details(request):
             'employee_client_diner__employee__status': request.GET.get('filterStatus'),
             'created_at__gte': request.GET.get('filterStartDate'),
             'created_at__lte': request.GET.get('filterEndDate'),
-            'employee_client_diner__employee__id': employee_id
+            'employee_client_diner__employee__id': employee_id,
+            'lots__voucher_type_id': None
         }
         filters = {k: v for k, v in filters.items() if v}
 
@@ -1211,7 +1222,7 @@ def get_unique_reports(request):
             'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
             'folio__icontains': request.GET.get('filterVoucherNumber'),
             'status': request.GET.get('filterStatus'),
-            'lots__voucher_type_id': 2
+            'lots__voucher_type_id': 1
         }
 
         filters = {k: v for k, v in filters.items() if v}
@@ -1310,7 +1321,6 @@ def get_unique_reports(request):
 
         return JsonResponse(context)
     except Exception as e:
-        print(e)
         return JsonResponse({'error': str(e)}, status=500)
     
 @csrf_exempt
@@ -1325,7 +1335,7 @@ def get_clients_unique_reports(request):
             'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
             'folio__icontains': request.GET.get('filterVoucherNumber'),
             'status': request.GET.get('filterStatus'),
-            'lots__voucher_type_id': 2
+            'lots__voucher_type_id': 1
         }
         filters = {k: v for k, v in filters.items() if v}
 
@@ -1369,7 +1379,7 @@ def get_diners_unique_reports(request):
             'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
             'folio__icontains': request.GET.get('filterVoucherNumber'),
             'status': request.GET.get('filterStatus'),
-            'lots__voucher_type_id': 2
+            'lots__voucher_type_id': 1
         }
         filters = {k: v for k, v in filters.items() if v}
 
@@ -1399,7 +1409,299 @@ def get_diners_unique_reports(request):
 
         return JsonResponse(context)
     except Exception as e:
-        print(e)
         return JsonResponse({'error': str(e)}, status=500)
 
 # ===================== REPORTE VALES PERPETUOS ===================== #
+@csrf_exempt
+def get_perpetual_reports(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    page_number = request.GET.get('page', 1)
+    page_size = request.GET.get('page_size', 10)
+
+    try:
+        # Filtros de vales
+        filters = {
+            'voucher__lots__client_diner__client__id': request.GET.get('filterClient'),
+            'voucher__lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
+            'employee__icontains': request.GET.get('filterEmployeeName'),
+            'voucher__status': request.GET.get('filterStatus'),
+            'voucher__lots__voucher_type_id': 2  # Tipo de vale perpetuo
+        }
+
+        filters = {k: v for k, v in filters.items() if v}
+
+        # Convertir las fechas a datetime si están presentes
+        start_date = request.GET.get('filterStartDate')
+        end_date = request.GET.get('filterEndDate')
+
+        if start_date:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+        if end_date:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+
+        # Filtro de entradas solo cuando se han proporcionado fechas
+        entry_filter = {}
+        if start_date:
+            entry_filter['created_at__gte'] = start_date
+        if end_date:
+            entry_filter['created_at__lte'] = end_date
+
+        # Filtrar solo las entradas cuyo vale es de tipo 1
+        entries = Entry.objects.select_related(
+            'voucher__lots__client_diner__client',  # Corrected
+            'voucher__lots__client_diner__dining_room'  # Corrected
+        ).filter(
+            **entry_filter
+        ).filter(**filters).values(
+            'voucher_id',
+            client_company=F('voucher__lots__client_diner__client__company'),
+            client_name=F('voucher__lots__client_diner__client__name'),
+            client_lastname=F('voucher__lots__client_diner__client__lastname'),
+            client_second_lastname=F('voucher__lots__client_diner__client__second_lastname'),
+            dining_room_name=F('voucher__lots__client_diner__dining_room__name'),
+            voucher_folio=F('voucher__folio'),
+            employee_name=F('voucher__employee'),
+            voucher_status=F('voucher__status'),
+            entry_created_at=F('created_at')
+        ).order_by('-created_at')
+
+        # Pagination and response handling
+        paginator = Paginator(entries, page_size)
+
+        try:
+            entries = paginator.page(page_number)
+        except PageNotAnInteger:
+            entries = paginator.page(1)
+        except EmptyPage:
+            entries = paginator.page(paginator.num_pages)
+
+        context = {
+            'perpetual_reports': list(entries),
+            'page': entries.number,
+            'pages': paginator.num_pages,
+            'has_previous': entries.has_previous(),
+            'has_next': entries.has_next()
+        }
+        return JsonResponse(context)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+    
+@csrf_exempt
+def get_clients_perpetual_reports(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+    try:
+        # Filtros para los vales
+        filters = {
+            'lots__client_diner__client__id': request.GET.get('filterClient'),
+            'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
+            'employee__icontains': request.GET.get('filterEmployeeName'),
+            'status': request.GET.get('filterStatus'),
+            'lots__voucher_type_id': 2  # Tipo de vale perpetuo
+        }
+        filters = {k: v for k, v in filters.items() if v}
+
+        # Convertir las fechas a datetime si están presentes
+        start_date = request.GET.get('filterStartDate')
+        end_date = request.GET.get('filterEndDate')
+
+        if start_date:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+        if end_date:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+
+        # Filtrar los vales de tipo 1
+        vouchers = Voucher.objects.select_related(
+            'lots__client_diner__client'
+        ).filter(**filters)
+
+        # Filtrar los clientes únicos de los vales de tipo 1
+        clients = vouchers.values(
+            client_id=F('lots__client_diner__client__id'),
+            client_company=F('lots__client_diner__client__company')
+        ).distinct()
+
+        context = {
+            'clients': list(clients)
+        }
+
+        return JsonResponse(context)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def get_diners_perpetual_reports(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        # Filtros para los vales
+        filters = {
+            'lots__client_diner__client__id': request.GET.get('filterClient'),
+            'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
+            'employee__icontains': request.GET.get('filterEmployeeName'),
+            'status': request.GET.get('filterStatus'),
+            'lots__voucher_type_id': 2  # Tipo de vale perpetuo
+        }
+        filters = {k: v for k, v in filters.items() if v}
+
+        # Convertir las fechas a datetime si están presentes
+        start_date = request.GET.get('filterStartDate')
+        end_date = request.GET.get('filterEndDate')
+
+        if start_date:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+        if end_date:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+
+        # Filtrar los vales de tipo 1
+        vouchers = Voucher.objects.select_related(
+            'lots__client_diner__dining_room'
+        ).filter(**filters)
+
+        # Filtrar los comensales únicos de los vales de tipo 1
+        diners = vouchers.values(
+            diner_id=F('lots__client_diner__dining_room__id'),
+            diner_name=F('lots__client_diner__dining_room__name')
+        ).distinct()
+
+        context = {
+            'diners': list(diners)
+        }
+
+        return JsonResponse(context)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def get_perpetual_report_summary(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    page_number = request.GET.get('page', 1)
+    page_size = request.GET.get('page_size', 10)
+    try:
+        filters = {
+            'lots__client_diner__client__id': request.GET.get('filterClient'),
+            'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
+            'employee__icontains': request.GET.get('filterEmployeeName'),
+            'status': request.GET.get('filterStatus'),
+            'lots__voucher_type_id': 2  # Tipo de vale perpetuo
+        }
+        filters = {k: v for k, v in filters.items() if v}
+
+        # Obtener los vales de tipo 1
+        perpetual_report_summary = Voucher.objects.select_related(
+            'lots__client_diner__client',
+            'lots__client_diner__dining_room'
+        ).filter(**filters).values(
+            voucher_id=F('id'),
+            client_company=F('lots__client_diner__client__company'),
+            client_name=F('lots__client_diner__client__name'),
+            client_lastname=F('lots__client_diner__client__lastname'),
+            client_second_lastname=F('lots__client_diner__client__second_lastname'),
+            dining_room_name=F('lots__client_diner__dining_room__name'),
+            voucher_folio=F('folio'),
+            employee_name=F('employee'),
+            voucher_status=F('status')
+        ).annotate(
+            entry_count=Count('entry_voucher')
+        ).order_by('voucher_folio')
+
+        paginator = Paginator(perpetual_report_summary, page_size)
+        try:
+            perpetual_report_summary = paginator.page(page_number)
+        except PageNotAnInteger:
+            perpetual_report_summary = paginator.page(1)
+        except EmptyPage:
+            perpetual_report_summary = paginator.page(paginator.num_pages)
+
+        context = {
+            'perpetual_report_summary': list(perpetual_report_summary),
+            'page': perpetual_report_summary.number,
+            'pages': paginator.num_pages,
+            'has_previous': perpetual_report_summary.has_previous(),
+            'has_next': perpetual_report_summary.has_next()
+        }
+
+        return JsonResponse(context)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def get_perpetual_report_summary_details(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    voucher_id = request.GET.get('voucherId')
+    page_number = request.GET.get('page', 1)
+    page_size = request.GET.get('page_size', 5)
+
+    if not voucher_id:
+        return JsonResponse({'error': 'voucher_id es requerido'}, status=400)
+    
+    try:
+        filters = {
+            'id': voucher_id
+        }
+
+        voucher_detail = Voucher.objects.select_related(
+            'lots__client_diner__client',
+            'lots__client_diner__dining_room'
+        ).filter(**filters).values(
+            voucher_folio=F('folio'),
+            employee_name=F('employee'),
+            voucher_status=F('status'),
+        ).annotate(
+            entry=Count('entry_voucher')
+        ).first()
+
+        # Traer las entradas del vale
+        entry_filters = {
+            'voucher_id': voucher_id
+        }
+
+        voucher_entries = Entry.objects.select_related(
+            'client_diner__client',
+            'client_diner__dining_room'
+        ).filter(**entry_filters).values(
+            client_company=F('client_diner__client__company'),
+            client_name=F('client_diner__client__name'),
+            client_lastname=F('client_diner__client__lastname'),
+            client_second_lastname=F('client_diner__client__second_lastname'),
+            dining_room_name=F('client_diner__dining_room__name'),
+            entry_created_at=F('created_at')
+        ).order_by('-created_at')
+
+        voucher_entries_len = len(voucher_entries)
+        voucher_detail['entry_count'] = voucher_entries_len
+
+        paginator = Paginator(voucher_entries, page_size)
+        try:
+            voucher_entries = paginator.page(page_number)
+        except PageNotAnInteger:
+            voucher_entries = paginator.page(1)
+        except EmptyPage:
+            voucher_entries = paginator.page(paginator.num_pages)
+
+        context = {
+            'voucher_detail': voucher_detail,
+            'voucher_entries': list(voucher_entries),
+            'page': voucher_entries.number,
+            'pages': paginator.num_pages,
+            'has_previous': voucher_entries.has_previous(),
+            'has_next': voucher_entries.has_next()
+        }
+
+        if voucher_entries_len == 0:
+            context['message'] = 'No se encontraron entradas para este vale.'
+
+        return JsonResponse(context)
+    except Voucher.DoesNotExist:
+        return JsonResponse({'error': 'Vale no encontrado'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
