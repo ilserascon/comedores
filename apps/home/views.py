@@ -149,85 +149,6 @@ def get_comedor(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
-# ================================== COMEDORES ================================== #
-@csrf_exempt
-def get_comedores(request):
-    try:
-        filter_value = request.GET.get('filter', 'all')
-        dining_rooms_query = ClientDiner.objects.select_related('client', 'dining_room', 'dining_room__in_charge').values(
-            'client__company',
-            'dining_room__id',
-            'dining_room__name',
-            'dining_room__description',
-            'dining_room__in_charge__first_name',
-            'dining_room__in_charge__last_name',
-            'dining_room__status'
-        ).distinct()
-        if filter_value != 'all':
-            dining_rooms_query = dining_rooms_query.filter(client__id=filter_value)
-        dining_rooms_list = [
-            {
-                'company': dr['client__company'],
-                'id': dr['dining_room__id'],
-                'name': dr['dining_room__name'],
-                'description': dr['dining_room__description'],
-                'in_charge_first_name': dr['dining_room__in_charge__first_name'],
-                'in_charge_last_name': dr['dining_room__in_charge__last_name'],
-                'status': dr['dining_room__status']
-            }
-            for dr in dining_rooms_query
-        ]
-        clients = Client.objects.values('id', 'company').distinct()
-        page_number = request.GET.get('page', 1)
-        paginator = Paginator(dining_rooms_list, 10)
-        page_obj = paginator.get_page(page_number)
-        context = {
-            'dining_rooms': list(page_obj),
-            'clients': list(clients),
-            'page_number': page_obj.number,
-            'num_pages': paginator.num_pages,
-            'has_next': page_obj.has_next(),
-            'has_previous': page_obj.has_previous(),
-        }
-        return JsonResponse(context)
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-
-@csrf_exempt
-def get_comedor(request):
-    try:
-        dining_room_id = request.GET.get('dining_room_id')
-        
-        # Realizar la consulta con las uniones necesarias
-        dining_room = DiningRoom.objects.filter(id=dining_room_id).select_related('in_charge', 'clientdiner__client').values(
-            'id', 'name', 'description', 'status', 'in_charge__first_name', 'in_charge__last_name', 'in_charge_id',
-            'clientdiner__client__id'
-        ).first()
-
-        if not dining_room:
-            return JsonResponse({'error': 'Comedor no encontrado'}, status=404)
-
-        in_charge = {
-            'id': dining_room['in_charge_id'],
-            'first_name': dining_room['in_charge__first_name'],
-            'last_name': dining_room['in_charge__last_name']
-        }
-
-        context = {
-            'dining_room_id': dining_room['id'],
-            'name': dining_room['name'],
-            'description': dining_room['description'],
-            'status': dining_room['status'],
-            'in_charge': in_charge,
-            'client_id': dining_room['clientdiner__client__id']
-        }
-
-        return JsonResponse(context)
-    except DiningRoom.DoesNotExist:
-        return JsonResponse({'error': 'Comedor no encontrado'}, status=404)
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-
 
 @csrf_exempt
 def create_comedor(request):
@@ -239,9 +160,6 @@ def create_comedor(request):
         in_charge = data.get('in_charge')
         client_id = data.get('client')  # Obtener el client_id del request
         created_by_id = request.user.id
-
-        if not in_charge:
-            return JsonResponse({'error': 'El campo in_charge es obligatorio'}, status=400)
 
         if not client_id:
             return JsonResponse({'error': 'El campo client es obligatorio'}, status=400)
@@ -265,7 +183,7 @@ def create_comedor(request):
         client_diner = ClientDiner(
             dining_room_id=dining_room.id,
             client_id=client_id,
-            created_by_id=in_charge,
+            created_by_id=created_by_id,
             updated_by_id=request.user.id
         )
         client_diner.save()
@@ -315,10 +233,19 @@ def update_comedor(request):
 @csrf_exempt
 def get_encargados(request):
     try:
-        encargados = CustomUser.objects.all().values('id', 'first_name', 'last_name')
+        # Filtrar los usuarios con role_id = 2
+        encargados = CustomUser.objects.filter(role_id=2)
+        
+        # Excluir los usuarios que están asignados como in_charge en cualquier DiningRoom
+        encargados = encargados.exclude(dining_room_in_charge__isnull=False)
+        
+        # Seleccionar los campos necesarios
+        encargados = encargados.values('id', 'first_name', 'last_name')
+        
         context = {
             'encargados': list(encargados)
         }
+
         return JsonResponse(context)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
@@ -712,6 +639,7 @@ def get_empleados(request):
     page_number = request.GET.get('page', 1)
     page_size = request.GET.get('page_size', 10)
     search_query = request.GET.get('search', '')
+    filter_value = request.GET.get('filter', 'all')
 
     empleados = Employee.objects.all()
 
@@ -724,6 +652,9 @@ def get_empleados(request):
             Q(client__company__icontains=search_query) |
             Q(payroll__description__icontains=search_query)
         )
+
+    if filter_value != 'all':
+        empleados = empleados.filter(client__id=filter_value)
 
     empleados = empleados.values(
         'id', 'employeed_code', 'name', 'lastname', 'second_lastname', 'client__company', 'payroll__description', 'status'

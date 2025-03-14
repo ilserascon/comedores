@@ -4,12 +4,13 @@
  * @param {number} [page=1] - El número de página a obtener.
  * @param {number} [pageSize=10] - El número de empleados por página.
  * @param {string} [searchQuery=''] - La consulta de búsqueda para filtrar empleados.
+ * @param {string} [filter='all'] - El filtro para los empleados.
  * @returns {Promise<Object>} - Una promesa que se resuelve con los datos que contienen empleados e información de paginación.
  * @throws {Error} - Lanza un error si la operación de fetch falla.
  */
-async function getEmpleados(page = 1, pageSize = 10, searchQuery = '') {
+async function getEmpleados(page = 1, pageSize = 10, searchQuery = '', filter = 'all') {
     try {
-        const response = await fetch(`/get_empleados?page=${page}&page_size=${pageSize}&search=${encodeURIComponent(searchQuery)}`, {
+        const response = await fetch(`/get_empleados?page=${page}&page_size=${pageSize}&search=${encodeURIComponent(searchQuery)}&filter=${encodeURIComponent(filter)}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json'
