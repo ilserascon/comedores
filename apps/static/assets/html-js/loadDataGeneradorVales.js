@@ -76,7 +76,15 @@ generateUniqueVouchersForm.addEventListener('submit', (e) => {
   }
 
   generateUniqueVoucher(Number(clientField.value), Number(dinningRoomField.value), Number(quantity)).then(data => {
-    console.log(data)
+    const pdfFile = data.pdf
+    console.log(pdfFile)
+
+    //Generate an anchor element and add it to the container
+    const anchor = document.createElement('a')
+    anchor.href = `/static/pdfs${pdfFile}`
+    anchor.innerText= "Ver PDF"
+    generateUniqueVouchersForm.appendChild(anchor)
+
   })
 
 })

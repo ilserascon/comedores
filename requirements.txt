@@ -13,3 +13,5 @@ whitenoise==5.3.0
 mysqlclient
 mysql-connector-python
 pandas
+pdfkit
+qrcode
