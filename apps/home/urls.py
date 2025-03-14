@@ -12,6 +12,7 @@ urlpatterns = [
     path('', views.index, name='home'),    
 
     # ======================= COMEDORES ======================= #
+    path('get_all_comedores', views.get_all_comedores, name='get_all_comedores'),
     path('get_comedores', views.get_comedores, name='get_comedores'),
     path('get_comedor', views.get_comedor, name='get_comedor'),
     path('create_comedor', views.create_comedor, name='create_comedor'),
@@ -64,7 +65,8 @@ urlpatterns = [
     path('get_perpetual_report_summary', views.get_perpetual_report_summary, name='get_perpetual_report_summary'),
     path('get_perpetual_report_summary_details', views.get_perpetual_report_summary_details, name='get_perpetual_report_summary_details'),
 
-
+    # ===================== GENERAR VOUCHERS ===================== #
+    path('generate_unique_voucher', views.generate_unique_voucher, name='generate_unique_voucher'),
 
     # Matches any html file
     re_path(r'^.*\.*', views.pages, name='pages'),
