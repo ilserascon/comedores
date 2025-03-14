@@ -77,8 +77,7 @@ async function getComedor(id) {
             throw new Error(errorData.error || 'Error al obtener comedor');
         }
 
-        const data = await response.json();  
-        console.log(data);
+        const data = await response.json();          
         return data;
     } catch (error) {
         console.error('Error:', error.message);
@@ -190,4 +189,33 @@ async function getClientesComedores() {
         throw new Error(error.message || 'Error al obtener clientes con comedores');
     }
 
+}
+
+
+/**
+ * OBTIENE LA LISTA DE COMEDORES DE UN CLIENTE.
+ * 
+ * @returns {Promise<Object>} - Datos de comedores de un cliente.
+ * @throws {Error} - Error al obtener los comedores de un cliente.
+ */
+async function getComedoresClientes(id) {
+    try {
+        const response = await fetch(`/get_comedores_clientes?client_id=${id}`, {
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Error al obtener los comedores de un cliente');
+        }
+
+        const data = await response.json();                  
+
+        return data;
+    } catch (error) {
+        console.error('Error:', error.message);
+        throw new Error(error.message || 'Error al obtener los comedores de un cliente');
+    }
 }

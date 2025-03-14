@@ -74,7 +74,7 @@ async function getEmpleado(empleadoId) {
  * @returns {Promise<Object>} - Una promesa que se resuelve con los datos del empleado creado.
  * @throws {Error} - Lanza un error si la operación de fetch falla.
  */
-async function createEmpleado(employeed_code, name, lastname, second_lastname, client_id, payroll_id, status) {
+async function createEmpleado(employeed_code, name, lastname, second_lastname, client_id, payroll_id, dining_room_id, status) {
     const response = await fetch(`/create_empleado`, {
         method: 'POST',
         headers: {
@@ -87,6 +87,7 @@ async function createEmpleado(employeed_code, name, lastname, second_lastname, c
             second_lastname,
             client_id,
             payroll_id,
+            dining_room_id,
             status
         })
     });
@@ -114,7 +115,7 @@ async function createEmpleado(employeed_code, name, lastname, second_lastname, c
  * @returns {Promise<Object>} - Una promesa que se resuelve con los datos del empleado actualizado.
  * @throws {Error} - Lanza un error si la operación de fetch falla.
  */
-async function updateEmpleado(empleadoId, employeed_code, name, lastname, second_lastname, client_id, payroll_id, status) {
+async function updateEmpleado(empleadoId, employeed_code, name, lastname, second_lastname, client_id, payroll_id, dining_room_id, status) {
     const response = await fetch(`/update_empleado`, {
         method: 'POST',
         headers: {
@@ -128,6 +129,7 @@ async function updateEmpleado(empleadoId, employeed_code, name, lastname, second
             second_lastname,
             client_id,
             payroll_id,
+            dining_room_id,
             status
         })
     });
@@ -149,13 +151,13 @@ async function updateEmpleado(empleadoId, employeed_code, name, lastname, second
  * @returns {Promise<Object>} - Una promesa que se resuelve con los datos de la respuesta del servidor.
  * @throws {Error} - Lanza un error si la operación de fetch falla.
  */
-async function uploadEmpleados(clienteId, empleados) {
+async function uploadEmpleados(clienteId, comedorId, empleados) {
     const response = await fetch('/upload_empleados', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ cliente_id: clienteId, empleados: empleados })
+        body: JSON.stringify({ cliente_id: clienteId, comedor_id: comedorId, empleados: empleados })
     });
 
     if (!response.ok) {

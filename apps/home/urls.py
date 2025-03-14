@@ -22,6 +22,7 @@ urlpatterns = [
     # ======================= CLIENTES ======================= #
     path('get_clientes', views.get_clientes, name='get_clientes'),
     path('get_clientes_comedores', views.get_clientes_comedores, name='get_clientes_comedores'),
+    path('get_comedores_clientes', views.get_comedores_clientes, name='get_comedores_clientes'),
     path('client_list', views.client_list, name='client_list'),
     path('client_detail/<int:client_id>', views.client_detail, name='client_detail'),
 
@@ -43,8 +44,6 @@ urlpatterns = [
     # ===================== TIPOS DE NOMINA ===================== #
     path('get_tipos_nomina', views.get_tipos_nomina, name='get_tipos_nomina'),
 
-    # ===================== CLIENTES ===================== #
-    path('get_clientes', views.get_clientes, name='get_clientes'),
 
     # ===================== REPORTE EMPLEADOS ===================== #
     path('get_employee_report_general', views.get_employee_report_general, name='get_employee_report_general'),
