@@ -10,7 +10,7 @@ from django.shortcuts import render
 from django.template import loader
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
-from .models import DiningRoom, ClientDiner, Client, Employee, PayrollType, Entry, EmployeeClientDiner, Voucher
+from .models import  VoucherType, Lots, DiningRoom, ClientDiner, Client, Employee, PayrollType, Entry, EmployeeClientDiner, Voucher
 from apps.authentication.models import CustomUser, Role
 from django.db.models import Q, F, Count, Exists, OuterRef
 from django.db import IntegrityError, transaction
@@ -65,6 +65,47 @@ def pages(request):
 
 # ============================= COMEDORES =============================
 @csrf_exempt
+def get_all_comedores(request):
+    try:
+        # Obtener el valor del filtro de la solicitud
+        client_value = request.GET.get('client-id', 'all')
+
+        # Obtener todos los comedores con la información del cliente y del encargado
+        dining_rooms_query = ClientDiner.objects.select_related('client', 'dining_room', 'dining_room__in_charge').values(
+            'client__company',
+            'dining_room__id',
+            'dining_room__name',
+            'dining_room__description',
+            'dining_room__in_charge__first_name',
+            'dining_room__in_charge__last_name',
+            'dining_room__status'
+        ).distinct()
+
+        # Aplicar el filtro si no es 'all'
+        if client_value != 'all':
+            dining_rooms_query = dining_rooms_query.filter(client__id=client_value)
+
+        # Renombrar campos para evitar confusión
+        dining_rooms_list = [
+            {
+                'company': dr['client__company'],
+                'id': dr['dining_room__id'],
+                'name': dr['dining_room__name'],
+                'description': dr['dining_room__description'],
+                'in_charge_first_name': dr['dining_room__in_charge__first_name'],
+                'in_charge_last_name': dr['dining_room__in_charge__last_name'],
+                'status': dr['dining_room__status']
+            }
+            for dr in dining_rooms_query
+        ]
+
+
+        return JsonResponse({"comedores": dining_rooms_list})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+    
+
+@csrf_exempt
 def get_comedores(request):
     try:
         # Obtener el valor del filtro de la solicitud
@@ -104,7 +145,7 @@ def get_comedores(request):
 
         # Paginación
         page_number = request.GET.get('page', 1)
-        paginator = Paginator(dining_rooms_list, 10)  # 10 comedores por página
+        paginator = Paginator(dining_rooms_list, 1)  # 10 comedores por página
         page_obj = paginator.get_page(page_number)
 
         context = {
@@ -1647,3 +1688,66 @@ def get_perpetual_report_summary_details(request):
         return JsonResponse({'error': 'Vale no encontrado'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+
+# ===================== GENERAR VALES UNICOS ===================== #
+
+@csrf_exempt
+def generate_unique_voucher(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        client_id = data.get('client_id')
+        dining_room_id = data.get('dining_room_id')
+        quantity = data.get('quantity')
+        
+
+        if not client_id or not dining_room_id or not quantity:
+            return JsonResponse({'error': 'client_id, dining_room_id y quantity son requeridos'}, status=400)
+        
+        if type(quantity) != int:
+            return JsonResponse({'error': 'quantity debe ser un número entero'}, status=400)
+
+        if type(client_id) != int:
+            return JsonResponse({'error': 'client_id debe ser un número entero'}, status=400)
+        
+        if type(dining_room_id) != int:
+            return JsonResponse({'error': 'dining_room_id debe ser un número entero'}, status=400)
+        
+        unique_voucher = VoucherType.objects.filter(description="UNICO").first()     
+        client_dinner = ClientDiner.objects.filter(client_id=client_id, dining_room_id=dining_room_id).first()
+        
+        
+        
+        with transaction.atomic():
+            lots = Lots(
+                client_diner=client_dinner,
+                voucher_type=unique_voucher,
+                quantity=quantity,
+                email='email@email.com',
+                created_by=request.user
+            )
+            lots.save()
+            
+            vouchers = []
+            
+            for i in range(1,quantity+1):
+                voucher = Voucher(folio=str(i), lots=lots)
+                voucher.save()
+                vouchers.append(voucher)
+            
+            vouchers = [voucher.folio for voucher in vouchers]
+            context = {
+                "lots": lots.email,
+                "vouchers": vouchers
+            }
+
+            return JsonResponse(context)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
