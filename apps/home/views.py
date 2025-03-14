@@ -21,6 +21,9 @@ from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from .transactions.clients import change_client_status
 import pandas as pd
 from .admin import admin_views, user_views
+import qrcode
+import os
+from apps.pdf_generation import generate_qrs_pdf
 
 @login_required(login_url="/login/")
 def index(request):
@@ -1719,7 +1722,8 @@ def generate_unique_voucher(request):
         
         unique_voucher = VoucherType.objects.filter(description="UNICO").first()     
         client_dinner = ClientDiner.objects.filter(client_id=client_id, dining_room_id=dining_room_id).first()
-        
+
+        diningroom = client_dinner.dining_room
         
         
         with transaction.atomic():
@@ -1732,18 +1736,35 @@ def generate_unique_voucher(request):
             )
             lots.save()
             
-            vouchers = []
+            vouchers: list[Voucher] = []
             
             for i in range(1,quantity+1):
                 voucher = Voucher(folio=str(i), lots=lots)
                 voucher.save()
                 vouchers.append(voucher)
             
-            vouchers = [voucher.folio for voucher in vouchers]
+            
+            QRS_PATH = os.path.abspath('./staticfiles/temp/')
+            qr_paths = []
+            for voucher in vouchers:
+                identifier = f'{lots.id}-{voucher.folio}'
+                filename = f'qr_{identifier}.png'
+                path = os.path.join(QRS_PATH, filename)
+                qrcode.make(identifier).save(path)
+                formatted_folio = "#{:002d}".format(int(voucher.folio))
+                qr_paths.append((path, formatted_folio, diningroom.name))
+            
+            filename = f'/LOT-{lots.id}.pdf'
+            generate_qrs_pdf(qr_paths, filename)
+            
             context = {
-                "lots": lots.email,
-                "vouchers": vouchers
+                "pdf": filename,
+                "message": "Vales generados con éxito"
             }
+            
+            for qr in qr_paths:
+                os.remove(qr[0])
+
 
             return JsonResponse(context)
 

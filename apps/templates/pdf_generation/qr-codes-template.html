@@ -8,14 +8,21 @@
 <body>
     <main>
 
-    {% for qr_path in qrcodes%}
+    {% for qr_path, folio, comedor  in qrcodes%}
         
         {% if loop.index0 % 3 == 0 %}
             <div class="row">
         {% endif %}
 
             <div class="qr-code" >
-                <img src="{{ qr_path }}" alt="QR Code">
+              <div class="header" >
+                <img src="{{ logo_path }}" alt="Alcorp logo">
+                <span>{{comedor}}</span>
+              </div>
+              <img src="{{ qr_path }}" alt="QR Code">
+              <div class="footer" >
+                <span>Folio: {{folio}}</span>
+              </div>
             </div>
         
         {% if loop.index0 % 3 == 2 %}

@@ -12,6 +12,9 @@ if not os.path.exists(CSS_DIR):
 if not os.path.exists(TEMPLATES_DIR):
     os.makedirs(TEMPLATES_DIR)
 
+if not os.path.exists(OUTPUT_DIR):
+    os.makedirs(OUTPUT_DIR)
+
 
 def _get_path_to_wkhtmltopdf():
   if os.name == 'nt':
@@ -28,11 +31,11 @@ jinja_env = jinja2.Environment(
 
 QR_CODES_TEMPLATE = 'qr-codes-template.html'
 QR_CODES_STYLESHEET = CSS_DIR+'/generated-qr-styles.css'
-
+LOGO_PATH = os.path.abspath('./apps/static/assets/img/brand/logo_alcorp.jpg')
 
 def generate_qrs_pdf(qrs: list[str], filename: str):
   filename = OUTPUT_DIR+filename
-  rendered_template = jinja_env.get_template(QR_CODES_TEMPLATE).render({"qrcodes":qrs})
+  rendered_template = jinja_env.get_template(QR_CODES_TEMPLATE).render({"qrcodes":qrs, "logo_path":LOGO_PATH})
   pdfkit.from_string(
     rendered_template,
     filename,
