@@ -120,19 +120,29 @@ def get_comedores(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
-
 @csrf_exempt
 def get_comedor(request):
     try:
         dining_room_id = request.GET.get('dining_room_id')
-        dining_room = DiningRoom.objects.select_related('in_charge', 'clientdiner__client').values(
-            'id', 'name', 'description', 'status', 'in_charge__first_name', 'in_charge__last_name', 'in_charge_id', 'clientdiner__client__company', 'clientdiner__client__id'
-        ).get(id=dining_room_id)
+
+        # Realizar la consulta con las uniones necesarias
+        dining_room = DiningRoom.objects.filter(id=dining_room_id).select_related('in_charge').prefetch_related('client_diner_dining_room__client').values(
+            'id', 'name', 'description', 'status', 'in_charge__first_name', 'in_charge__last_name', 'in_charge_id',
+            'client_diner_dining_room__client__id', 'client_diner_dining_room__client__company'
+        ).first()
+
+        if not dining_room:
+            return JsonResponse({'error': 'Comedor no encontrado'}, status=404)
 
         in_charge = {
             'id': dining_room['in_charge_id'],
             'first_name': dining_room['in_charge__first_name'],
             'last_name': dining_room['in_charge__last_name']
+        }
+
+        client = {
+            'id': dining_room['client_diner_dining_room__client__id'],
+            'company': dining_room['client_diner_dining_room__client__company']
         }
 
         context = {
@@ -141,6 +151,7 @@ def get_comedor(request):
             'description': dining_room['description'],
             'status': dining_room['status'],
             'in_charge': in_charge,
+            'client': client
         }
 
         return JsonResponse(context)

@@ -130,6 +130,7 @@ class Lots(models.Model):
     quantity = models.IntegerField()
     email = models.EmailField()
     created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='lots_created_by', null=True, blank=True)
 
     class Meta:
         db_table = 'lots'
