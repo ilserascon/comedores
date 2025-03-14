@@ -49,8 +49,7 @@ async function getComedor(id) {
             throw new Error(errorData.error || 'Error al obtener comedor');
         }
 
-        const data = await response.json();  
-        console.log(data);
+        const data = await response.json();          
         return data;
     } catch (error) {
         console.error('Error:', error.message);

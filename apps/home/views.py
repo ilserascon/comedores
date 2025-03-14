@@ -9,8 +9,9 @@ from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.template import loader
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
-from .models import DiningRoom, ClientDiner, Client, Employee, PayrollType
+from .models import DiningRoom, ClientDiner, Client, Employee, PayrollType, EmployeeClientDiner
 from apps.authentication.models import CustomUser, Role
+from django.db import models
 from django.db.models import Q
 from django.db import IntegrityError, transaction
 import json
@@ -628,7 +629,13 @@ def get_empleados(request):
     search_query = request.GET.get('search', '')
     filter_value = request.GET.get('filter', 'all')
 
-    empleados = Employee.objects.all()
+    empleados = Employee.objects.filter(
+        employee_client_diner_employee__isnull=False
+    ).select_related(
+        'client', 'payroll'
+    ).prefetch_related(
+        'employee_client_diner_employee__client_diner__dining_room'
+    ).distinct()
 
     if search_query:
         empleados = empleados.filter(
@@ -637,15 +644,18 @@ def get_empleados(request):
             Q(lastname__icontains=search_query) |
             Q(second_lastname__icontains=search_query) |
             Q(client__company__icontains=search_query) |
-            Q(payroll__description__icontains=search_query)
+            Q(payroll__description__icontains=search_query) |
+            Q(employee_client_diner_employee__client_diner__dining_room__name__icontains=search_query)
         )
 
     if filter_value != 'all':
         empleados = empleados.filter(client__id=filter_value)
 
-    empleados = empleados.values(
-        'id', 'employeed_code', 'name', 'lastname', 'second_lastname', 'client__company', 'payroll__description', 'status'
-    )
+    empleados = empleados.annotate(
+        dining_room_name=models.F('employee_client_diner_employee__client_diner__dining_room__name')
+    ).values(
+        'id', 'employeed_code', 'name', 'lastname', 'second_lastname', 'client__company', 'dining_room_name', 'payroll__description', 'status'
+    ).distinct()
 
     paginator = Paginator(empleados, page_size)
     page_obj = paginator.get_page(page_number)
@@ -656,7 +666,7 @@ def get_empleados(request):
         'current_page': page_obj.number,
         'has_previous': page_obj.has_previous(),
         'has_next': page_obj.has_next(),
-    }
+    }    
 
     return JsonResponse(response)
     
@@ -667,17 +677,23 @@ def get_empleado(request):
         empleado_id = request.GET.get('empleado_id')
         
         # Realizar la consulta con las uniones necesarias
-        empleado = Employee.objects.filter(id=empleado_id).select_related('payroll', 'client').values(
+        empleado = Employee.objects.filter(id=empleado_id).select_related(
+            'payroll', 'client'
+        ).prefetch_related(
+            'employee_client_diner_employee__client_diner__dining_room'
+        ).values(
             'id',
             'employeed_code',
             'name',
             'lastname',
-            'second_lastname',            
+            'second_lastname',
             'client__company',
             'client_id',
             'payroll__description',
             'payroll_id',
-            'status'
+            'status',
+            'employee_client_diner_employee__client_diner__dining_room__name',
+            'employee_client_diner_employee__client_diner__dining_room__id'
         ).first()
 
         if not empleado:
@@ -693,6 +709,11 @@ def get_empleado(request):
             'description': empleado['payroll__description']
         }
 
+        dining_room = {
+            'id': empleado['employee_client_diner_employee__client_diner__dining_room__id'],
+            'name': empleado['employee_client_diner_employee__client_diner__dining_room__name']
+        }
+
         context = {
             'id': empleado['id'],
             'employeed_code': empleado['employeed_code'],
@@ -701,8 +722,9 @@ def get_empleado(request):
             'second_lastname': empleado['second_lastname'],
             'client': client,
             'payroll': payroll,
-            'status': empleado['status']
-        }        
+            'status': empleado['status'],
+            'dining_room': dining_room
+        }
 
         return JsonResponse(context)
     except Employee.DoesNotExist:
@@ -735,10 +757,23 @@ def create_empleado(request):
             
             # Guardar el nuevo empleado
             empleado.save()
+
+            # Crear la relación en EmployeeClientDiner
+            dining_room_id = data.get('dining_room_id')
+            if dining_room_id:
+                client_diner = ClientDiner.objects.get(client_id=empleado.client_id, dining_room_id=dining_room_id)
+                EmployeeClientDiner.objects.create(
+                    employee=empleado,
+                    client_diner=client_diner,
+                    created_by_id=request.user.id,
+                    updated_by_id=request.user.id
+                )
             
             return JsonResponse({'message': 'Empleado creado correctamente'})
         except PayrollType.DoesNotExist:
             return JsonResponse({'error': 'Tipo de nómina no encontrado'}, status=404)
+        except ClientDiner.DoesNotExist:
+            return JsonResponse({'error': 'Cliente-Comedor no encontrado'}, status=404)
         except Exception as e:
             print(f"Error: {e}")
             return JsonResponse({'error': str(e)}, status=500)
@@ -767,14 +802,25 @@ def update_empleado(request):
         empleado.payroll = payroll  # Asignar la instancia de PayrollType
         empleado.status = data.get('status', empleado.status)
         
-        # Guardar los cambios
+        # Guardar los cambios del empleado
         empleado.save()
-        
+
+        # Actualizar la relación en EmployeeClientDiner
+        dining_room_id = data.get('dining_room_id')
+        if dining_room_id:
+            client_diner = ClientDiner.objects.get(client_id=empleado.client_id, dining_room_id=dining_room_id)
+            employee_client_diner, created = EmployeeClientDiner.objects.update_or_create(
+                employee=empleado,
+                defaults={'client_diner': client_diner}
+            )
+
         return JsonResponse({'message': 'Empleado actualizado correctamente'})
     except Employee.DoesNotExist:
         return JsonResponse({'error': 'Empleado no encontrado'}, status=404)
     except PayrollType.DoesNotExist:
         return JsonResponse({'error': 'Tipo de nómina no encontrado'}, status=404)
+    except ClientDiner.DoesNotExist:
+        return JsonResponse({'error': 'Cliente-Comedor no encontrado'}, status=404)
     except Exception as e:
         print(f"Error: {e}")
         return JsonResponse({'error': str(e)}, status=500)
@@ -812,6 +858,7 @@ def upload_empleados(request):
         try:
             data = json.loads(request.body)
             cliente_id = data.get('cliente_id')
+            comedor_id = data.get('comedor_id')
             empleados = data.get('empleados')
 
             # Procesar los empleados
@@ -847,9 +894,21 @@ def upload_empleados(request):
                 )
                 empleado.save()
 
+                # Crear la relación en EmployeeClientDiner
+                if comedor_id:
+                    client_diner = ClientDiner.objects.get(client_id=cliente_id, dining_room_id=comedor_id)
+                    EmployeeClientDiner.objects.create(
+                        employee=empleado,
+                        client_diner=client_diner,
+                        created_by_id=request.user.id,
+                        updated_by_id=request.user.id
+                    )
+
             return JsonResponse({'message': 'Empleados cargados correctamente'})
         except PayrollType.DoesNotExist:
             return JsonResponse({'error': 'Tipo de nómina no encontrado'}, status=404)
+        except ClientDiner.DoesNotExist:
+            return JsonResponse({'error': 'Cliente-Comedor no encontrado'}, status=404)
         except Exception as e:
             print(f"Error: {e}")
             return JsonResponse({'error': str(e)}, status=500)
