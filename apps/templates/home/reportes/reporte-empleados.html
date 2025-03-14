@@ -1,0 +1,241 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %} Reporte de Empleados {% endblock title %}
+
+{% block content %}
+
+<div class="header bg-primary pb-6">
+    <div class="container-fluid">
+        <div class="header-body">
+            <div class="row align-items-center py-4">
+                <div class="col-lg-6 col-7">
+                    <h6 class="h2 text-white d-inline-block mb-0">Reporte de Empleados</h6>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Page content -->
+<div class="container-fluid mt--6">
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <!-- Card header -->
+                <div class="card-header border-0">
+                    <h3 class="mb-0">Filtros</h3>
+                </div>
+                <div class="card-body">
+                    <form id="filterForm">
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <label for="filterClient" class="form-label">Cliente</label>
+                                <select class="form-control" id="filterClient">
+                                    <option value="">Todos</option>
+                                    <!-- Clientes will be populated here -->
+                                </select>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="filterDiningRoom" class="form-label">Comedor</label>
+                                <select class="form-control" id="filterDiningRoom">
+                                    <option value="">Todos</option>
+                                    <!-- Comedores will be populated here -->
+                                </select>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="filterEmployeeNumber" class="form-label">Número de Empleado</label>
+                                <input type="text" class="form-control" id="filterEmployeeNumber">
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="filterStatus" class="form-label">Estatus de Empleado</label>
+                                <select class="form-control" id="filterStatus">
+                                    <option value="">Todos</option>
+                                    <option value="1">Activo</option>
+                                    <option value="0">Inactivo</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="filterStartDate" class="form-label">Fecha de Inicio</label>
+                                <input type="date" class="form-control" id="filterStartDate">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="filterEndDate" class="form-label">Fecha de Fin</label>
+                                <input type="date" class="form-control" id="filterEndDate">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12 mb-3 text-right">
+                                <button type="button" class="btn btn-primary" id="applyFiltersBtn">Aplicar Filtros</button>
+                                <button type="button" class="btn btn-secondary" id="dropFiltersBtn">Borrar Filtros</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col">
+            <div class="card">
+                <!-- Card header -->
+                <div class="card-header border-0">
+                    <ul class="nav nav-tabs card-header-tabs" id="reportTabs" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" id="general-reports-tab" data-toggle="tab" href="#general-reports" role="tab" aria-controls="general-reports" aria-selected="true">Informes Generales</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="summary-reports-tab" data-toggle="tab" href="#summary-reports" role="tab" aria-controls="summary-reports" aria-selected="false">Informe por Resumen</a>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body">
+                    <div class="tab-content" id="reportTabsContent">
+                        <div class="tab-pane fade show active" id="general-reports" role="tabpanel" aria-labelledby="general-reports-tab">
+                            <!-- Light table -->
+                            <div class="table-responsive">
+                                <table class="table align-items-center table-flush">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th scope="col">Compañía</th>
+                                            <th scope="col">Cliente</th>
+                                            <th scope="col">Comedor</th>
+                                            <th scope="col">Número de Empleado</th>
+                                            <th scope="col">Nombre del Empleado</th>
+                                            <th scope="col">Estado del Empleado</th>
+                                            <th scope="col">Fecha y Hora de Entrada</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="generalReportsTableBody">
+                                        <!-- General report rows will be populated here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="card-footer py-4">
+                              <nav aria-label="...">
+                                  <ul class="pagination justify-content-end mb-0 pt-0" id="pagination-general">
+                                      <!-- Pagination links will be populated here -->
+                                  </ul>
+                              </nav>
+                          </div>
+                        </div>
+                        <div class="tab-pane fade" id="summary-reports" role="tabpanel" aria-labelledby="summary-reports-tab">
+                            <!-- Light table -->
+                            <div class="table-responsive">
+                                <table class="table align-items-center table-flush">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th scope="col">Compañía</th>
+                                            <th scope="col">Cliente</th>
+                                            <th scope="col">Comedor</th>
+                                            <th scope="col">Número de Empleado</th>
+                                            <th scope="col">Nombre del Empleado</th>
+                                            <th scope="col">Estado del Empleado</th>
+                                            <th scope="col">Número de Entradas</th>
+                                            <th scope="col">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="summaryReportsTableBody">
+                                        <!-- Summary report rows will be populated here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="card-footer py-4">
+                              <nav aria-label="...">
+                                  <ul class="pagination justify-content-end mb-0 pt-0" id="pagination-resumen">
+                                      <!-- Pagination links will be populated here -->
+                                  </ul>
+                              </nav>
+                          </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for viewing details -->
+    <div class="modal fade" id="viewDetailsModal" tabindex="-1" aria-labelledby="viewDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="viewDetailsModalLabel">Detalles del Empleado</h5>
+                    <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body pb-1">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="detail_code" class="form-label">Número de Empleado</label>
+                            <input type="text" class="form-control" id="detail_code" disabled>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="detail_first_name" class="form-label">Nombre</label>
+                            <input type="text" class="form-control" id="detail_first_name" disabled>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="detail_last_name" class="form-label">Apellido Paterno</label>
+                            <input type="text" class="form-control" id="detail_last_name" disabled>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="detail_second_last_name" class="form-label">Apellido Materno</label>
+                            <input type="text" class="form-control" id="detail_second_last_name" disabled>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="detail_status" class="form-label">Estado</label>
+                            <input type="text" class="form-control" id="detail_status" disabled>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="detail_entries" class="form-label">Número de Entradas</label>
+                            <input type="text" class="form-control" id="detail_entries" disabled>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table align-items-center table-flush">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th scope="col">Compañía</th>
+                                    <th scope="col">Cliente</th>
+                                    <th scope="col">Comedor</th>
+                                    <th scope="col">Fecha y Hora de Entrada</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detailEntriesTableBody">
+                                <!-- Detail entries rows will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="card-footer py-4">
+                      <nav aria-label="...">
+                          <ul class="pagination justify-content-end mb-0 pt-0" id="pagination-detalle">
+                              <!-- Pagination links will be populated here -->
+                          </ul>
+                      </nav>
+                  </div>
+                </div>
+                <div class="modal-footer pt-1">
+                    <button type="button" class="btn btn-secondary mt-0" data-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast container -->
+    <div aria-live="polite" aria-atomic="true" class="position-relative" id="toast-area" aria-hidden="true">
+      <div class="toast-container position-fixed bottom-0 right-0 p-4 m-1 z-4" id="toastContainer" >
+          <!-- Toasts will be dynamically added here -->
+      </div>
+    </div>
+
+    {% include "includes/footer.html" %}
+</div>
+{% endblock content %}
+
+{% block javascripts %}
+<script src="/static/assets/html-js/loadDataReportesEmpleados.js"></script>
+{% endblock javascripts %}

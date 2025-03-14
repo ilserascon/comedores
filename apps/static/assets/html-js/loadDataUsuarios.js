@@ -273,7 +273,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return false;
         }
 
-        if (!data.email.includes('@') || !data.email.includes('.')) {
+        if (data.email && (!data.email.includes('@') || !data.email.includes('.'))) {
             showToast('Correo electrónico inválido', 'danger');
             return false;
         }

@@ -1,4 +1,32 @@
 /**
+ * OBTIENE LA LISTA DE COMEDORES DE UN CLIENTE EN ESPECÍFICO.
+ * 
+ * @param {string} clientId - ID del cliente propietario de los comedores.
+ * @returns {Promise<Object>} - Datos de los comedores.
+ * @throws {Error} - Error al obtener comedores.
+ */
+async function getAllComedores(clientId = 'all') {
+    try {
+        const response = await fetch(`/get_all_comedores?&client-id=${clientId}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Error al obtener comedores');
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error:', error.message);
+        throw new Error(error.message || 'Error al obtener comedores');
+    }
+}
+/**
  * OBTIENE LA LISTA DE COMEDORES CON PAGINACION Y FILTRO.
  * 
  * @param {number} page - Número de la página a obtener.

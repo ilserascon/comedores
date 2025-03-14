@@ -12,6 +12,7 @@ urlpatterns = [
     path('', views.index, name='home'),    
 
     # ======================= COMEDORES ======================= #
+    path('get_all_comedores', views.get_all_comedores, name='get_all_comedores'),
     path('get_comedores', views.get_comedores, name='get_comedores'),
     path('get_comedor', views.get_comedor, name='get_comedor'),
     path('create_comedor', views.create_comedor, name='create_comedor'),
@@ -42,6 +43,29 @@ urlpatterns = [
 
     # ===================== TIPOS DE NOMINA ===================== #
     path('get_tipos_nomina', views.get_tipos_nomina, name='get_tipos_nomina'),
+
+
+    # ===================== REPORTE EMPLEADOS ===================== #
+    path('get_employee_report_general', views.get_employee_report_general, name='get_employee_report_general'),
+    path('get_clients_employee_reports', views.get_clients_employee_reports, name='get_clients_employee_reports'),
+    path('get_diner_employee_reports', views.get_diner_employee_reports, name='get_diner_employee_reports'),
+    path('get_employee_report_summary', views.get_employee_report_summary, name='get_employee_report_summary'),
+    path('get_employee_report_summary_details', views.get_employee_report_summary_details, name='get_employee_report_summary_details'),
+
+    # ===================== REPORTE VALES UNICOS ===================== #
+    path('get_unique_reports', views.get_unique_reports, name='get_unique_reports'),
+    path('get_clients_unique_reports', views.get_clients_unique_reports, name='get_clients_unique_reports'),
+    path('get_diners_unique_reports', views.get_diners_unique_reports, name='get_diners_unique_reports'),
+
+    # ===================== REPORTE VALES PERPETUOS ===================== #
+    path('get_perpetual_reports', views.get_perpetual_reports, name='get_perpetual_reports'),
+    path('get_clients_perpetual_reports', views.get_clients_perpetual_reports, name='get_clients_perpetual_reports'),
+    path('get_diners_perpetual_reports', views.get_diners_perpetual_reports, name='get_diners_perpetual_reports'),
+    path('get_perpetual_report_summary', views.get_perpetual_report_summary, name='get_perpetual_report_summary'),
+    path('get_perpetual_report_summary_details', views.get_perpetual_report_summary_details, name='get_perpetual_report_summary_details'),
+
+    # ===================== GENERAR VOUCHERS ===================== #
+    path('generate_unique_voucher', views.generate_unique_voucher, name='generate_unique_voucher'),
 
     # Matches any html file
     re_path(r'^.*\.*', views.pages, name='pages'),

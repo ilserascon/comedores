@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generated QR Codes</title>
+</head>
+<body>
+    <main>
+
+    {% for qr_path, folio, comedor  in qrcodes%}
+        
+        {% if loop.index0 % 3 == 0 %}
+            <div class="row">
+        {% endif %}
+
+            <div class="qr-code" >
+              <div class="header" >
+                <img src="{{ logo_path }}" alt="Alcorp logo">
+                <span>{{comedor}}</span>
+              </div>
+              <img src="{{ qr_path }}" alt="QR Code">
+              <div class="footer" >
+                <span>Folio: {{folio}}</span>
+              </div>
+            </div>
+        
+        {% if loop.index0 % 3 == 2 %}
+            </div>
+        {% endif %}
+        
+    {% endfor %}
+
+
+    </main>
+</body>
+</html>
