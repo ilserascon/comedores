@@ -933,7 +933,7 @@ def get_tipos_nomina(request):
 @csrf_exempt
 def get_clientes(request):
     try:
-        clientes = Client.objects.all().values('id', 'company')
+        clientes = Client.objects.filter(status=1).values('id', 'company')
         context = {
             'clientes': list(clientes)
         }        
