@@ -538,10 +538,10 @@ async function manejarCargaEmpleados(file, selectCliente, selectComedor) {
         const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);        
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);                  
 
         try {
-            const data = await uploadEmpleados(selectCliente.value, selectComedor.value, jsonData);            
+            const data = await uploadEmpleados(selectCliente, selectComedor, jsonData);            
             $('#cargarEmpleadosModal').modal('hide');
             loadEmpleados();
             showToast('Empleados cargados correctamente', 'success');
@@ -567,9 +567,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (!validarCampos(selectCliente, selectComedor, file)) {
             return;
-        }
+        }                
 
-        await manejarCargaEmpleados(file, selectCliente, selectComedor);
+        await manejarCargaEmpleados(file, selectCliente.value, selectComedor.value);
         resetCargarEmpleadosModalFields();
     });
 

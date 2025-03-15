@@ -860,6 +860,12 @@ def upload_empleados(request):
             cliente_id = data.get('cliente_id')
             comedor_id = data.get('comedor_id')
             empleados = data.get('empleados')
+            
+            # Validar cliente_id y comedor_id
+            if not cliente_id:
+                return JsonResponse({'error': 'El campo cliente_id es obligatorio'}, status=400)
+            if not comedor_id:
+                return JsonResponse({'error': 'El campo comedor_id es obligatorio'}, status=400)
 
             # Procesar los empleados
             for empleado_data in empleados:
@@ -895,14 +901,13 @@ def upload_empleados(request):
                 empleado.save()
 
                 # Crear la relación en EmployeeClientDiner
-                if comedor_id:
-                    client_diner = ClientDiner.objects.get(client_id=cliente_id, dining_room_id=comedor_id)
-                    EmployeeClientDiner.objects.create(
-                        employee=empleado,
-                        client_diner=client_diner,
-                        created_by_id=request.user.id,
-                        updated_by_id=request.user.id
-                    )
+                client_diner = ClientDiner.objects.get(client_id=cliente_id, dining_room_id=comedor_id)
+                EmployeeClientDiner.objects.create(
+                    employee=empleado,
+                    client_diner=client_diner,
+                    created_by_id=request.user.id,
+                    updated_by_id=request.user.id
+                )
 
             return JsonResponse({'message': 'Empleados cargados correctamente'})
         except PayrollType.DoesNotExist:
