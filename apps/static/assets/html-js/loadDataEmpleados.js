@@ -1,6 +1,3 @@
-document.addEventListener('DOMContentLoaded', loadEmpleados);
-document.addEventListener('DOMContentLoaded', loadClientes);
-
 let originalEmpleadoData = {};
 let currentPage = 1;
 
@@ -30,6 +27,7 @@ async function loadEmpleados(page = currentPage, pageSize = 10, searchQuery = ''
                 <td>${empleado.lastname}</td>
                 <td>${empleado.second_lastname}</td>                
                 <td>${empleado.client__company}</td>
+                <td>${empleado.dining_room_name}</td>
                 <td>${empleado.payroll__description}</td>
                 <td>
                     <span class="badge badge-dot mr-4">
@@ -90,7 +88,8 @@ async function loadEmpleados(page = currentPage, pageSize = 10, searchQuery = ''
  */
 async function loadClientes() {
     try {
-        const clientes = await getClientes();
+        const response = await getClientes();
+        const clientes = response.clientes;
         const selectCliente = document.getElementById('selectCliente');
         selectCliente.innerHTML = '<option value="" disabled selected>Seleccione un cliente</option>';
         clientes.forEach(cliente => {
@@ -114,12 +113,14 @@ async function loadClientes() {
  */
 async function openEditModal(empleadoId) {
     try {
-        const [empleado, clientes, tiposNomina] = await Promise.all([
-            getEmpleado(empleadoId),
-            getClientes(),
-            getTiposNomina()
-        ]);
+        const empleado = await getEmpleado(empleadoId);
+        const responseClientes = await getClientes();
+        const tiposNomina = await getTiposNomina();
+        const responseComedores = await getComedoresClientes(empleado.client.id); // Pasar el ID del cliente actual
 
+        const clientes = responseClientes.clientes;  // Acceder a la propiedad 'clientes'
+        const comedores = responseComedores.comedores;  // Acceder a la propiedad 'comedores'        
+        
         originalEmpleadoData = {
             employeed_code: empleado.employeed_code,
             name: empleado.name,
@@ -127,6 +128,7 @@ async function openEditModal(empleadoId) {
             second_lastname: empleado.second_lastname,
             client_id: empleado.client.id,
             payroll_id: empleado.payroll.id,
+            dining_room_id: empleado.dining_room.id, // Añadir el id del comedor
             status: empleado.status ? '1' : '0'
         };
 
@@ -158,6 +160,35 @@ async function openEditModal(empleadoId) {
                 option.selected = true;
             }
             payrollSelect.appendChild(option);
+        });
+
+        const diningRoomSelect = document.getElementById('editarDinningRoomClient');
+        diningRoomSelect.innerHTML = '<option value="" disabled selected>--------</option>';
+        comedores.forEach(comedor => {
+            const option = document.createElement('option');
+            option.value = comedor.id;
+            option.text = comedor.name;
+            if (comedor.id === empleado.dining_room.id) {
+                option.selected = true;
+            }
+            diningRoomSelect.appendChild(option);
+        });
+
+        // Agregar evento para cargar comedores cuando se seleccione un cliente
+        clientSelect.addEventListener('change', async function() {
+            const clientId = this.value;
+            const responseComedores = await getComedoresClientes(clientId);
+            const comedores = responseComedores.comedores;
+            diningRoomSelect.innerHTML = '<option value="" disabled selected>--------</option>';
+            comedores.forEach(comedor => {
+                const option = document.createElement('option');
+                option.value = comedor.id;
+                option.text = comedor.name;
+                if (comedor.id === empleado.dining_room.id) {
+                    option.selected = true;
+                }
+                diningRoomSelect.appendChild(option);
+            });
         });
 
         document.getElementById('editarEmployeeStatus').value = empleado.status ? '1' : '0';
@@ -210,6 +241,7 @@ function isFormModified() {
     const second_lastname = document.getElementById('editarEmployeeSecondLastname').value;
     const client_id = document.getElementById('editarEmployeeClient').value;
     const payroll_id = document.getElementById('editarEmployeePayroll').value;
+    const dining_room_id = document.getElementById('editarDinningRoomClient').value;
     const status = document.getElementById('editarEmployeeStatus').value;
 
     return (
@@ -219,6 +251,7 @@ function isFormModified() {
         second_lastname !== originalEmpleadoData.second_lastname ||
         client_id !== originalEmpleadoData.client_id.toString() ||
         payroll_id !== originalEmpleadoData.payroll_id.toString() ||
+        dining_room_id !== originalEmpleadoData.dining_room_id.toString() || // Verificar si el comedor ha cambiado
         status !== originalEmpleadoData.status
     );
 }
@@ -247,9 +280,10 @@ async function actualizarEmpleado() {
         const second_lastname = document.getElementById('editarEmployeeSecondLastname').value;
         const client_id = document.getElementById('editarEmployeeClient').value;
         const payroll_id = document.getElementById('editarEmployeePayroll').value;
+        const dining_room_id = document.getElementById('editarDinningRoomClient').value;
         const status = document.getElementById('editarEmployeeStatus').value;
-
-        const data = await updateEmpleado(empleadoId, employeed_code, name, lastname, second_lastname, client_id, payroll_id, status);        
+        
+        const data = await updateEmpleado(empleadoId, employeed_code, name, lastname, second_lastname, client_id, payroll_id, dining_room_id, status);
         $('#editarEmpleadoModal').modal('hide');
         loadEmpleados(currentPage);  // Usar la página actual
         showToast('Empleado actualizado correctamente', 'success');
@@ -268,11 +302,14 @@ async function actualizarEmpleado() {
  */
 async function openCreateModal() {
     try {
-        const [clientes, tiposNomina] = await Promise.all([
+        resetCreateModalFields();
+
+        const [responseClientes, tiposNomina] = await Promise.all([
             getClientes(),
             getTiposNomina()
         ]);
 
+        const clientes = responseClientes.clientes;
         const clientSelect = document.getElementById('crearEmployeeClient');
         clientSelect.innerHTML = '<option value="" disabled selected>--------</option>';
         clientes.forEach(cliente => {
@@ -291,10 +328,43 @@ async function openCreateModal() {
             payrollSelect.appendChild(option);
         });
 
+        // Agregar evento para cargar comedores cuando se seleccione un cliente
+        clientSelect.addEventListener('change', async function() {
+            const clientId = this.value;
+            const responseComedores = await getComedoresClientes(clientId);
+            const comedores = responseComedores.comedores;
+            const diningRoomSelect = document.getElementById('crearDinningRoomClient');
+            diningRoomSelect.innerHTML = '<option value="" disabled selected>--------</option>';
+            comedores.forEach(comedor => {
+                const option = document.createElement('option');
+                option.value = comedor.id;
+                option.text = comedor.name;
+                diningRoomSelect.appendChild(option);
+            });
+        });
+
         $('#crearEmpleadoModal').modal('show');
     } catch (error) {
         console.error('Error al abrir el modal de creación:', error.message);
     }
+}
+
+function resetCreateModalFields() {
+    document.getElementById('crearEmployeeCode').value = '';
+    document.getElementById('crearEmployeeName').value = '';
+    document.getElementById('crearEmployeeLastname').value = '';
+    document.getElementById('crearEmployeeSecondLastname').value = '';
+    document.getElementById('crearEmployeeClient').value = '';
+    document.getElementById('crearEmployeePayroll').value = '';
+    document.getElementById('crearDinningRoomClient').innerHTML = '<option value="" disabled selected>--------</option>';
+    document.getElementById('crearEmployeeStatus').value = '1';
+}
+
+function resetCargarEmpleadosModalFields() {
+    document.getElementById('selectCliente').value = '';
+    document.getElementById('selectComedor').innerHTML = '<option value="" disabled selected>--------</option>';
+    document.getElementById('selectComedor').disabled = true;
+    document.getElementById('archivoExcel').value = '';
 }
 
 
@@ -316,10 +386,10 @@ async function crearEmpleado() {
         const second_lastname = document.getElementById('crearEmployeeSecondLastname').value;
         const client_id = document.getElementById('crearEmployeeClient').value;
         const payroll_id = document.getElementById('crearEmployeePayroll').value;
+        const dining_room_id = document.getElementById('crearDinningRoomClient').value;
         const status = document.getElementById('crearEmployeeStatus').value;
 
-        const data = await createEmpleado(employeed_code, name, lastname, second_lastname, client_id, payroll_id, status);
-        console.log(data.message);
+        const data = await createEmpleado(employeed_code, name, lastname, second_lastname, client_id, payroll_id, dining_room_id, status);        
         $('#crearEmpleadoModal').modal('hide');
         loadEmpleados();
         showToast('Empleado creado correctamente', 'success');
@@ -330,7 +400,8 @@ async function crearEmpleado() {
 
 async function llenarSelectClientes() {
     try {
-        const clientes = await getClientes();
+        const response = await getClientes();
+        const clientes = response.clientes;
         const filterEmployeeSelect = document.getElementById('filterEmployeeSelect');
 
         // Limpiar las opciones existentes
@@ -345,6 +416,27 @@ async function llenarSelectClientes() {
         });
     } catch (error) {
         console.error('Error al llenar el select de clientes:', error.message);
+    }
+}
+
+async function llenarSelectComedoresClientes(clienteId) {
+    try {
+        const response = await getComedoresClientes(clienteId);
+        const comedoresClientes = response.comedores;        
+        const selectComedoresCliente = document.getElementById('selectComedor');
+
+        // Limpiar las opciones existentes
+        selectComedoresCliente.innerHTML = '<option value="" disabled selected>--------</option>';
+
+        // Agregar las nuevas opciones
+        comedoresClientes.forEach(comedorCliente => {
+            const option = document.createElement('option');
+            option.value = comedorCliente.id;
+            option.textContent = comedorCliente.name;
+            selectComedoresCliente.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error al llenar el select de los comedores de un cliente:', error.message);
     }
 }
 
@@ -400,38 +492,56 @@ function showToast(message, type = 'success') {
 /**
  * CARGA LOS EMPLEADOS DESDE UN ARCHIVO EXCEL AL SERVIDOR.
  * 
- * @param {number} clienteId - El ID del cliente asociado con los empleados.
- * @param {Array} empleados - La lista de empleados a cargar.
- * @returns {Promise<Object>} - Una promesa que se resuelve con los datos de la respuesta del servidor. 
  */
-document.getElementById('cargarEmpleadosBtn').addEventListener('click', async function() {
-    const fileInput = document.getElementById('archivoExcel');
-    const file = fileInput.files[0];
-    const clienteId = document.getElementById('selectCliente').value;
-
-    if (!clienteId) {
+function validarCampos(selectCliente, selectComedor, file) {
+    if (!selectCliente.value) {
         showToast('Por favor, seleccione un cliente', 'danger');
-        return;
+        return false;
+    }
+
+    if (!selectComedor.value) {
+        showToast('Por favor, seleccione un comedor', 'danger');
+        return false;
     }
 
     if (!file) {
         showToast('Por favor, seleccione un archivo Excel', 'danger');
-        return;
-    }    
+        return false;
+    }
 
+    return true;
+}
+
+function manejarSelectComedor(selectCliente, selectComedor) {
+    selectCliente.addEventListener('change', async function() {
+        if (selectCliente.value) {
+            selectComedor.disabled = false;
+            const responseComedores = await getComedoresClientes(selectCliente.value);
+            const comedores = responseComedores.comedores;
+            selectComedor.innerHTML = '<option value="" disabled selected>--------</option>';
+            comedores.forEach(comedor => {
+                const option = document.createElement('option');
+                option.value = comedor.id;
+                option.text = comedor.name;
+                selectComedor.appendChild(option);
+            });
+        } else {
+            selectComedor.disabled = true;
+        }
+    });
+}
+
+async function manejarCargaEmpleados(file, selectCliente, selectComedor) {
     const reader = new FileReader();
     reader.onload = async function(e) {
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
-
-        console.log('Datos extraídos del archivo Excel:', jsonData);
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);        
 
         try {
-            const data = await uploadEmpleados(clienteId, jsonData);
-            console.log(data.message);
+            const data = await uploadEmpleados(selectCliente.value, selectComedor.value, jsonData);            
             $('#cargarEmpleadosModal').modal('hide');
             loadEmpleados();
             showToast('Empleados cargados correctamente', 'success');
@@ -442,20 +552,43 @@ document.getElementById('cargarEmpleadosBtn').addEventListener('click', async fu
     };
 
     reader.readAsArrayBuffer(file);
-});
-
-
-document.getElementById('guardarEmpleadoBtn').addEventListener('click', crearEmpleado);
-document.getElementById('actualizarEmpleadoBtn').addEventListener('click', actualizarEmpleado);
-document.getElementById('searchUserInput').addEventListener('input', function() {
-    const searchQuery = this.value;
-    loadEmpleados(1, 10, searchQuery); // Reiniciar a la primera página al buscar
-});
-
-document.getElementById('filterEmployeeSelect').addEventListener('change', function() {
-    loadEmpleados(1, 10, document.getElementById('searchUserInput').value);
-});
+}
 
 document.addEventListener('DOMContentLoaded', function() {
+    const selectCliente = document.getElementById('selectCliente');
+    const selectComedor = document.getElementById('selectComedor');
+
+    // Llamar a manejarSelectComedor cuando se cargue el DOM
+    manejarSelectComedor(selectCliente, selectComedor);
+
+    document.getElementById('cargarEmpleadosBtn').addEventListener('click', async function() {
+        const fileInput = document.getElementById('archivoExcel');
+        const file = fileInput.files[0];
+
+        if (!validarCampos(selectCliente, selectComedor, file)) {
+            return;
+        }
+
+        await manejarCargaEmpleados(file, selectCliente, selectComedor);
+        resetCargarEmpleadosModalFields();
+    });
+
+    $('#cargarEmpleadosModal').on('hidden.bs.modal', function () {
+        resetCargarEmpleadosModalFields(); // Reiniciar los campos del modal de carga de empleados al cerrar
+    });
+
+    document.getElementById('guardarEmpleadoBtn').addEventListener('click', crearEmpleado);
+    document.getElementById('actualizarEmpleadoBtn').addEventListener('click', actualizarEmpleado);
+    document.getElementById('searchUserInput').addEventListener('input', function() {
+        const searchQuery = this.value;
+        loadEmpleados(1, 10, searchQuery); // Reiniciar a la primera página al buscar
+    });
+
+    document.getElementById('filterEmployeeSelect').addEventListener('change', function() {
+        loadEmpleados(1, 10, document.getElementById('searchUserInput').value);
+    });
+
     llenarSelectClientes();
+    loadEmpleados();
+    loadClientes();
 });

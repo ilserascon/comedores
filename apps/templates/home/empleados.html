@@ -41,6 +41,7 @@
                 <th scope="col" class="sort" data-sort="lastname">Apellido Paterno</th>
                 <th scope="col" class="sort" data-sort="second_lastname">Apellido Materno</th>                
                 <th scope="col" class="sort" data-sort="client_id">Cliente</th>
+                <th scope="col" class="sort" data-sort="dinning_room">Comedor</th>
                 <th scope="col" class="sort" data-sort="payroll">Nomina</th>
                 <th scope="col" class="sort" data-sort="status">Estatus</th>
                 <th scope="col" class="sort">Acciones</th>
@@ -119,14 +120,21 @@
               <div class="invalid-feedback" id="crearEmployeeClientError">Este campo es obligatorio.</div>
             </div>
             <div class="form-group col-md-6">
+              <label for="crearDinningRoomClient">Comedor</label>
+              <select class="form-control" id="crearDinningRoomClient">                
+                <!-- Opciones se llenarán dinámicamente -->
+              </select>
+              <div class="invalid-feedback" id="crearDinningRoomClientError">Este campo es obligatorio.</div>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group col-md-6">
               <label for="crearEmployeePayroll">Nomina</label>
               <select class="form-control" id="crearEmployeePayroll">                
                 <!-- Opciones se llenarán dinámicamente -->
               </select>
               <div class="invalid-feedback" id="crearEmployeePayrollError">Este campo es obligatorio.</div>
             </div>
-          </div>
-          <div class="form-row">
             <div class="form-group col-md-6">
               <label for="crearEmployeeStatus">Estatus</label>
               <select class="form-control" id="crearEmployeeStatus">
@@ -191,14 +199,21 @@
               <div class="invalid-feedback" id="editarEmployeeClientError">Este campo es obligatorio.</div>
             </div>
             <div class="form-group col-md-6">
+              <label for="editarDinningRoomClient">Comedor</label>
+              <select class="form-control" id="editarDinningRoomClient">
+                <!-- Opciones se llenarán dinámicamente -->
+              </select>
+              <div class="invalid-feedback" id="editarDinningRoomClientError">Este campo es obligatorio.</div>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group col-md-6">
               <label for="editarEmployeePayroll">Nomina</label>
               <select class="form-control" id="editarEmployeePayroll">
                 <!-- Opciones se llenarán dinámicamente -->
               </select>
               <div class="invalid-feedback" id="editarEmployeePayrollError">Este campo es obligatorio.</div>
             </div>
-          </div>
-          <div class="form-row">
             <div class="form-group col-md-6">
               <label for="editarEmployeeStatus">Estatus</label>
               <select class="form-control" id="editarEmployeeStatus">
@@ -232,6 +247,12 @@
           <div class="form-group">
             <label for="selectCliente">Seleccionar Cliente</label>
             <select class="form-control" id="selectCliente">
+              <!-- Opciones se llenarán dinámicamente -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="selectComedor">Seleccionar Comedor</label>
+            <select class="form-control" id="selectComedor" disabled>
               <!-- Opciones se llenarán dinámicamente -->
             </select>
           </div>
