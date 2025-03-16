@@ -2,7 +2,7 @@ import os
 import jinja2
 import pdfkit
 import qrcode
-from apps.home.models import Voucher
+from apps.home.models import Voucher, Lots
 
 
 
@@ -75,6 +75,24 @@ def get_pdf_path(lotId: int):
 def unique_vouchers_pdf_exists(lotId: int):
   filename = create_pdf_name(lotId)
   return os.path.exists(OUTPUT_DIR+filename)
+
+def generate_lot_pdf(lot_id: int):
+  if unique_vouchers_pdf_exists(lot_id):
+    return get_pdf_path(lot_id)
+  
+  lot = Lots.objects.filter(id=lot_id).first()
+  dining_room = lot.client_diner.dining_room.name
+
+  vouchers = list(Voucher.objects.filter(id=lot_id))
+  qr_paths = prepare_qrs(vouchers, lot_id, dining_room)
+  filename = create_pdf_name(lot_id)
+  generate_qrs_pdf(qr_paths, filename)
+
+  for qr_path in qr_paths:
+    os.remove(qr_path[0])
+  
+  return get_pdf_path(lot_id)
+
   
   
     

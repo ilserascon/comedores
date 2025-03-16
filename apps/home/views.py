@@ -28,7 +28,7 @@ import os
 from email.message import EmailMessage
 import ssl
 import smtplib
-from apps.pdf_generation import generate_qrs_pdf, prepare_qrs, unique_vouchers_pdf_exists, get_pdf_path
+from apps.pdf_generation import generate_qrs_pdf, prepare_qrs, unique_vouchers_pdf_exists, get_pdf_path, generate_lot_pdf
 
 @login_required(login_url="/login/")
 def index(request):
@@ -1973,15 +1973,21 @@ def send_lot_file_email(request):
 
         if not sender_email or not sender_password:
             return JsonResponse({"error": "No se tiene configurado el email para enviar correos"},status=500)
-
+        
 
         email_message = EmailMessage()
 
-        if unique_vouchers_pdf_exists(lot):
-            filepath = get_pdf_path(lot)
-            with open(filepath, "rb") as f:
-                pdf_data = f.read()
-                email_message.add_attachment(pdf_data, maintype="application", subtype="pdf", filename=f"LOT-{lot}.pdf")
+        filepath = None
+        try:
+            filepath = generate_lot_pdf(lot) 
+        except Exception as err:
+            print(err)
+            return JsonResponse({"error": "Hubo un error generando el pdf"}, status=500)
+
+
+        with open(filepath, "rb") as f:
+            pdf_data = f.read()
+            email_message.add_attachment(pdf_data, maintype="application", subtype="pdf", filename=f"LOT-{lot}.pdf")
         
         email_context = ssl.create_default_context()
         subject = f'Archivo de lote {lot}'
