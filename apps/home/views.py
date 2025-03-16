@@ -148,7 +148,7 @@ def get_comedores(request):
 
         # Paginación
         page_number = request.GET.get('page', 1)
-        paginator = Paginator(dining_rooms_list, 1)  # 10 comedores por página
+        paginator = Paginator(dining_rooms_list, 10)  # 10 comedores por página
         page_obj = paginator.get_page(page_number)
 
         context = {
@@ -305,19 +305,6 @@ def get_encargados(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
     
-
-# Obtiene todos los clientes
-@csrf_exempt
-def get_clientes(request):
-    try:
-        clientes = Client.objects.all().values('id', 'company')
-        context = {
-            'clientes': list(clientes)
-        }        
-        return JsonResponse(context)
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-
 
 # Obtiente los clientes que tienen algun comedor asignado (select del filtro)   
 def get_clientes_comedores(request):
@@ -913,7 +900,7 @@ def get_tipos_nomina(request):
 @csrf_exempt
 def get_clientes(request):
     try:
-        clientes = Client.objects.all().values('id', 'company')
+        clientes = Client.objects.all().values('id', 'company', 'status')
         context = {
             'clientes': list(clientes)
         }        
@@ -1698,30 +1685,45 @@ def get_perpetual_report_summary_details(request):
 
 @csrf_exempt
 def generate_unique_voucher(request):
-    if request.method != 'POST':
-        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    if request.method != "POST":
+        return JsonResponse({"error": "Método no permitido"}, status=405)
     
     try:
         data = json.loads(request.body)
-        client_id = data.get('client_id')
-        dining_room_id = data.get('dining_room_id')
-        quantity = data.get('quantity')
+        client_id = data.get("client_id")
+        dining_room_id = data.get("dining_room_id")
+        quantity = data.get("quantity")
         
 
         if not client_id or not dining_room_id or not quantity:
-            return JsonResponse({'error': 'client_id, dining_room_id y quantity son requeridos'}, status=400)
+            return JsonResponse({"error": "client_id, dining_room_id y quantity son requeridos"}, status=400)
         
         if type(quantity) != int:
-            return JsonResponse({'error': 'quantity debe ser un número entero'}, status=400)
+            return JsonResponse({"error": "quantity debe ser un número entero"}, status=400)
 
         if type(client_id) != int:
-            return JsonResponse({'error': 'client_id debe ser un número entero'}, status=400)
+            return JsonResponse({"error": "client_id debe ser un número entero"}, status=400)
         
         if type(dining_room_id) != int:
-            return JsonResponse({'error': 'dining_room_id debe ser un número entero'}, status=400)
+            return JsonResponse({"error": "dining_room_id debe ser un número entero"}, status=400)
         
         unique_voucher = VoucherType.objects.filter(description="UNICO").first()     
         client_dinner = ClientDiner.objects.filter(client_id=client_id, dining_room_id=dining_room_id).first()
+
+        if not client_dinner:
+            return JsonResponse({"error": "No se encontró la relación entre cliente y comedor"}, status=400)
+        
+        if not client_dinner.client.status:
+            return JsonResponse({"error": f"El cliente {client_dinner.client.company} ha sido desactivado."}, status=400)
+        
+        if not client_dinner.dining_room.status:
+            return JsonResponse({"error": f"El comedor {client_dinner.dining_room.name} ha sido desactivado."}, status=400)
+    
+        if not client_dinner.status:
+            return JsonResponse({"error": f"El uso del comedor por parte de  {client_dinner.client.company} ha sido desactivado."}, status=400)
+        
+
+
 
         diningroom = client_dinner.dining_room
         
@@ -1738,8 +1740,8 @@ def generate_unique_voucher(request):
             
             vouchers: list[Voucher] = []
             
-            for i in range(1,quantity+1):
-                voucher = Voucher(folio=str(i), lots=lots)
+            for _ in range(quantity):
+                voucher = Voucher(lots=lots)
                 voucher.save()
                 vouchers.append(voucher)
             
@@ -1747,12 +1749,11 @@ def generate_unique_voucher(request):
             QRS_PATH = os.path.abspath('./staticfiles/temp/')
             qr_paths = []
             for voucher in vouchers:
-                identifier = f'{lots.id}-{voucher.folio}'
-                filename = f'qr_{identifier}.png'
+                voucher.folio = f'{lots.id}-{voucher.id}'
+                filename = f'qr_{voucher.folio}.png'
                 path = os.path.join(QRS_PATH, filename)
-                qrcode.make(identifier).save(path)
-                formatted_folio = "#{:002d}".format(int(voucher.folio))
-                qr_paths.append((path, formatted_folio, diningroom.name))
+                qrcode.make(voucher.folio).save(path)
+                qr_paths.append((path, voucher.folio, diningroom.name))
             
             filename = f'/LOT-{lots.id}.pdf'
             generate_qrs_pdf(qr_paths, filename)
@@ -1772,3 +1773,82 @@ def generate_unique_voucher(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
+@csrf_exempt
+def generate_perpetual_voucher(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        client_id = data.get('client_id')
+        dining_room_id = data.get('dining_room_id')
+        quantity = data.get('quantity')
+        employees = data.get('employees')
+        
+        
+        if not client_id or not dining_room_id or not quantity or not employees:
+            return JsonResponse({'error': 'client_id, dining_room_id, quantity y employees son requeridos'}, status=400)
+        
+        if type(quantity) != int:
+            return JsonResponse({'error': 'La cantidad debe ser un número entero'}, status=400)
+        
+        if type(client_id) != int:
+            return JsonResponse({'error': 'El id del cliente debe ser un número entero'}, status=400)
+
+        if type(dining_room_id) != int:
+            return JsonResponse({'error': 'El id del comedor debe ser un número entero'}, status=400)  
+        
+        if type(employees) != list:
+            return JsonResponse({'error': 'Se tiene que incluir una lista de empleados'}, status=400)
+        
+        if quantity > 99:
+            return JsonResponse({'error': 'La cantidad no puede ser mayor a 99'}, status=400)
+
+        if quantity != len(employees):
+            return JsonResponse({'error': 'La cantidad de empleados debe ser igual a la cantidad de vales'}, status=400)
+        
+        
+        perpetual_voucher = VoucherType.objects.filter(description="PERPETUO").first()
+        
+        client_dinner = ClientDiner.objects.filter(client_id=client_id, dining_room_id=dining_room_id).first()
+
+        if not client_dinner:
+            return JsonResponse({"error": "No se encontró la relación entre cliente y comedor"}, status=400)
+        
+        if not client_dinner.client.status:
+            return JsonResponse({"error": f"El cliente {client_dinner.client.company} ha sido desactivado."}, status=400)
+
+        if not client_dinner.dining_room.status:
+            return JsonResponse({"error": f"El comedor {client_dinner.dining_room.name} ha sido desactivado."}, status=400)
+        
+        if not client_dinner.status:
+            return JsonResponse({"error": f"El uso del comedor por parte de  {client_dinner.client.company} ha sido desactivado."}, status=400)
+        
+
+
+        with transaction.atomic():
+            lots = Lots(
+                client_diner=client_dinner,
+                voucher_type=perpetual_voucher,
+                quantity=quantity,
+                email='email@email.com',
+                created_by=request.user
+            )
+
+            vouchers = []
+            
+            for employee in employees:
+                if type(employee) != str:
+                    return JsonResponse({"error": "Los empleados deben ser cadenas de texto"}, status=400)
+
+                voucher = Voucher(lots=lots, employee=employee)
+                vouchers.append(voucher)
+            
+            lots.save()
+            Voucher.objects.bulk_create(vouchers)
+
+        return JsonResponse({'message': 'Vales generados con éxito'})
+    except Exception as err:
+        return JsonResponse({"error": str(err)}, status=500)
+        
+        

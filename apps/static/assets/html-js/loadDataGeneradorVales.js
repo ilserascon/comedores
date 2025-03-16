@@ -1,9 +1,31 @@
-const clientField = document.getElementById('client-field')
-const dinningRoomField = document.getElementById('dinningroom-field')
-const generateBtn = document.getElementById('generate-btn')
-const quantityField = document.getElementById('quantity-field')
+const uniqueClientField = document.getElementById('unique-client-field')
+const uniqueDiningRoomField = document.getElementById('unique-dinningroom-field')
+const uniqueQuantityField = document.getElementById('unique-quantity-field')
 const generateUniqueVouchersForm = document.getElementById('generate-unique-vouchers')
 
+const perpetualClientField = document.getElementById('perpetual-client-field')
+const perpetualDiningRoomField = document.getElementById('perpetual-dinningroom-field')
+const perpetualQuantityField = document.getElementById('perpetual-quantity-field')
+const generatePerpetualVouchersForm = document.getElementById('generate-perpetual-vouchers')
+
+const fillPerpetualVouchersForm = document.getElementById('fill-perpetual-vouchers-form')
+const fillPerpetualVouchersCard = document.getElementById('fill-perpetual-vouchers-card')
+const voucherGeneratorTabs = document.getElementById('voucher-generator-tabs')
+
+const submitPerpetualVouchers = document.createElement('button')
+submitPerpetualVouchers.type = 'submit'
+submitPerpetualVouchers.innerText = 'Generar'
+submitPerpetualVouchers.classList.add('btn','btn-primary','rounded-pill', 'mt-3')
+
+
+
+
+const loader = document.createElement('span')
+loader.className = 'loader'
+
+const loaderDiv = document.createElement('div')
+loaderDiv.appendChild(loader)
+loaderDiv.innerHTML += '  Generando vales'
 
 function showToast(message, type = 'success') {
   const toast = document.createElement('div');
@@ -13,13 +35,15 @@ function showToast(message, type = 'success') {
   toast.role = 'alert';
   toast.ariaLive = 'assertive';
   toast.ariaAtomic = 'true';
-  toast.style.zIndex = '1';
+  toast.style.zIndex = '1000';
 
   // Set the toast content (including a header, body, and close button)
   toast.innerHTML = `
       <div class="toast-header bg-${type} text-white d-flex align-items-center justify-content-between p-1 px-1 rounded-pill shadow-sm">
           <strong class="me-auto">${header}</strong>
-          <button type="button" class="btn-close btn-close-white right-1" data-bs-dismiss="toast" aria-label="Close"></button>
+          <button type="button" class="btn-close btn-close-white bg-transparent border border-0 right-1" data-bs-dismiss="toast" aria-label="Close">
+          <i class="fas fa-times"></i>
+          </button>
       </div>
       <div class="toast-body p-1 px-1">
           ${message}
@@ -56,10 +80,11 @@ function populateDinningRoomField(clientId){
         option.value = comedor.id
         option.textContent = comedor.name
 
-        dinningRoomField.appendChild(option)
+        uniqueDiningRoomField.appendChild(option)
+        perpetualDiningRoomField.appendChild(option.cloneNode(true))
 
-        if (dinningRoomField.children.length > 0) {
-          dinningRoomField.children[0].selected = true
+        if (uniqueDiningRoomField.children.length > 0) {
+          uniqueDiningRoomField.children[0].selected = true
         }
 
       })
@@ -71,49 +96,74 @@ function populateDinningRoomField(clientId){
 
 getClientes().then(data => {
     data.clientes.forEach(client => {
+      console.log(client)
+      if (!client.status) return;
+
       const option = document.createElement('option')
       option.value = client.id
       option.textContent = client.company
-      clientField.appendChild(option)
+      uniqueClientField.appendChild(option)
+      perpetualClientField.appendChild(option.cloneNode(true))
     })
 
-    if (clientField.children.length > 0) {
-      clientField.children[0].selected = true
-      populateDinningRoomField(clientField.children[0].value)
+    if (uniqueClientField.children.length > 0) {
+      uniqueClientField.children[0].selected = true
+      perpetualClientField.children[0].selected = true
+      populateDinningRoomField(uniqueClientField.children[0].value)
     } else {
-      showToast('No se tienen clientes registrados.')
+      showToast('No se tienen clientes registrados.', 'danger')
     }
-})
-
-clientField.addEventListener('change', () => {
-  dinningRoomField.innerHTML = ''
-  populateDinningRoomField(clientField.value)
-
+}).catch(err => {
+  showToast(err.message, 'danger')
 })
 
 
+uniqueClientField.addEventListener('change', () => {
+  uniqueDiningRoomField.innerHTML = ''
+  perpetualDiningRoomField.innerHTML = ''
+  populateDinningRoomField(uniqueClientField.value)
 
-generateUniqueVouchersForm.addEventListener('submit', (e) => {
-  e.preventDefault()
-  // Validate if the quantity field is a positive integer and doesn't use the Euler constant
-  const quantity = quantityField.value;
-  if (!Number.isInteger(Number(quantity)) || Number(quantity) <= 0 || quantity.includes('e')) {
-    showToast('Ingresa un número entero positivo', 'error');
-    return;
+})
+
+function validateFields(maxQuantity, quantity, clientField, diningRoomField){
+
+  if (!Number.isInteger(quantity) || quantity <= 0 ) {
+    showToast('La cantidad debe ser un número entero positivo', 'danger');
+    return false;
+  }
+
+  if (quantity > maxQuantity) {
+    showToast('La cantidad no puede ser mayor a 999', 'danger')
+    return false;
   }
 
 
   if (!clientField.value) {
-    triggerInvalidMessage('No se tienen clientes registrados', 'error');
-    return
+    showToast('No se tienen clientes registrados', 'danger');
+    return false;
   }
 
-  if (!dinningRoomField.value) {
-    triggerInvalidMessage('No se tienen comedores registrados', 'error');
-    return
+  if (!diningRoomField.value) {
+    showToast('No se tienen comedores registrados', 'danger');
+    return false;
   }
 
-  generateUniqueVoucher(Number(clientField.value), Number(dinningRoomField.value), Number(quantity)).then(data => {
+  return true
+
+}
+
+
+generateUniqueVouchersForm.addEventListener('submit', (e) => {
+  e.preventDefault()
+
+  // Validate if the quantity field is a positive integer and doesn't use the Euler constant
+  
+  const quantity = Number(uniqueQuantityField.value)
+  if (!validateFields(999, quantity, uniqueClientField, uniqueDiningRoomField)) return;
+  
+  generateUniqueVouchersForm.appendChild(loaderDiv)
+  generateUniqueVoucher(Number(uniqueClientField.value), Number(uniqueDiningRoomField.value), Number(quantity))
+  .then(data => {
     const pdfFile = data.pdf
 
     let anchor = document.querySelector('a#download-link')
@@ -129,8 +179,115 @@ generateUniqueVouchersForm.addEventListener('submit', (e) => {
     generateUniqueVouchersForm.appendChild(anchor)
     showToast(data.message, 'success')
   })
+  .catch(err => {
+    showToast(err.message, 'danger')
+  })
+  .finally(() => {
+    generateUniqueVouchersForm.removeChild(loaderDiv)
+  })
+})
+
+
+function generatePerpetualVoucherField(number){
+  const field = document.createElement('div')
+  const input = document.createElement('input')
+  const label = document.createElement('label')
+  field.id = `field-voucer-${number}`
+  input.classList.add('form-control')
+  input.type = 'text'
+  input.id = `perpetual-voucher-${number}`
+  input.name = `perpetual-voucher-${number}`
+  input.required = true
+
+  label.htmlFor = `perpetual-voucher-${number}`
+  label.textContent = `Vale ${number}`
+
+  field.appendChild(label)
+  field.appendChild(input)
+
+  field.style.maxWidth = '50ch'
+
+  return field
+
+}
+
+
+generatePerpetualVouchersForm.addEventListener('submit', (e) => {
+  e.preventDefault()
+  fillPerpetualVouchersForm.innerHTML = ''
+  
+  const quantity = Number(perpetualQuantityField.value);
+
+  if (!validateFields(99, quantity, perpetualClientField, perpetualDiningRoomField)) return;
+
+
+  fillPerpetualVouchersCard.classList.add('show')
+  const formContent = document.createElement('div')
+  formContent.classList.add('responsive')
+ 
+
+  for (let i = 1; i <= quantity; i++) {
+    const field = generatePerpetualVoucherField(i)
+    formContent.appendChild(field)
+  }
+  fillPerpetualVouchersForm.appendChild(formContent)
+  fillPerpetualVouchersForm.appendChild(submitPerpetualVouchers)
 
 })
 
 
+fillPerpetualVouchersForm.addEventListener('submit', (e) => {
+  e.preventDefault()
 
+  const formData = new FormData(e.target)
+  const obj = Object.fromEntries(formData.entries())
+  const values = Object.values(obj)
+
+  const isInValid = values.reduce((isInvalid, val, index) => {
+    const input = document.getElementById(`perpetual-voucher-${index + 1}`)
+
+    
+    if (val.length < 5) {
+
+      if (input.parentNode.children.length == 3) return true;
+
+      const invalidFeedback = document.createElement('div')
+      invalidFeedback.classList.add('invalid-feeedback')
+      invalidFeedback.style.color = 'var(--danger)'
+      input.classList.add('is-invalid')
+      invalidFeedback.innerText = 'El nombre del vale debe tener al menos 5 caracteres'
+      input.parentNode.appendChild(invalidFeedback)
+      return true;
+    } else {
+      input.classList.remove('is-invalid')
+      if (input.parentNode.children.length == 3) {
+        input.parentNode.removeChild(input.parentNode.children[2])
+      }
+
+      return isInvalid || false;
+    }
+  }, false)
+
+  if (isInValid) return
+
+  const quantity = Number(perpetualQuantityField.value);
+  const perpetualClient = Number(perpetualClientField.value)
+  const perpetualDiningRoom = Number(perpetualDiningRoomField.value)
+
+  if (!validateFields(99, quantity, perpetualClientField, perpetualDiningRoomField)) return;
+
+  generatePerpetualVoucher(perpetualClient, perpetualDiningRoom, quantity, values)
+  .then(data => {
+    showToast(data.message, 'success')
+    fillPerpetualVouchersForm.innerHTML = ''
+    fillPerpetualVouchersCard.classList.remove('show')
+  })
+  .catch(err => {
+    showToast(err.message, 'danger')
+  })
+})
+
+voucherGeneratorTabs.addEventListener('click', () => {
+  fillPerpetualVouchersForm.innerHTML = ''
+  fillPerpetualVouchersCard.classList.remove('show')
+})
