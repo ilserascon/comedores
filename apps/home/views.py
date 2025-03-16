@@ -807,28 +807,47 @@ def get_empleado(request):
 def create_empleado(request):
     if request.method == 'POST':
         try:
-            data = json.loads(request.body)
+            data = json.loads(request.body)            
             
             # Obtener la instancia de PayrollType
             payroll = PayrollType.objects.get(id=data.get('payroll_id'))
             
-            # Crear un nuevo empleado
-            empleado = Employee(
-                employeed_code=data.get('employeed_code'),
-                name=data.get('name').upper(),
-                lastname=data.get('lastname').upper(),
-                second_lastname=data.get('second_lastname').upper(),
-                client_id=data.get('client_id'),
-                payroll=payroll,  # Asignar la instancia de PayrollType
-                status=data.get('status'),
-                created_by_id=request.user.id
-            )
+            # Verificar si el empleado ya existe
+            empleado_existente = Employee.objects.filter(employeed_code=data.get('employeed_code')).first()
             
-            # Guardar el nuevo empleado
-            empleado.save()
+            if empleado_existente:
+                # Si el empleado existe y el cliente es el mismo
+                if int(empleado_existente.client_id) == int(data.get('client_id')):
+                    return JsonResponse({'message': 'El empleado ya existe', 'status': 'danger'}, status=200)
+                else:
+                    # Si el cliente no es el mismo, crear un nuevo empleado
+                    empleado = Employee(
+                        employeed_code=data.get('employeed_code'),
+                        name=data.get('name').upper(),
+                        lastname=data.get('lastname').upper(),
+                        second_lastname=data.get('second_lastname').upper(),
+                        client_id=data.get('client_id'),
+                        payroll=payroll,
+                        status=data.get('status'),
+                        created_by_id=request.user.id
+                    )
+                    empleado.save()
+            else:
+                # Si el empleado no existe, crear un nuevo empleado
+                empleado = Employee(
+                    employeed_code=data.get('employeed_code'),
+                    name=data.get('name').upper(),
+                    lastname=data.get('lastname').upper(),
+                    second_lastname=data.get('second_lastname').upper(),
+                    client_id=data.get('client_id'),
+                    payroll=payroll,
+                    status=data.get('status'),
+                    created_by_id=request.user.id
+                )
+                empleado.save()
 
             # Crear la relación en EmployeeClientDiner
-            dining_room_id = data.get('dining_room_id')
+            dining_room_id = int(data.get('dining_room_id'))
             if dining_room_id:
                 client_diner = ClientDiner.objects.get(client_id=empleado.client_id, dining_room_id=dining_room_id)
                 EmployeeClientDiner.objects.create(
@@ -838,7 +857,7 @@ def create_empleado(request):
                     updated_by_id=request.user.id
                 )
             
-            return JsonResponse({'message': 'Empleado creado correctamente'})
+            return JsonResponse({'message': 'Empleado creado correctamente'}, status=201)
         except PayrollType.DoesNotExist:
             return JsonResponse({'error': 'Tipo de nómina no encontrado'}, status=404)
         except ClientDiner.DoesNotExist:
@@ -861,6 +880,12 @@ def update_empleado(request):
         # Obtener la instancia de PayrollType si se proporciona
         payroll = PayrollType.objects.get(id=data.get('payroll_id')) if data.get('payroll_id') else empleado.payroll
         
+        # Verificar si existe un empleado con el mismo código de empleado y cliente
+        empleado_existente = Employee.objects.filter(employeed_code=data.get('employeed_code'), client_id=data.get('client_id')).exclude(id=empleado_id).first()
+        
+        if empleado_existente:
+            return JsonResponse({'message': 'El empleado ya existe', 'status': 'danger'}, status=200)
+        
         # Actualizar los campos del empleado
         empleado.employeed_code = data.get('employeed_code', empleado.employeed_code)
         empleado.name = data.get('name', empleado.name).upper()
@@ -879,7 +904,7 @@ def update_empleado(request):
             client_diner = ClientDiner.objects.get(client_id=empleado.client_id, dining_room_id=dining_room_id)
             employee_client_diner, created = EmployeeClientDiner.objects.update_or_create(
                 employee=empleado,
-                defaults={'client_diner': client_diner}
+                defaults={'client_diner': client_diner, 'updated_by_id': request.user.id}
             )
 
         return JsonResponse({'message': 'Empleado actualizado correctamente'})
@@ -925,7 +950,7 @@ def upload_empleados(request):
         try:
             data = json.loads(request.body)
             cliente_id = int(data.get('cliente_id'))  # Convertir cliente_id a entero
-            comedor_id = data.get('comedor_id')
+            comedor_id = int(data.get('comedor_id'))  # Convertir comedor_id a entero
             empleados = data.get('empleados')
             
             # Validar cliente_id y comedor_id
@@ -933,6 +958,11 @@ def upload_empleados(request):
                 return JsonResponse({'error': 'El campo cliente_id es obligatorio'}, status=400)
             if not comedor_id:
                 return JsonResponse({'error': 'El campo comedor_id es obligatorio'}, status=400)
+
+            # Contador de empleados insertados y no insertados (repetidos)
+            empleados_insertados = 0
+            empleados_no_insertados = 0
+            empleados_modificados = 0
 
             # Procesar los empleados
             for empleado_data in empleados:
@@ -957,9 +987,29 @@ def upload_empleados(request):
                 # Verificar si el empleado ya existe
                 empleado_existente = Employee.objects.filter(employeed_code=empleado_data.get('NO. EMPLEADO')).first()                
 
+                # Si el empleado existe
                 if empleado_existente:
+                    # y es del mismo cliente
                     if empleado_existente.client.id == cliente_id:
-                        # Si el código de empleado existe y el cliente es el mismo, no se inserta                        
+                        
+                        client_diner = ClientDiner.objects.get(client_id=cliente_id, dining_room_id=comedor_id)
+                        employee_client_diner = EmployeeClientDiner.objects.filter(employee=empleado_existente, client_diner__client_id=cliente_id).first()
+                        
+                        # y el comedor es diferente se actualiza el comedor asignado
+                        if employee_client_diner and employee_client_diner.client_diner.dining_room_id != comedor_id:
+
+                            print(employee_client_diner.client_diner.dining_room_id)
+                            print(comedor_id)
+                            print(employee_client_diner)
+                            # Actualizar el comedor asignado
+                            employee_client_diner.client_diner = client_diner
+                            employee_client_diner.updated_by_id = request.user.id
+                            employee_client_diner.save()
+                            empleados_modificados += 1
+                            print("El código de empleado existe y el cliente es el mismo, pero el comedor es diferente. Se actualiza el comedor asignado.")
+                        else:
+                            empleados_no_insertados += 1
+                            print("El código de empleado existe y el cliente es el mismo, y el comedor es el mismo. No se inserta.")                            
                         continue
                     else:
                         # Si el código de empleado existe y el cliente no es el mismo, se inserta
@@ -973,7 +1023,9 @@ def upload_empleados(request):
                             status=empleado_data.get('ESTADO', True),
                             created_by_id=request.user.id
                         )
-                        empleado.save()                        
+                        empleado.save()
+                        empleados_insertados += 1
+                        print("El código de empleado existe y el cliente no es el mismo, se inserta.")
                 else:
                     # Si el código de empleado no existe, se inserta
                     empleado = Employee(
@@ -986,7 +1038,9 @@ def upload_empleados(request):
                         status=empleado_data.get('ESTADO', True),
                         created_by_id=request.user.id
                     )
-                    empleado.save()                    
+                    empleado.save()
+                    empleados_insertados += 1
+                    print("El código de empleado no existe, se inserta.")
 
                 # Crear la relación en EmployeeClientDiner
                 client_diner = ClientDiner.objects.get(client_id=cliente_id, dining_room_id=comedor_id)
@@ -997,7 +1051,16 @@ def upload_empleados(request):
                     updated_by_id=request.user.id
                 )
 
-            return JsonResponse({'message': 'Empleados cargados correctamente'})
+            message = {};
+
+            if empleados_insertados > 0:
+                message['message1'] = [f'Empleados insertados: {empleados_insertados}', 'success']
+            if empleados_no_insertados > 0:
+                message['message2'] = [f'Empleados repetidos: {empleados_no_insertados}', 'info']
+            if empleados_modificados > 0:
+                message['message3'] = [f'Empleados modificados: {empleados_modificados}', 'info']
+
+            return JsonResponse({'message': message})
         except PayrollType.DoesNotExist:
             return JsonResponse({'error': 'Tipo de nómina no encontrado'}, status=404)
         except ClientDiner.DoesNotExist:
