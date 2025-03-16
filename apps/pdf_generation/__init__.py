@@ -3,6 +3,7 @@ import jinja2
 import pdfkit
 import qrcode
 from apps.home.models import Voucher, Lots
+import datetime
 
 
 
@@ -94,5 +95,15 @@ def generate_lot_pdf(lot_id: int):
   return get_pdf_path(lot_id)
 
   
-  
+def clean_pdf_dir():
+  LIMIT_DAYS = 30
+
+  for filename in os.listdir(OUTPUT_DIR):
+    if filename.endswith('.pdf'):
+      file_path = os.path.join(OUTPUT_DIR, filename)
+      creation_time = os.path.getctime(file_path)
+      current_time = datetime.datetime.now()
+      time_difference = current_time - datetime.datetime.fromtimestamp(creation_time)
+      if time_difference.days  > LIMIT_DAYS:
+        os.remove(file_path)
     

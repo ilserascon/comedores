@@ -28,7 +28,7 @@ import os
 from email.message import EmailMessage
 import ssl
 import smtplib
-from apps.pdf_generation import generate_qrs_pdf, prepare_qrs, unique_vouchers_pdf_exists, get_pdf_path, generate_lot_pdf
+from apps.pdf_generation import generate_qrs_pdf, prepare_qrs, generate_lot_pdf, clean_pdf_dir
 
 @login_required(login_url="/login/")
 def index(request):
@@ -1815,6 +1815,7 @@ def generate_unique_voucher(request):
 
         diningroom = client_dinner.dining_room
         
+        clean_pdf_dir()
         
         with transaction.atomic():
             lots = Lots(
