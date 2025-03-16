@@ -52,3 +52,29 @@ async function generatePerpetualVoucher(clientId, diningRoomId, quantity, employ
         throw new Error(error.message || 'Error al generar vales perpetuos');
     }
 }
+
+async function sendLotFileToEmail(lotId, email) {
+    try {
+        const response = await fetch(`/send_lot_file_email`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              lot_id: lotId,
+              email: email
+            })
+        });
+  
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Error al enviar el archivo de lote por correo electrónico');
+        }
+  
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error:', error.message);
+        throw new Error(error.message || 'Error al enviar el archivo de lote por correo electrónico');
+    }
+}

@@ -10,7 +10,7 @@ from django.shortcuts import render
 from django.template import loader
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
-
+from decouple import config
 from django.db import models
 
 from .models import  VoucherType, Lots, DiningRoom, ClientDiner, Client, Employee, PayrollType, Entry, EmployeeClientDiner, Voucher
@@ -24,9 +24,11 @@ from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from .transactions.clients import change_client_status
 import pandas as pd
 from .admin import admin_views, user_views
-import qrcode
 import os
-from apps.pdf_generation import generate_qrs_pdf
+from email.message import EmailMessage
+import ssl
+import smtplib
+from apps.pdf_generation import generate_qrs_pdf, prepare_qrs, unique_vouchers_pdf_exists, get_pdf_path
 
 @login_required(login_url="/login/")
 def index(request):
@@ -1819,7 +1821,6 @@ def generate_unique_voucher(request):
                 client_diner=client_dinner,
                 voucher_type=unique_voucher,
                 quantity=quantity,
-                email='email@email.com',
                 created_by=request.user
             )
             lots.save()
@@ -1831,21 +1832,16 @@ def generate_unique_voucher(request):
                 voucher.save()
                 vouchers.append(voucher)
             
+            qr_paths = prepare_qrs(vouchers, lots.id, diningroom.name)
             
-            QRS_PATH = os.path.abspath('./staticfiles/temp/')
-            qr_paths = []
-            for voucher in vouchers:
-                voucher.folio = f'{lots.id}-{voucher.id}'
-                filename = f'qr_{voucher.folio}.png'
-                path = os.path.join(QRS_PATH, filename)
-                qrcode.make(voucher.folio).save(path)
-                qr_paths.append((path, voucher.folio, diningroom.name))
             
             filename = f'/LOT-{lots.id}.pdf'
             generate_qrs_pdf(qr_paths, filename)
             
             context = {
+                "lot_id": lots.id,
                 "pdf": filename,
+                "email": client_dinner.client.email,
                 "message": "Vales generados con éxito"
             }
             
@@ -1917,7 +1913,6 @@ def generate_perpetual_voucher(request):
                 client_diner=client_dinner,
                 voucher_type=perpetual_voucher,
                 quantity=quantity,
-                email='email@email.com',
                 created_by=request.user
             )
 
@@ -1937,4 +1932,80 @@ def generate_perpetual_voucher(request):
     except Exception as err:
         return JsonResponse({"error": str(err)}, status=500)
         
+@csrf_exempt
+def send_lot_file_email(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        email = data.get('email')
+        lot = data.get('lot_id')
         
+        
+        #validate email being not null
+        if not email:
+            return JsonResponse({'error': 'El email es requerido'}, status=400)
+        
+        #validate lots being not null
+        if not lot:
+            return JsonResponse({'error': 'El lote es requerido'}, status=400)
+        
+        #validate email being a string
+        if type(email) != str:
+            return JsonResponse({'error': 'El email debe ser una cadena de texto'}, status=400)
+        
+        #validate lot being an int
+        if type(lot) != int:
+            return JsonResponse({'error': 'El lote debe ser un número entero'}, status=400)
+        
+        #Validate email being less or equal to 100
+        if len(email) > 100:
+            return JsonResponse({'error': 'El email no puede ser mayor a 100 caracteres'}, status=400)
+        
+        lot_object = Lots.objects.get(id=lot)
+        
+        if not lot_object:
+            return JsonResponse({'error': 'El lote no existe'}, status=404)
+        
+        sender_email = config('EMAIL') 
+        sender_password = config('EMAIL_PASSWORD')
+
+        if not sender_email or not sender_password:
+            return JsonResponse({"error": "No se tiene configurado el email para enviar correos"},status=500)
+
+
+        email_message = EmailMessage()
+
+        if unique_vouchers_pdf_exists(lot):
+            filepath = get_pdf_path(lot)
+            with open(filepath, "rb") as f:
+                pdf_data = f.read()
+                email_message.add_attachment(pdf_data, maintype="application", subtype="pdf", filename=f"LOT-{lot}.pdf")
+        
+        email_context = ssl.create_default_context()
+        subject = f'Archivo de lote {lot}'
+        email_message['From'] = sender_email
+        email_message['To'] = email
+        email_message['Subject'] = subject
+
+        
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=email_context) as server:
+            try:
+                server.login(sender_email, sender_password)
+            except Exception as err:
+                return JsonResponse({"error": "No se puedo iniciar sesión en el servidor de correos"}, status=500)
+
+            try:
+                server.sendmail(sender_email, email, email_message.as_string())
+            except Exception as err:
+                return JsonResponse({"error": "No se pudo enviar el correo"})
+         
+        lot_object.email = email
+        lot_object.save()
+        return JsonResponse({"message": "Email enviado con éxito"})
+        
+    
+    except Exception as err:
+        return JsonResponse({'error': str(err)}, status=500)
+  

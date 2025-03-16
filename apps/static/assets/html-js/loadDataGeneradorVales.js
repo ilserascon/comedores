@@ -18,6 +18,120 @@ submitPerpetualVouchers.innerText = 'Generar'
 submitPerpetualVouchers.classList.add('btn','btn-primary','rounded-pill', 'mt-3')
 
 
+function loadFillPerpetualVouchersCard(){
+  const secondCard = document.getElementById('second-card')
+  secondCard.innerHTML = `
+    <div class="card-header">
+      <h4>Llena los nombres de vales perpetuos</h4>
+    </div>  
+      <div class="card-body">
+        <form id="fill-perpetual-vouchers-form" >
+        </form>   
+    </div>>`
+
+    const fillPerpetualVouchersForm = document.getElementById('fill-perpetual-vouchers-form')
+    
+    fillPerpetualVouchersForm.addEventListener('submit', (e) => {
+      e.preventDefault()
+    
+      const formData = new FormData(e.target)
+      const obj = Object.fromEntries(formData.entries())
+      const values = Object.values(obj)
+    
+      const isInValid = values.reduce((isInvalid, val, index) => {
+        const input = document.getElementById(`perpetual-voucher-${index + 1}`)
+    
+        
+        if (val.length < 5) {
+    
+          if (input.parentNode.children.length == 3) return true;
+    
+          const invalidFeedback = document.createElement('div')
+          invalidFeedback.classList.add('invalid-feeedback')
+          invalidFeedback.style.color = 'var(--danger)'
+          input.classList.add('is-invalid')
+          invalidFeedback.innerText = 'El nombre del vale debe tener al menos 5 caracteres'
+          input.parentNode.appendChild(invalidFeedback)
+          return true;
+        } else {
+          input.classList.remove('is-invalid')
+          if (input.parentNode.children.length == 3) {
+            input.parentNode.removeChild(input.parentNode.children[2])
+          }
+    
+          return isInvalid || false;
+        }
+      }, false)
+    
+      if (isInValid) return
+    
+      const quantity = Number(perpetualQuantityField.value);
+      const perpetualClient = Number(perpetualClientField.value)
+      const perpetualDiningRoom = Number(perpetualDiningRoomField.value)
+    
+      if (!validateFields(99, quantity, perpetualClientField, perpetualDiningRoomField)) return;
+    
+      generatePerpetualVoucher(perpetualClient, perpetualDiningRoom, quantity, values)
+      .then(data => {
+        showToast(data.message, 'success')
+        hideCard()
+      })
+      .catch(err => {
+        showToast(err.message, 'danger')
+      })
+    })
+  
+  secondCard.classList.add('show')
+}
+
+function loadSendEmailCard(lotId){
+  const secondCard = document.getElementById('second-card')
+  secondCard.innerHTML = `
+    <div class="card-header">
+      <h4>Envío por correo electrónico</h4>
+    </div>  
+    <div id="send-email" class="card-body">
+        <div class="mb-4">
+          <a target="blank" id="download-link" href=""><i class='ni ni-single-copy-04 text-blue'></i> Ver PDF </a>
+        </div>
+        <form id="send-email-form">
+          <div class="form-group">
+            <label for="receiver-email">Correo electrónico</label>
+            <input name="receiver-email" id="receiver-email" class="form-control" type="email" placeholder="example@email.com" required style="max-width: 100ch"/>
+            <div class="invalid-feedback">No es un correo electrónico válido</div>
+          </div>  
+          <button type="submit" class="btn btn-primary rounded-pill" >Enviar</button>
+        </form>   
+    </div>`
+  
+  secondCard.classList.add('show')
+
+  document.getElementById('send-email').addEventListener('submit', (e) => {
+      e.preventDefault()
+
+      const email = document.getElementById('receiver-email').value
+
+      sendLotFileToEmail(lotId,email)
+        .then(data => {
+            console.log(data)
+
+            showToast(data.message || 'Correo electrónico enviado', 'success')
+            hideCard()
+        })
+        .catch(err => {
+          showToast(err.message, 'danger')
+        })
+
+    
+  })
+
+}
+
+function hideCard(){
+  const secondCard = document.getElementById('second-card')
+  secondCard.classList.remove('show')
+  secondCard.innerHTML = ''
+}
 
 
 const loader = document.createElement('span')
@@ -164,20 +278,23 @@ generateUniqueVouchersForm.addEventListener('submit', (e) => {
   generateUniqueVouchersForm.appendChild(loaderDiv)
   generateUniqueVoucher(Number(uniqueClientField.value), Number(uniqueDiningRoomField.value), Number(quantity))
   .then(data => {
+
+    loadSendEmailCard(data.lot_id)
+
     const pdfFile = data.pdf
 
     let anchor = document.querySelector('a#download-link')
-    if (anchor) {
-      anchor.remove()
-    }
-    //Generate an anchor element and add it to the container
-    anchor = document.createElement('a')
-    anchor.id = 'download-link'
-    anchor.href = `/static/pdfs${pdfFile}`
-    anchor.innerHTML= "<i class='ni ni-single-copy-04 text-blue'></i> Ver PDF "
 
-    generateUniqueVouchersForm.appendChild(anchor)
+    //Generate an anchor element and add it to the container
+
+    anchor.href = `/static/pdfs${pdfFile}`
     showToast(data.message, 'success')
+    
+    if (data.email) {
+      const input = document.getElementById('receiver-email')
+      input.value = data.email
+    }
+
   })
   .catch(err => {
     showToast(err.message, 'danger')
@@ -192,7 +309,7 @@ function generatePerpetualVoucherField(number){
   const field = document.createElement('div')
   const input = document.createElement('input')
   const label = document.createElement('label')
-  field.id = `field-voucer-${number}`
+  field.id = `field-voucher-${number}`
   input.classList.add('form-control')
   input.type = 'text'
   input.id = `perpetual-voucher-${number}`
@@ -214,14 +331,13 @@ function generatePerpetualVoucherField(number){
 
 generatePerpetualVouchersForm.addEventListener('submit', (e) => {
   e.preventDefault()
-  fillPerpetualVouchersForm.innerHTML = ''
   
   const quantity = Number(perpetualQuantityField.value);
-
+  
   if (!validateFields(99, quantity, perpetualClientField, perpetualDiningRoomField)) return;
+  loadFillPerpetualVouchersCard()
+  const fillPerpetualVouchersForm = document.getElementById('fill-perpetual-vouchers-form')
 
-
-  fillPerpetualVouchersCard.classList.add('show')
   const formContent = document.createElement('div')
   formContent.classList.add('responsive')
  
@@ -233,61 +349,11 @@ generatePerpetualVouchersForm.addEventListener('submit', (e) => {
   fillPerpetualVouchersForm.appendChild(formContent)
   fillPerpetualVouchersForm.appendChild(submitPerpetualVouchers)
 
+  console.log(fillPerpetualVouchersForm)
+
 })
 
-
-fillPerpetualVouchersForm.addEventListener('submit', (e) => {
-  e.preventDefault()
-
-  const formData = new FormData(e.target)
-  const obj = Object.fromEntries(formData.entries())
-  const values = Object.values(obj)
-
-  const isInValid = values.reduce((isInvalid, val, index) => {
-    const input = document.getElementById(`perpetual-voucher-${index + 1}`)
-
-    
-    if (val.length < 5) {
-
-      if (input.parentNode.children.length == 3) return true;
-
-      const invalidFeedback = document.createElement('div')
-      invalidFeedback.classList.add('invalid-feeedback')
-      invalidFeedback.style.color = 'var(--danger)'
-      input.classList.add('is-invalid')
-      invalidFeedback.innerText = 'El nombre del vale debe tener al menos 5 caracteres'
-      input.parentNode.appendChild(invalidFeedback)
-      return true;
-    } else {
-      input.classList.remove('is-invalid')
-      if (input.parentNode.children.length == 3) {
-        input.parentNode.removeChild(input.parentNode.children[2])
-      }
-
-      return isInvalid || false;
-    }
-  }, false)
-
-  if (isInValid) return
-
-  const quantity = Number(perpetualQuantityField.value);
-  const perpetualClient = Number(perpetualClientField.value)
-  const perpetualDiningRoom = Number(perpetualDiningRoomField.value)
-
-  if (!validateFields(99, quantity, perpetualClientField, perpetualDiningRoomField)) return;
-
-  generatePerpetualVoucher(perpetualClient, perpetualDiningRoom, quantity, values)
-  .then(data => {
-    showToast(data.message, 'success')
-    fillPerpetualVouchersForm.innerHTML = ''
-    fillPerpetualVouchersCard.classList.remove('show')
-  })
-  .catch(err => {
-    showToast(err.message, 'danger')
-  })
-})
 
 voucherGeneratorTabs.addEventListener('click', () => {
-  fillPerpetualVouchersForm.innerHTML = ''
-  fillPerpetualVouchersCard.classList.remove('show')
+  hideCard()
 })
