@@ -224,7 +224,7 @@ def update_comedor(request):
 def get_encargados(request):
     try:
         # Filtrar los usuarios con role_id = 2
-        encargados = CustomUser.objects.filter(role_id=2)
+        encargados = CustomUser.objects.filter(role_id=2, status=True)
         
         # Excluir los usuarios que están asignados como in_charge en cualquier DiningRoom
         encargados = encargados.exclude(dining_room_in_charge__isnull=False)
