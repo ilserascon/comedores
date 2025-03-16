@@ -1029,3 +1029,30 @@ def get_clientes(request):
         return JsonResponse(context)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+    
+
+# ===================== ENTRADAS ===================== #
+@csrf_exempt
+def get_informacion_comedor_entradas(request):
+    try:
+        user_id = request.user.id
+        dining_rooms = DiningRoom.objects.filter(
+            status=True,
+            in_charge__status=True,
+            in_charge_id=user_id
+        ).select_related('in_charge', 'client_diner_dining_room__client').values(
+            'name',
+            'client_diner_dining_room__client__company'
+        )
+
+        result = [
+            {
+                'dining_room_name': dr['name'],
+                'client_company': dr['client_diner_dining_room__client__company']
+            }
+            for dr in dining_rooms
+        ]
+
+        return JsonResponse({'data': result})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

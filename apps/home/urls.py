@@ -43,6 +43,9 @@ urlpatterns = [
     # ===================== TIPOS DE NOMINA ===================== #
     path('get_tipos_nomina', views.get_tipos_nomina, name='get_tipos_nomina'),
 
+    # ===================== ENTRADAS ===================== #
+    path('get_informacion_comedor_entradas', views.get_informacion_comedor_entradas, name='get_informacion_comedor_entradas'),
+
     # Matches any html file
     re_path(r'^.*\.*', views.pages, name='pages'),
 
