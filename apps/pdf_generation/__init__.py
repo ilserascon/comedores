@@ -1,6 +1,10 @@
 import os
 import jinja2
 import pdfkit
+import qrcode
+from apps.home.models import Voucher
+
+
 
 CSS_DIR = os.path.abspath('./apps/static/assets/css/pdf_generation/')
 TEMPLATES_DIR = os.path.abspath('./apps/templates/pdf_generation/')
@@ -45,5 +49,32 @@ def generate_qrs_pdf(qrs: list[str], filename: str):
   )
   
   return filename
-    
+
+def prepare_qrs(vouchers:list[Voucher], lots_id:int, diningroom):
+  QRS_PATH = os.path.abspath('./staticfiles/temp/')
+  if not os.path.exists(QRS_PATH):
+    os.makedirs(QRS_PATH)
+  
+  qr_paths = []
+  for voucher in vouchers:
+      voucher.folio = f'{lots_id}-{voucher.id}'
+      filename = f'qr_{voucher.folio}.png'
+      path = os.path.join(QRS_PATH, filename)
+      qrcode.make(voucher.folio).save(path)
+      qr_paths.append((path, voucher.folio, diningroom))
+  
+  return qr_paths
+
+def create_pdf_name(lotId: int):
+  return f'/LOT-{lotId}.pdf'
+
+def get_pdf_path(lotId: int):
+  filename = create_pdf_name(lotId)
+  return OUTPUT_DIR+filename
+  
+def unique_vouchers_pdf_exists(lotId: int):
+  filename = create_pdf_name(lotId)
+  return os.path.exists(OUTPUT_DIR+filename)
+  
+  
     

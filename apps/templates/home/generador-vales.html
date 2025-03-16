@@ -1,0 +1,155 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %} Icons {% endblock title %}
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}
+<link rel="stylesheet" href="/static/assets/css/loader.css"/>
+<link rel="stylesheet" href="/static/assets/css/responsive-form.css"/>
+{% endblock stylesheets %}
+
+{% block content %}
+
+<div class="header bg-primary pb-6">
+  <div class="container-fluid">
+    <div class="header-body">        
+    </div>
+  </div>
+</div>
+
+<!-- Page content -->
+<div class="container-fluid mt--6">
+  <div class="row">
+    <div class="col">
+      <div class="card">
+        <!-- Card header -->
+        <div class="card-header border-0">
+          <h3 class="mb-0">Generador de vales</h3>
+          <div class="d-flex">
+              <div class="card-header border-0 w-100 d-flex justify-content-md-end justify-content-start">
+                <ul class="nav nav-tabs card-header-tabs" id="voucher-generator-tabs" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="unique-vouchers-tab" data-toggle="tab" href="#unique-vouchers" role="tab" aria-controls="unique-vouchers" aria-selected="true">Vales únicos</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="perpetual-vouchers-tab" data-toggle="tab" href="#perpetual-vouchers" role="tab" aria-controls="perpetual-vouchers" aria-selected="false">Vales perpetuos</a>
+                    </li>
+                </ul>
+            </div>
+          </div>
+        </div>
+
+
+
+
+
+
+        <div class="card-body">
+          <div class="tab-content" id="generate-vouchers-content">
+            <!-- Unique Vouchers  -->
+            <div class="tab-pane fade show active" id="unique-vouchers" role="tabpanel" aria-labelledby="unique-vouchers-tab">
+              <form id="generate-unique-vouchers" class="px-4">
+                <div class="row">
+                  <div class="col-12 col-md-3">
+                    <div class="form-group mb-3">
+                      <label for="unique-client-field">Cliente</label>
+                      <select id="unique-client-field" class="form-control">
+
+                      </select>                    
+                    </div>
+                  </div>
+            
+                  <div class="col-12 col-md-3">
+                    <div class="form-group mb-3">
+                      <label for="unique-dinningroom-field">Comedor</label>
+                      <select id="unique-dinningroom-field" class="form-control">
+                      </select>
+                    </div>
+                  </div>
+            
+                  <div class="col-12 col-md-3">
+                    <div class="form-group mb-3">
+                      <label for="unique-quantity-field">Cantidad</label>
+                      <input type="number" class="form-control" id="unique-quantity-field" placeholder="Escribe la cantidad ">
+                    </div>
+                  </div>
+            
+                  <div class="col-12 col-md-3 d-flex align-items-end">
+                    <button id="generate-btn" class="btn btn-primary rounded-pill mb-3">Generar vales</button>
+                  </div>
+                </div>
+              </form>
+            
+            </div>
+              <!-- Perpetual Vouchers  -->
+              <div class="tab-pane fade" id="perpetual-vouchers" role="tabpanel" aria-labelledby="perpetual-vouchers-tab">
+                <form id="generate-perpetual-vouchers" class="px-4">
+                  <div class="row">
+                    <div class="col-12 col-md-3">
+                      <div class="form-group mb-3">
+                        <label for="perpetual-client-field">Cliente</label>
+                        <select id="perpetual-client-field" class="form-control">
+  
+                        </select>                    
+                      </div>
+                    </div>
+              
+                    <div class="col-12 col-md-3">
+                      <div class="form-group mb-3">
+                        <label for="perpetual-dinningroom-field">Comedor</label>
+                        <select id="perpetual-dinningroom-field" class="form-control">
+                        </select>
+                      </div>
+                    </div>
+              
+                    <div class="col-12 col-md-3">
+                      <div class="form-group mb-3">
+                        <label for="perpetual-quantity-field">Cantidad</label>
+                        <input id="perpetual-quantity-field" type="number" class="form-control"  placeholder="Escribe la cantidad ">
+                      </div>
+                    </div>
+              
+                    <div class="col-12 col-md-3 d-flex align-items-end">
+                      <button id="generate-btn" class="btn btn-primary rounded-pill mb-3">Preparar vales</button>
+                    </div>
+                  </div>
+                </form>
+  
+              </div>
+          </div>
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="second-card" class="card fade">
+
+  </div>
+
+
+
+
+  <!-- Toast container -->
+  <div aria-live="polite" aria-atomic="true" class="position-relative" id="toast-area" aria-hidden="true">
+    <div class="toast-container position-fixed bottom-0 right-0 p-4 m-1 z-4" id="toastContainer">
+      <!-- Toasts will be dynamically added here -->
+    </div>
+  </div>
+
+  {% include "includes/footer.html" %}
+  <div aria-live="polite" aria-atomic="true" class="position-relative" id="toast-area" aria-hidden="true">
+    <div class="toast-container position-fixed bottom-0 right-0 p-4 m-1 z-4" id="toastContainer" >
+        <!-- Toasts will be dynamically added here -->
+    </div>
+  </div>
+</div>
+
+{% endblock content %}
+
+<!-- Specific JS goes HERE --> 
+{% block javascripts %}
+
+<script src="/static/assets/fetch-js/fetchDataClientes.js"/></script>
+<script src="/static/assets/fetch-js/fetchDataVales.js"/></script>
+<script src="/static/assets/html-js/loadDataGeneradorVales.js"></script>
+{% endblock javascripts %}

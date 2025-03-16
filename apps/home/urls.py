@@ -66,6 +66,8 @@ urlpatterns = [
 
     # ===================== GENERAR VOUCHERS ===================== #
     path('generate_unique_voucher', views.generate_unique_voucher, name='generate_unique_voucher'),
+    path('generate_perpetual_voucher', views.generate_perpetual_voucher, name='generate_perpetual_voucher'),
+    path('send_lot_file_email', views.send_lot_file_email, name='send_lot_file_email'),
 
     # Matches any html file
     re_path(r'^.*\.*', views.pages, name='pages'),

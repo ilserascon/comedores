@@ -10,7 +10,7 @@ from django.shortcuts import render
 from django.template import loader
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
-
+from decouple import config
 from django.db import models
 
 from .models import  VoucherType, Lots, DiningRoom, ClientDiner, Client, Employee, PayrollType, Entry, EmployeeClientDiner, Voucher
@@ -24,9 +24,11 @@ from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from .transactions.clients import change_client_status
 import pandas as pd
 from .admin import admin_views, user_views
-import qrcode
 import os
-from apps.pdf_generation import generate_qrs_pdf
+from email.message import EmailMessage
+import ssl
+import smtplib
+from apps.pdf_generation import generate_qrs_pdf, prepare_qrs, unique_vouchers_pdf_exists, get_pdf_path
 
 @login_required(login_url="/login/")
 def index(request):
@@ -151,7 +153,7 @@ def get_comedores(request):
 
         # Paginación
         page_number = request.GET.get('page', 1)
-        paginator = Paginator(dining_rooms_list, 1)  # 10 comedores por página
+        paginator = Paginator(dining_rooms_list, 10)  # 10 comedores por página
         page_obj = paginator.get_page(page_number)
 
         context = {
@@ -308,19 +310,6 @@ def get_encargados(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
     
-
-# Obtiene todos los clientes
-@csrf_exempt
-def get_clientes(request):
-    try:
-        clientes = Client.objects.all().values('id', 'company')
-        context = {
-            'clientes': list(clientes)
-        }        
-        return JsonResponse(context)
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-
 
 # Obtiente los clientes que tienen algun comedor asignado (select del filtro)   
 def get_clientes_comedores(request):
@@ -999,7 +988,7 @@ def get_tipos_nomina(request):
 @csrf_exempt
 def get_clientes(request):
     try:
-        clientes = Client.objects.all().values('id', 'company')
+        clientes = Client.objects.all().values('id', 'company', 'status')
         context = {
             'clientes': list(clientes)
         }        
@@ -1784,30 +1773,45 @@ def get_perpetual_report_summary_details(request):
 
 @csrf_exempt
 def generate_unique_voucher(request):
-    if request.method != 'POST':
-        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    if request.method != "POST":
+        return JsonResponse({"error": "Método no permitido"}, status=405)
     
     try:
         data = json.loads(request.body)
-        client_id = data.get('client_id')
-        dining_room_id = data.get('dining_room_id')
-        quantity = data.get('quantity')
+        client_id = data.get("client_id")
+        dining_room_id = data.get("dining_room_id")
+        quantity = data.get("quantity")
         
 
         if not client_id or not dining_room_id or not quantity:
-            return JsonResponse({'error': 'client_id, dining_room_id y quantity son requeridos'}, status=400)
+            return JsonResponse({"error": "client_id, dining_room_id y quantity son requeridos"}, status=400)
         
         if type(quantity) != int:
-            return JsonResponse({'error': 'quantity debe ser un número entero'}, status=400)
+            return JsonResponse({"error": "quantity debe ser un número entero"}, status=400)
 
         if type(client_id) != int:
-            return JsonResponse({'error': 'client_id debe ser un número entero'}, status=400)
+            return JsonResponse({"error": "client_id debe ser un número entero"}, status=400)
         
         if type(dining_room_id) != int:
-            return JsonResponse({'error': 'dining_room_id debe ser un número entero'}, status=400)
+            return JsonResponse({"error": "dining_room_id debe ser un número entero"}, status=400)
         
         unique_voucher = VoucherType.objects.filter(description="UNICO").first()     
         client_dinner = ClientDiner.objects.filter(client_id=client_id, dining_room_id=dining_room_id).first()
+
+        if not client_dinner:
+            return JsonResponse({"error": "No se encontró la relación entre cliente y comedor"}, status=400)
+        
+        if not client_dinner.client.status:
+            return JsonResponse({"error": f"El cliente {client_dinner.client.company} ha sido desactivado."}, status=400)
+        
+        if not client_dinner.dining_room.status:
+            return JsonResponse({"error": f"El comedor {client_dinner.dining_room.name} ha sido desactivado."}, status=400)
+    
+        if not client_dinner.status:
+            return JsonResponse({"error": f"El uso del comedor por parte de  {client_dinner.client.company} ha sido desactivado."}, status=400)
+        
+
+
 
         diningroom = client_dinner.dining_room
         
@@ -1817,34 +1821,27 @@ def generate_unique_voucher(request):
                 client_diner=client_dinner,
                 voucher_type=unique_voucher,
                 quantity=quantity,
-                email='email@email.com',
                 created_by=request.user
             )
             lots.save()
             
             vouchers: list[Voucher] = []
             
-            for i in range(1,quantity+1):
-                voucher = Voucher(folio=str(i), lots=lots)
+            for _ in range(quantity):
+                voucher = Voucher(lots=lots)
                 voucher.save()
                 vouchers.append(voucher)
             
+            qr_paths = prepare_qrs(vouchers, lots.id, diningroom.name)
             
-            QRS_PATH = os.path.abspath('./staticfiles/temp/')
-            qr_paths = []
-            for voucher in vouchers:
-                identifier = f'{lots.id}-{voucher.folio}'
-                filename = f'qr_{identifier}.png'
-                path = os.path.join(QRS_PATH, filename)
-                qrcode.make(identifier).save(path)
-                formatted_folio = "#{:002d}".format(int(voucher.folio))
-                qr_paths.append((path, formatted_folio, diningroom.name))
             
             filename = f'/LOT-{lots.id}.pdf'
             generate_qrs_pdf(qr_paths, filename)
             
             context = {
+                "lot_id": lots.id,
                 "pdf": filename,
+                "email": client_dinner.client.email,
                 "message": "Vales generados con éxito"
             }
             
@@ -1858,3 +1855,157 @@ def generate_unique_voucher(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
+@csrf_exempt
+def generate_perpetual_voucher(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        client_id = data.get('client_id')
+        dining_room_id = data.get('dining_room_id')
+        quantity = data.get('quantity')
+        employees = data.get('employees')
+        
+        
+        if not client_id or not dining_room_id or not quantity or not employees:
+            return JsonResponse({'error': 'client_id, dining_room_id, quantity y employees son requeridos'}, status=400)
+        
+        if type(quantity) != int:
+            return JsonResponse({'error': 'La cantidad debe ser un número entero'}, status=400)
+        
+        if type(client_id) != int:
+            return JsonResponse({'error': 'El id del cliente debe ser un número entero'}, status=400)
+
+        if type(dining_room_id) != int:
+            return JsonResponse({'error': 'El id del comedor debe ser un número entero'}, status=400)  
+        
+        if type(employees) != list:
+            return JsonResponse({'error': 'Se tiene que incluir una lista de empleados'}, status=400)
+        
+        if quantity > 99:
+            return JsonResponse({'error': 'La cantidad no puede ser mayor a 99'}, status=400)
+
+        if quantity != len(employees):
+            return JsonResponse({'error': 'La cantidad de empleados debe ser igual a la cantidad de vales'}, status=400)
+        
+        
+        perpetual_voucher = VoucherType.objects.filter(description="PERPETUO").first()
+        
+        client_dinner = ClientDiner.objects.filter(client_id=client_id, dining_room_id=dining_room_id).first()
+
+        if not client_dinner:
+            return JsonResponse({"error": "No se encontró la relación entre cliente y comedor"}, status=400)
+        
+        if not client_dinner.client.status:
+            return JsonResponse({"error": f"El cliente {client_dinner.client.company} ha sido desactivado."}, status=400)
+
+        if not client_dinner.dining_room.status:
+            return JsonResponse({"error": f"El comedor {client_dinner.dining_room.name} ha sido desactivado."}, status=400)
+        
+        if not client_dinner.status:
+            return JsonResponse({"error": f"El uso del comedor por parte de  {client_dinner.client.company} ha sido desactivado."}, status=400)
+        
+
+
+        with transaction.atomic():
+            lots = Lots(
+                client_diner=client_dinner,
+                voucher_type=perpetual_voucher,
+                quantity=quantity,
+                created_by=request.user
+            )
+
+            vouchers = []
+            
+            for employee in employees:
+                if type(employee) != str:
+                    return JsonResponse({"error": "Los empleados deben ser cadenas de texto"}, status=400)
+
+                voucher = Voucher(lots=lots, employee=employee)
+                vouchers.append(voucher)
+            
+            lots.save()
+            Voucher.objects.bulk_create(vouchers)
+
+        return JsonResponse({'message': 'Vales generados con éxito'})
+    except Exception as err:
+        return JsonResponse({"error": str(err)}, status=500)
+        
+@csrf_exempt
+def send_lot_file_email(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        email = data.get('email')
+        lot = data.get('lot_id')
+        
+        
+        #validate email being not null
+        if not email:
+            return JsonResponse({'error': 'El email es requerido'}, status=400)
+        
+        #validate lots being not null
+        if not lot:
+            return JsonResponse({'error': 'El lote es requerido'}, status=400)
+        
+        #validate email being a string
+        if type(email) != str:
+            return JsonResponse({'error': 'El email debe ser una cadena de texto'}, status=400)
+        
+        #validate lot being an int
+        if type(lot) != int:
+            return JsonResponse({'error': 'El lote debe ser un número entero'}, status=400)
+        
+        #Validate email being less or equal to 100
+        if len(email) > 100:
+            return JsonResponse({'error': 'El email no puede ser mayor a 100 caracteres'}, status=400)
+        
+        lot_object = Lots.objects.get(id=lot)
+        
+        if not lot_object:
+            return JsonResponse({'error': 'El lote no existe'}, status=404)
+        
+        sender_email = config('EMAIL') 
+        sender_password = config('EMAIL_PASSWORD')
+
+        if not sender_email or not sender_password:
+            return JsonResponse({"error": "No se tiene configurado el email para enviar correos"},status=500)
+
+
+        email_message = EmailMessage()
+
+        if unique_vouchers_pdf_exists(lot):
+            filepath = get_pdf_path(lot)
+            with open(filepath, "rb") as f:
+                pdf_data = f.read()
+                email_message.add_attachment(pdf_data, maintype="application", subtype="pdf", filename=f"LOT-{lot}.pdf")
+        
+        email_context = ssl.create_default_context()
+        subject = f'Archivo de lote {lot}'
+        email_message['From'] = sender_email
+        email_message['To'] = email
+        email_message['Subject'] = subject
+
+        
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=email_context) as server:
+            try:
+                server.login(sender_email, sender_password)
+            except Exception as err:
+                return JsonResponse({"error": "No se puedo iniciar sesión en el servidor de correos"}, status=500)
+
+            try:
+                server.sendmail(sender_email, email, email_message.as_string())
+            except Exception as err:
+                return JsonResponse({"error": "No se pudo enviar el correo"})
+         
+        lot_object.email = email
+        lot_object.save()
+        return JsonResponse({"message": "Email enviado con éxito"})
+        
+    
+    except Exception as err:
+        return JsonResponse({'error': str(err)}, status=500)
+  
