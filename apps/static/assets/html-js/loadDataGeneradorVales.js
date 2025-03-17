@@ -106,20 +106,32 @@ function loadSendEmailCard(lotId){
   
   secondCard.classList.add('show')
 
-  document.getElementById('send-email').addEventListener('submit', (e) => {
+  const loader = `
+    <div id="loading-email" class="mt-4">
+      <span class="loader"></span>
+      <span>  Enviando correo electrónico	</span>    
+    </div>
+  `
+
+  const sendEmailForm = document.getElementById('send-email-form')
+
+  
+  sendEmailForm.addEventListener('submit', (e) => {
       e.preventDefault()
 
       const email = document.getElementById('receiver-email').value
 
+      sendEmailForm.innerHTML += loader
       sendLotFileToEmail(lotId,email)
         .then(data => {
-            console.log(data)
-
             showToast(data.message || 'Correo electrónico enviado', 'success')
             hideCard()
         })
         .catch(err => {
           showToast(err.message, 'danger')
+        })
+        .finally(() => {
+          sendEmailForm.removeChild(document.getElementById('loading-email'))
         })
 
     
@@ -134,12 +146,6 @@ function hideCard(){
 }
 
 
-const loader = document.createElement('span')
-loader.className = 'loader'
-
-const loaderDiv = document.createElement('div')
-loaderDiv.appendChild(loader)
-loaderDiv.innerHTML += '  Generando vales'
 
 function showToast(message, type = 'success') {
   const toast = document.createElement('div');
@@ -274,8 +280,16 @@ generateUniqueVouchersForm.addEventListener('submit', (e) => {
   
   const quantity = Number(uniqueQuantityField.value)
   if (!validateFields(999, quantity, uniqueClientField, uniqueDiningRoomField)) return;
+
+  const loaderDiv = `
+    <div id="loader-unique-vouchers" class="mt-4">
+      <span class="loader"></span>
+      <span>  Generando vales	</span>    
+    </div>
+  `
+    generateUniqueVouchersForm.innerHTML += loaderDiv
+
   
-  generateUniqueVouchersForm.appendChild(loaderDiv)
   generateUniqueVoucher(Number(uniqueClientField.value), Number(uniqueDiningRoomField.value), Number(quantity))
   .then(data => {
 
@@ -300,7 +314,7 @@ generateUniqueVouchersForm.addEventListener('submit', (e) => {
     showToast(err.message, 'danger')
   })
   .finally(() => {
-    generateUniqueVouchersForm.removeChild(loaderDiv)
+    generateUniqueVouchersForm.removeChild(document.getElementById('loader-unique-vouchers'))
   })
 })
 
