@@ -10,6 +10,7 @@ import datetime
 CSS_DIR = os.path.abspath('./apps/static/assets/css/pdf_generation/')
 TEMPLATES_DIR = os.path.abspath('./apps/templates/pdf_generation/')
 OUTPUT_DIR = os.path.abspath('./apps/static/pdfs/')
+QRS_PATH = os.path.abspath('./staticfiles/temp/')
 
 if not os.path.exists(CSS_DIR):
     os.makedirs(CSS_DIR)
@@ -19,6 +20,10 @@ if not os.path.exists(TEMPLATES_DIR):
 
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
+
+if not os.path.exists(QRS_PATH):
+    os.makedirs(QRS_PATH)
+
 
 
 def _get_path_to_wkhtmltopdf():
@@ -52,7 +57,7 @@ def generate_qrs_pdf(qrs: list[str], filename: str):
   return filename
 
 def prepare_qrs(vouchers:list[Voucher], lots_id:int, diningroom):
-  QRS_PATH = os.path.abspath('./staticfiles/temp/')
+
   if not os.path.exists(QRS_PATH):
     os.makedirs(QRS_PATH)
   
@@ -78,6 +83,7 @@ def unique_vouchers_pdf_exists(lotId: int):
   return os.path.exists(OUTPUT_DIR+filename)
 
 def generate_lot_pdf(lot_id: int):
+  clean_temp_dir()
   if unique_vouchers_pdf_exists(lot_id):
     return get_pdf_path(lot_id)
   
@@ -106,4 +112,16 @@ def clean_pdf_dir():
       time_difference = current_time - datetime.datetime.fromtimestamp(creation_time)
       if time_difference.days  > LIMIT_DAYS:
         os.remove(file_path)
-    
+
+
+def clean_temp_dir():
+  LIMIT_DAYS = 5
+  
+  for filename in os.listdir(QRS_PATH):
+    if filename.endswith('.png'):
+      file_path = os.path.join(QRS_PATH, filename)
+      creation_time = os.path.getctime(file_path)
+      current_time = datetime.datetime.now()
+      time_difference = current_time - datetime.datetime.fromtimestamp(creation_time)
+      if time_difference.seconds * 60  > LIMIT_DAYS:
+        os.remove(file_path)
