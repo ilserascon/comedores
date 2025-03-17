@@ -11,7 +11,7 @@ async function mostrarComedorInfo() {
     }
 }
 
-async function validarVale() {
+async function validarValeEntrada() {
     const folio = document.getElementById('voucherFolio').value;
     
     const data = await validarVale(folio);
@@ -75,4 +75,4 @@ function showToast(message, type = 'success') {
 
 
 document.addEventListener('DOMContentLoaded', mostrarComedorInfo);
-document.getElementById('btnValidarVale').addEventListener('click', validarVale);
+document.getElementById('btnValidarVale').addEventListener('click', validarValeEntrada);

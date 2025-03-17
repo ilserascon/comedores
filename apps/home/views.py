@@ -1062,6 +1062,7 @@ def get_informacion_comedor_entradas(request):
 
 
 def manejar_vale_unico(voucher):
+    # Verificar si el vale esta activo
     if not voucher.status:
         return JsonResponse({"message": "Este vale ya fue usado", "status": "info"}, status=400)
 
@@ -1084,14 +1085,25 @@ def manejar_vale_unico(voucher):
 
 
 def manejar_vale_perpetuo(voucher):
+    # Verificar si el vale está activo
+    if not voucher.status:
+        return JsonResponse({"message": "Este vale está inactivo", "status": "info"}, status=400)
+
     # Definir la zona horaria de Arizona
     arizona_tz = pytz.timezone('America/Phoenix')
+    now = timezone.now().astimezone(arizona_tz)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+    # Verificar si el vale ya ha sido utilizado hoy
+    if Entry.objects.filter(voucher=voucher, created_at__range=(today_start, today_end)).exists():
+        return JsonResponse({"message": "Este vale ya ha sido utilizado hoy", "status": "info"}, status=400)
 
     # Guardar la información de la entrada con la zona horaria de Arizona
     entry = Entry(
         voucher=voucher,
         client_diner=voucher.lots.client_diner,
-        created_at=timezone.now().astimezone(arizona_tz)
+        created_at=now
     )
     entry.save()
 
