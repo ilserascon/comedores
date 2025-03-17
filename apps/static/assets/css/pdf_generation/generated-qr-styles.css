@@ -51,3 +51,15 @@ img {
   width: 250px;
 }
 
+.employee {
+  display: block;
+  margin-top: 3rem;
+  text-align: center;
+}
+
+.vale-perpetuo {
+  display: block;
+  font-weight: 600;
+  margin: 1rem 0;
+}
+

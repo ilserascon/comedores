@@ -6,31 +6,22 @@
     <title>Generated QR Codes</title>
 </head>
 <body>
-    <main>
-
-    {% for qr_path, folio, comedor  in qrcodes%}
-        
-        {% if loop.index0 % 3 == 0 %}
+    <main> 
             <div class="row">
-        {% endif %}
-
             <div class="qr-code" >
-              <div class="header" >
+              <div class="header">
                 <img src="file:///{{ logo_path }}" alt="Alcorp logo">
                 <span>{{comedor}}</span>
               </div>
+              <span class="employee">{{employee}}</span>
               <img src="file:///{{ qr_path }}" alt="QR Code">
               <div class="footer" >
+                <span class="vale-perpetuo">Vale perpetuo</span>
                 <span>Folio: {{folio}}</span>
               </div>
             </div>
         
-        {% if loop.index0 % 3 == 2 %}
             </div>
-        {% endif %}
-        
-    {% endfor %}
-
 
     </main>
 </body>

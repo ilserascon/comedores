@@ -16,3 +16,4 @@ pandas
 pdfkit
 qrcode
 jinja2
+Pillow

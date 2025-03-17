@@ -44,6 +44,10 @@ urlpatterns = [
     # ===================== TIPOS DE NOMINA ===================== #
     path('get_tipos_nomina', views.get_tipos_nomina, name='get_tipos_nomina'),
 
+    # ===================== ENTRADAS ===================== #
+    path('get_informacion_comedor_entradas', views.get_informacion_comedor_entradas, name='get_informacion_comedor_entradas'),
+    path('validar_vale', views.validar_vale, name='validar_vale'),    
+
 
     # ===================== REPORTE EMPLEADOS ===================== #
     path('get_employee_report_general', views.get_employee_report_general, name='get_employee_report_general'),
@@ -66,6 +70,9 @@ urlpatterns = [
 
     # ===================== GENERAR VOUCHERS ===================== #
     path('generate_unique_voucher', views.generate_unique_voucher, name='generate_unique_voucher'),
+    path('generate_perpetual_voucher', views.generate_perpetual_voucher, name='generate_perpetual_voucher'),
+    path('send_lot_file_email', views.send_lot_file_email, name='send_lot_file_email'),
+    path('generate_perpetual_voucher_qr', views.generate_perpetual_voucher_qr, name='generate_perpetual_voucher_qr'),
 
     # Matches any html file
     re_path(r'^.*\.*', views.pages, name='pages'),
