@@ -47,6 +47,7 @@ urlpatterns = [
     # ===================== ENTRADAS ===================== #
     path('get_informacion_comedor_entradas', views.get_informacion_comedor_entradas, name='get_informacion_comedor_entradas'),
     path('validar_vale', views.validar_vale, name='validar_vale'),    
+    path('entradas_view', views.entradas_view, name='entradas_view'),
 
 
     # ===================== REPORTE EMPLEADOS ===================== #

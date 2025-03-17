@@ -1,30 +1,70 @@
-async function mostrarComedorInfo() {
-    try {
-        const data = await getInformacionComedoresEntradas();
-        if (data && data.data && data.data.length > 0) {
-            const comedorInfo = data.data[0];
-            document.getElementById('cliente').textContent = `Cliente: ${comedorInfo.client_company}`;
-            document.getElementById('comedor').textContent = comedorInfo.dining_room_name;
-        }
-    } catch (error) {
-        console.error('Error al mostrar la información del comedor:', error.message);
-    }
-}
-
-async function validarValeEntrada() {
-    const folio = document.getElementById('voucherFolio').value;
+document.addEventListener('DOMContentLoaded', function() {
     
-    const data = await validarVale(folio);
-    if (data) {        
-        showToast(data.message, data.status);
-        if (data.status === 'success') {
-            // Limpiar los campos de código de empleado y folio del vale
-            document.getElementById('employeeCode').value = '';
-            document.getElementById('voucherFolio').value = '';
-        }        
-    }
-}
+    async function validarValeEntrada() {
+        const folio = document.getElementById('voucherFolio').value;
+        
+        const data = await validarVale(folio);
+        if (data) {        
+            showToast(data.message, data.status);
+            if (data.status === 'success') {
+                // Limpiar los campos de código de empleado y folio del vale
+                document.getElementById('employeeCode').value = '';
+                document.getElementById('voucherFolio').value = '';
+            }        
+        }
+    }    
+    
+    async function mostrarComedorInfo() {
+        try {
+            const response = await fetch('/entradas_view');
+            const data = await response.json();
+            const cardContent = document.getElementById('cardContent');            
+            
+            if (data.has_dining_room) {
+                cardContent.innerHTML = `
+                    <!-- Header Section -->
+                    <div class="card-header bg-transparent d-flex justify-content-between">
+                        <h3 class="mb-0" id="cliente">Cliente: ${data.dining_room.client_company}</h3>
+                        <span id="comedor">${data.dining_room.name}</span>
+                    </div>
 
+                    <!-- Main Section -->
+                    <div class="card-body">
+                        <h4 class="text-center mb-3">Registrar entrada</h4>
+                        <div class="form-group">
+                            <label for="employeeCode">Código de Empleado</label>
+                            <input type="text" class="form-control" id="employeeCode" placeholder="Ingrese código de empleado">
+                        </div>
+                        <div class="form-group">
+                            <label for="voucherFolio">Folio del Vale</label>
+                            <input type="text" class="form-control" id="voucherFolio" placeholder="Ingrese folio del vale">
+                        </div>
+                    </div>
+
+                    <!-- Footer Section -->
+                    <div class="card-footer bg-transparent d-flex justify-content-end">
+                        <button type="button" class="btn btn-primary" id="btnValidarVale">Validar</button>
+                    </div>
+                `;
+                
+                const btnValidarVale = document.getElementById('btnValidarVale');
+                if (btnValidarVale) {
+                    btnValidarVale.addEventListener('click', validarValeEntrada);
+                }
+            } else {
+                cardContent.innerHTML = `
+                    <div class="card-body d-flex justify-content-center align-items-center rounded">
+                        <h4 class="text-center mb-0">No tienes asignado un comedor</h4>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error al mostrar la información del comedor:', error.message);
+        }
+    }
+    
+    mostrarComedorInfo();
+});
 
 /**
  * MUESTRA UNA NOTIFICACIÓN TIPO TOAST.
@@ -72,7 +112,3 @@ function showToast(message, type = 'success') {
         bsToast.hide();
     });
 }
-
-
-document.addEventListener('DOMContentLoaded', mostrarComedorInfo);
-document.getElementById('btnValidarVale').addEventListener('click', validarValeEntrada);

@@ -2165,6 +2165,36 @@ def generate_perpetual_voucher_qr(request):
 
 # ===================== ENTRADAS ===================== #
 @csrf_exempt
+def entradas_view(request):
+    try:
+        user = request.user.id        
+        dining_room = DiningRoom.objects.filter(in_charge_id=user, status=True).first()        
+
+        if dining_room:
+            client_diner_dining_room = ClientDiner.objects.filter(dining_room=dining_room).first()            
+
+            if client_diner_dining_room:
+                response_data = {
+                    'has_dining_room': True,
+                    'dining_room': {
+                        'name': dining_room.name,
+                        'client_company': client_diner_dining_room.client.company
+                    }
+                }
+            else:
+                response_data = {
+                    'has_dining_room': False
+                }
+        else:
+            response_data = {
+                'has_dining_room': False
+            }
+
+        return JsonResponse(response_data)
+    except Exception as e:        
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
 def get_informacion_comedor_entradas(request):
     try:
         user_id = request.user.id
