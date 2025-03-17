@@ -9,12 +9,15 @@ from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.template import loader
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
-from .models import DiningRoom, ClientDiner, Client, Employee, PayrollType, EmployeeClientDiner
+from .models import DiningRoom, ClientDiner, Client, Employee, PayrollType, EmployeeClientDiner, Voucher, Entry
+from django.utils import timezone
 from apps.authentication.models import CustomUser, Role
 from django.db import models
 from django.db.models import Q
 from django.db import IntegrityError, transaction
 import json
+import re
+import pytz
 from django.contrib.auth.hashers import make_password
 from django.shortcuts import get_object_or_404
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
@@ -1054,5 +1057,49 @@ def get_informacion_comedor_entradas(request):
         ]
 
         return JsonResponse({'data': result})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def validar_vale_unico(request):
+    try:        
+        data = json.loads(request.body)
+        folio = data.get("folio")
+
+        if not folio:
+            return JsonResponse({"message": "Debes ingresar un folio", "status": "danger"}, status=400)
+
+        # Verificar que el folio siga la estructura Lote-número (por ejemplo, "2-7")
+        folio_regex = re.compile(r'^\d+-\d+$')
+        if not folio_regex.match(folio):
+            return JsonResponse({"message": "Formato incorrecto", "status": "info"}, status=400)
+
+        voucher = Voucher.objects.filter(folio=folio).select_related('lots__voucher_type').first()
+
+        if not voucher:
+            return JsonResponse({"message": "Vale no encontrado", "status": "danger"}, status=404)
+
+        if not voucher.status:
+            return JsonResponse({"message": "Este vale ya ha sido utilizado", "status": "info"}, status=400)        
+
+        # Cambiar el estatus del vale a utilizado
+        voucher.status = False
+        voucher.save()        
+
+        # Definin la zona horaria de Arizona
+        arizona_tz = pytz.timezone('America/Phoenix')        
+
+        # Guardar la información de la entrada
+        entry = Entry(
+            voucher=voucher,
+            client_diner=voucher.lots.client_diner,
+            created_at=timezone.now().astimezone(arizona_tz)
+        )
+        entry.save()
+
+        return JsonResponse({"message": "Bienvenido al comedor", "status": "success"})
+
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "El cuerpo de la solicitud debe ser un JSON válido"}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
