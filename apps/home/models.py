@@ -148,7 +148,7 @@ class Voucher(models.Model):
         verbose_name = 'Voucher'
         verbose_name_plural = 'Vouchers'
 
-    def save(self, *args, **kwargs):
+    def post_save(self, *args, **kwargs):
         if not self.folio:
             self.folio = f"{self.lots.id}-{self.id}"
         super().save(*args, **kwargs)

@@ -1831,6 +1831,7 @@ def generate_unique_voucher(request):
             for _ in range(quantity):
                 voucher = Voucher(lots=lots)
                 voucher.save()
+                voucher.post_save()
                 vouchers.append(voucher)
             
             qr_paths = prepare_qrs(vouchers, lots.id, diningroom.name)
@@ -1927,7 +1928,10 @@ def generate_perpetual_voucher(request):
                 vouchers.append(voucher)
             
             lots.save()
-            Voucher.objects.bulk_create(vouchers)
+            
+            for voucher in vouchers:
+                voucher.save()
+                voucher.post_save()            
 
         return JsonResponse({'message': 'Vales generados con éxito'})
     except Exception as err:
