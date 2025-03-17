@@ -283,8 +283,7 @@ function populateDinningRoomField(clientId){
 }
 
 getClientes().then(data => {
-    data.clientes.forEach(client => {
-      if (!client.status) return;
+    data.clientes.forEach(client => {      
 
       const option = document.createElement('option')
       option.value = client.id
