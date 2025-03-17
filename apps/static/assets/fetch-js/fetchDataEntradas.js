@@ -20,9 +20,9 @@ async function getInformacionComedoresEntradas() {
     }
 }
 
-async function validarValeUnico(folio) {
+async function validarVale(folio) {
     try {
-        const response = await fetch(`/validar_vale_unico`, {
+        const response = await fetch(`/validar_vale`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

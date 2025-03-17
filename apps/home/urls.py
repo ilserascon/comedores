@@ -45,7 +45,7 @@ urlpatterns = [
 
     # ===================== ENTRADAS ===================== #
     path('get_informacion_comedor_entradas', views.get_informacion_comedor_entradas, name='get_informacion_comedor_entradas'),
-    path('validar_vale_unico', views.validar_vale_unico, name='validar_vale_unico'),    
+    path('validar_vale', views.validar_vale, name='validar_vale'),    
 
     # Matches any html file
     re_path(r'^.*\.*', views.pages, name='pages'),

@@ -14,7 +14,7 @@ async function mostrarComedorInfo() {
 async function validarVale() {
     const folio = document.getElementById('voucherFolio').value;
     
-    const data = await validarValeUnico(folio);
+    const data = await validarVale(folio);
     if (data) {        
         showToast(data.message, data.status);
         if (data.status === 'success') {

@@ -1060,8 +1060,46 @@ def get_informacion_comedor_entradas(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
+
+def manejar_vale_unico(voucher):
+    if not voucher.status:
+        return JsonResponse({"message": "Este vale ya fue usado", "status": "info"}, status=400)
+
+    # Cambiar el estatus del vale a utilizado
+    voucher.status = False
+    voucher.save()
+
+    # Definir la zona horaria de Arizona
+    arizona_tz = pytz.timezone('America/Phoenix')
+
+    # Guardar la información de la entrada con la zona horaria de Arizona
+    entry = Entry(
+        voucher=voucher,
+        client_diner=voucher.lots.client_diner,
+        created_at=timezone.now().astimezone(arizona_tz)
+    )
+    entry.save()
+
+    return JsonResponse({"message": "Bienvenido al comedor", "status": "success"})
+
+
+def manejar_vale_perpetuo(voucher):
+    # Definir la zona horaria de Arizona
+    arizona_tz = pytz.timezone('America/Phoenix')
+
+    # Guardar la información de la entrada con la zona horaria de Arizona
+    entry = Entry(
+        voucher=voucher,
+        client_diner=voucher.lots.client_diner,
+        created_at=timezone.now().astimezone(arizona_tz)
+    )
+    entry.save()
+
+    return JsonResponse({"message": "Bienvenido al comedor", "status": "success"})
+
+
 @csrf_exempt
-def validar_vale_unico(request):
+def validar_vale(request):
     try:        
         data = json.loads(request.body)
         folio = data.get("folio")
@@ -1079,25 +1117,13 @@ def validar_vale_unico(request):
         if not voucher:
             return JsonResponse({"message": "Vale no encontrado", "status": "danger"}, status=404)
 
-        if not voucher.status:
-            return JsonResponse({"message": "Este vale ya ha sido utilizado", "status": "info"}, status=400)        
-
-        # Cambiar el estatus del vale a utilizado
-        voucher.status = False
-        voucher.save()        
-
-        # Definin la zona horaria de Arizona
-        arizona_tz = pytz.timezone('America/Phoenix')        
-
-        # Guardar la información de la entrada
-        entry = Entry(
-            voucher=voucher,
-            client_diner=voucher.lots.client_diner,
-            created_at=timezone.now().astimezone(arizona_tz)
-        )
-        entry.save()
-
-        return JsonResponse({"message": "Bienvenido al comedor", "status": "success"})
+        # Identificar el tipo de vale y manejar la lógica correspondiente
+        if voucher.lots.voucher_type.description == "UNICO":
+            return manejar_vale_unico(voucher)
+        elif voucher.lots.voucher_type.description == "PERPETUO":
+            return manejar_vale_perpetuo(voucher)
+        else:
+            return JsonResponse({"message": "Tipo de vale desconocido", "status": "danger"}, status=400)
 
     except json.JSONDecodeError:
         return JsonResponse({"error": "El cuerpo de la solicitud debe ser un JSON válido"}, status=400)
