@@ -17,6 +17,78 @@ submitPerpetualVouchers.type = 'submit'
 submitPerpetualVouchers.innerText = 'Generar'
 submitPerpetualVouchers.classList.add('btn','btn-primary','rounded-pill', 'mt-3')
 
+function getLoader(content, loaderId){
+  return `
+    <div id="${loaderId}" class="mt-4">
+      <span class="loader"></span>
+      <span>  ${content}</span>    
+    </div>
+  `
+}
+
+function loadPerpetualVouchersTable(vouchers){
+  const secondCard = document.getElementById('second-card')
+  secondCard.innerHTML = `
+        <div class="table-responsive">
+          <table class="table align-items-center table-flush">
+            <thead class="thead-light">
+              <tr>
+                <th scope="col" class="sort" data-sort="folio">Folio del vale</th>
+                <th scope="col" class="sort" data-sort="employee">Nombre del empleado</th>
+                <th scope="col" class="sort" data-sort="qr">Generación de QR</th>
+              </tr>
+            </thead>
+            <tbody class="list" id="perpetual-vouchers-table-body">
+              <!-- Aquí se llenarán los datos dinámicamente -->
+            </tbody>
+          </table>
+        </div>
+  `
+
+  const tableBody = document.getElementById('perpetual-vouchers-table-body')
+
+  vouchers.forEach((voucher) => {
+    const row = document.createElement('tr')
+    const folio = document.createElement('td')
+    const employee = document.createElement('td')
+    const qr = document.createElement('td')
+    
+    folio.textContent = voucher.folio
+    employee.textContent = voucher.employee
+    qr.innerHTML = `<a href="#" id="generate-voucher-${voucher.id}"><i class="fa fa-qrcode"></i></a>`
+
+    const handleClick = (e) => {
+      e.preventDefault()
+      loader = getLoader('Generando QR', `loader-qr-${voucher.id}`)
+      qr.innerHTML = loader
+      
+
+      generatePerpetualVoucherQR(voucher.id)
+      .then(data => {
+        
+        showToast(data.message, 'success')
+        qr.removeEventListener('click', handleClick)
+        qr.innerHTML = `<a href="${data.filepath}" target="blank" id="generate-voucher-${voucher.id}">Mostrar QR</a>`
+      })
+      .catch(err => {
+        showToast(err.message, 'danger')
+        qr.innerHTML = `<a href="#" id="generate-voucher-${voucher.id}"><i class="fa fa-qrcode"></i></a>`
+      })
+
+      
+    }
+
+    qr.addEventListener('click', handleClick)
+
+    tableBody.appendChild(row)
+    row.appendChild(folio)
+    row.appendChild(employee)
+    row.appendChild(qr)
+
+  })
+
+}
+
 
 function loadFillPerpetualVouchersCard(){
   const secondCard = document.getElementById('second-card')
@@ -73,8 +145,9 @@ function loadFillPerpetualVouchersCard(){
     
       generatePerpetualVoucher(perpetualClient, perpetualDiningRoom, quantity, values)
       .then(data => {
+        loadPerpetualVouchersTable(data.vouchers)
         showToast(data.message, 'success')
-        hideCard()
+        
       })
       .catch(err => {
         showToast(err.message, 'danger')
@@ -106,20 +179,27 @@ function loadSendEmailCard(lotId){
   
   secondCard.classList.add('show')
 
-  document.getElementById('send-email').addEventListener('submit', (e) => {
+  const loader = getLoader('Enviando correo electrónico', 'loader-email')
+
+  const sendEmailForm = document.getElementById('send-email-form')
+
+  
+  sendEmailForm.addEventListener('submit', (e) => {
       e.preventDefault()
 
       const email = document.getElementById('receiver-email').value
 
+      sendEmailForm.innerHTML += loader
       sendLotFileToEmail(lotId,email)
         .then(data => {
-            console.log(data)
-
             showToast(data.message || 'Correo electrónico enviado', 'success')
             hideCard()
         })
         .catch(err => {
           showToast(err.message, 'danger')
+        })
+        .finally(() => {
+          sendEmailForm.removeChild(document.getElementById('loader-email'))
         })
 
     
@@ -134,12 +214,6 @@ function hideCard(){
 }
 
 
-const loader = document.createElement('span')
-loader.className = 'loader'
-
-const loaderDiv = document.createElement('div')
-loaderDiv.appendChild(loader)
-loaderDiv.innerHTML += '  Generando vales'
 
 function showToast(message, type = 'success') {
   const toast = document.createElement('div');
@@ -210,7 +284,6 @@ function populateDinningRoomField(clientId){
 
 getClientes().then(data => {
     data.clientes.forEach(client => {
-      console.log(client)
       if (!client.status) return;
 
       const option = document.createElement('option')
@@ -274,8 +347,12 @@ generateUniqueVouchersForm.addEventListener('submit', (e) => {
   
   const quantity = Number(uniqueQuantityField.value)
   if (!validateFields(999, quantity, uniqueClientField, uniqueDiningRoomField)) return;
+
+  const loader = getLoader('Generando vales', 'loader-unique-vouchers')
+
+  generateUniqueVouchersForm.innerHTML += loader
+
   
-  generateUniqueVouchersForm.appendChild(loaderDiv)
   generateUniqueVoucher(Number(uniqueClientField.value), Number(uniqueDiningRoomField.value), Number(quantity))
   .then(data => {
 
@@ -300,7 +377,7 @@ generateUniqueVouchersForm.addEventListener('submit', (e) => {
     showToast(err.message, 'danger')
   })
   .finally(() => {
-    generateUniqueVouchersForm.removeChild(loaderDiv)
+    generateUniqueVouchersForm.removeChild(document.getElementById('loader-unique-vouchers'))
   })
 })
 
@@ -349,7 +426,6 @@ generatePerpetualVouchersForm.addEventListener('submit', (e) => {
   fillPerpetualVouchersForm.appendChild(formContent)
   fillPerpetualVouchersForm.appendChild(submitPerpetualVouchers)
 
-  console.log(fillPerpetualVouchersForm)
 
 })
 

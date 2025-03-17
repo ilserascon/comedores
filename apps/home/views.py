@@ -28,7 +28,8 @@ import os
 from email.message import EmailMessage
 import ssl
 import smtplib
-from apps.pdf_generation import generate_qrs_pdf, prepare_qrs, unique_vouchers_pdf_exists, get_pdf_path
+from apps.pdf_generation import generate_qrs_pdf, prepare_qrs, generate_lot_pdf, clean_pdf_dir, prepare_qr, generate_perpetual_voucher_pdf
+import re
 
 @login_required(login_url="/login/")
 def index(request):
@@ -1815,6 +1816,7 @@ def generate_unique_voucher(request):
 
         diningroom = client_dinner.dining_room
         
+        clean_pdf_dir()
         
         with transaction.atomic():
             lots = Lots(
@@ -1921,14 +1923,22 @@ def generate_perpetual_voucher(request):
             for employee in employees:
                 if type(employee) != str:
                     return JsonResponse({"error": "Los empleados deben ser cadenas de texto"}, status=400)
+                if len(employee) > 100:
+                    return JsonResponse({"error": "El empleado no puede ser mayor a 100 caracteres"}, status=400)
+                if len(employee) < 3:
+                    return JsonResponse({"error": "El empleado no puede ser menor a 3 caracteres"})
 
                 voucher = Voucher(lots=lots, employee=employee)
                 vouchers.append(voucher)
             
             lots.save()
-            Voucher.objects.bulk_create(vouchers)
+            
+            for voucher in vouchers:
+                voucher.save()
+            
+            vouchers_objects = [{"id": voucher.id, "folio": voucher.folio, "employee": voucher.employee} for voucher in vouchers]
 
-        return JsonResponse({'message': 'Vales generados con éxito'})
+        return JsonResponse({'message': 'Vales generados con éxito', "vouchers": vouchers_objects})
     except Exception as err:
         return JsonResponse({"error": str(err)}, status=500)
         
@@ -1973,15 +1983,21 @@ def send_lot_file_email(request):
 
         if not sender_email or not sender_password:
             return JsonResponse({"error": "No se tiene configurado el email para enviar correos"},status=500)
-
+        
 
         email_message = EmailMessage()
 
-        if unique_vouchers_pdf_exists(lot):
-            filepath = get_pdf_path(lot)
-            with open(filepath, "rb") as f:
-                pdf_data = f.read()
-                email_message.add_attachment(pdf_data, maintype="application", subtype="pdf", filename=f"LOT-{lot}.pdf")
+        filepath = None
+        try:
+            filepath = generate_lot_pdf(lot) 
+        except Exception as err:
+            print(err)
+            return JsonResponse({"error": "Hubo un error generando el pdf"}, status=500)
+
+
+        with open(filepath, "rb") as f:
+            pdf_data = f.read()
+            email_message.add_attachment(pdf_data, maintype="application", subtype="pdf", filename=f"LOT-{lot}.pdf")
         
         email_context = ssl.create_default_context()
         subject = f'Archivo de lote {lot}'
@@ -2008,4 +2024,47 @@ def send_lot_file_email(request):
     
     except Exception as err:
         return JsonResponse({'error': str(err)}, status=500)
-  
+
+@csrf_exempt
+def generate_perpetual_voucher_qr(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        voucher_id = data.get('voucher_id')
+        
+        voucher = Voucher.objects.filter(id=voucher_id).first()
+        
+        if not voucher:
+            return JsonResponse({'error': 'El vale no existe'}, status=404)
+        
+        perpetual_type = VoucherType.objects.filter(description="PERPETUO").first()
+        
+        if not perpetual_type:
+            return JsonResponse({'error': 'El tipo de vale perpetuo no existe'}, status=404)
+
+        if voucher.lots.voucher_type.id != perpetual_type.id:
+            return JsonResponse({'error': 'El vale no es de tipo perpetuo'}, status=400)
+
+        qr_path = prepare_qr(voucher)
+    
+        filepath = None
+        try: 
+            filepath = generate_perpetual_voucher_pdf(voucher, qr_path)
+        except:
+            return JsonResponse({'error': 'Error al generar el PDF'}, status=500)
+        
+        match = re.search(r"\\static\\.*", filepath)
+        relative_path = match.group(0)[1:] if match else filepath
+        relative_path = relative_path.replace("\\", "/")  
+
+
+        return JsonResponse({'filepath': relative_path, 'message': 'QR generado con éxito'})
+
+    except:
+        return JsonResponse({'error': 'Error al generar el QR'}, status=500)
+        
+        
+        
+      

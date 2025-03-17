@@ -7,6 +7,8 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.conf import settings
 from core.settings import AUTH_USER_MODEL
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 
 # Create your models here.
@@ -148,10 +150,12 @@ class Voucher(models.Model):
         verbose_name = 'Voucher'
         verbose_name_plural = 'Vouchers'
 
-    def save(self, *args, **kwargs):
-        if not self.folio:
-            self.folio = f"{self.lots.id}-{self.id}"
-        super().save(*args, **kwargs)
+@receiver(post_save, sender=Voucher)
+def generate_folio(sender, instance, created, **kwargs):
+    if created and not instance.folio:
+        instance.folio = f'{instance.lots.id}-{instance.id}'
+        instance.save()
+
 
 class Entry(models.Model):
     employee_client_diner = models.ForeignKey(EmployeeClientDiner, on_delete=models.PROTECT, related_name='entry_employee_client_diner', null=True, blank=True)
