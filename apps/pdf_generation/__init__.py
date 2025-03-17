@@ -10,7 +10,8 @@ import datetime
 CSS_DIR = os.path.abspath('./apps/static/assets/css/pdf_generation/')
 TEMPLATES_DIR = os.path.abspath('./apps/templates/pdf_generation/')
 OUTPUT_DIR = os.path.abspath('./apps/static/pdfs/')
-QRS_PATH = os.path.abspath('./staticfiles/temp/')
+QRS_PATH = os.path.abspath('./apps/static/assets/.temp/qrs/')
+
 
 if not os.path.exists(CSS_DIR):
     os.makedirs(CSS_DIR)
@@ -40,6 +41,7 @@ jinja_env = jinja2.Environment(
 )
 
 QR_CODES_TEMPLATE = 'qr-codes-template.html'
+QR_CODE_PERPETUAL_TEMPLATE = 'qr-code-perpetual-template.html'
 QR_CODES_STYLESHEET = CSS_DIR+'/generated-qr-styles.css'
 LOGO_PATH = os.path.abspath('./apps/static/assets/img/brand/logo_alcorp.jpg')
 
@@ -56,6 +58,31 @@ def generate_qrs_pdf(qrs: list[str], filename: str):
   
   return filename
 
+def prepare_qr(voucher: Voucher):
+  filename = os.path.join(QRS_PATH, f'qr_{voucher.folio}.png')
+  qrcode.make(voucher.folio).save(filename)
+  
+  return filename
+
+def generate_perpetual_voucher_pdf(voucher: Voucher, qr_path: str):
+  
+  filename = OUTPUT_DIR+f'/qr_{voucher.folio}.pdf'
+  
+  if os.path.exists(filename):
+    return filename
+  
+  dining_room = voucher.lots.client_diner.dining_room.name
+  rendered_template = jinja_env.get_template(QR_CODE_PERPETUAL_TEMPLATE).render({"logo_path": LOGO_PATH, "folio": voucher.folio, "employee": voucher.employee, "qr_path":qr_path, "comedor": dining_room})
+  
+  pdfkit.from_string(
+    rendered_template,
+    filename,
+    options={"enable-local-file-access":""},
+    css=QR_CODES_STYLESHEET,
+    configuration=wkconfig
+  )
+  return filename
+  
 def prepare_qrs(vouchers:list[Voucher], lots_id:int, diningroom):
 
   if not os.path.exists(QRS_PATH):
@@ -123,5 +150,5 @@ def clean_temp_dir():
       creation_time = os.path.getctime(file_path)
       current_time = datetime.datetime.now()
       time_difference = current_time - datetime.datetime.fromtimestamp(creation_time)
-      if time_difference.seconds * 60  > LIMIT_DAYS:
+      if time_difference.days  > LIMIT_DAYS:
         os.remove(file_path)

@@ -78,3 +78,28 @@ async function sendLotFileToEmail(lotId, email) {
         throw new Error(error.message || 'Error al enviar el archivo de lote por correo electrónico');
     }
 }
+
+async function generatePerpetualVoucherQR(voucherId) {
+    try {
+        const response = await fetch(`/generate_perpetual_voucher_qr`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                voucher_id: voucherId
+            })
+        });
+  
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Error al generar QR');
+        }
+  
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error:', error.message);
+        throw new Error(error.message || 'Error al generar QR');
+    }
+}
