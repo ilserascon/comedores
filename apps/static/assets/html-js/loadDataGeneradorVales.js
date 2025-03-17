@@ -284,7 +284,6 @@ function populateDinningRoomField(clientId){
 
 getClientes().then(data => {
     data.clientes.forEach(client => {
-      if (!client.status) return;
 
       const option = document.createElement('option')
       option.value = client.id
@@ -325,12 +324,12 @@ function validateFields(maxQuantity, quantity, clientField, diningRoomField){
   }
 
 
-  if (!clientField.value) {
+  if (!clientField) {
     showToast('No se tienen clientes registrados', 'danger');
     return false;
   }
 
-  if (!diningRoomField.value) {
+  if (!diningRoomField) {
     showToast('No se tienen comedores registrados', 'danger');
     return false;
   }
@@ -344,9 +343,13 @@ generateUniqueVouchersForm.addEventListener('submit', (e) => {
   e.preventDefault()
 
   // Validate if the quantity field is a positive integer and doesn't use the Euler constant
-  
-  const quantity = Number(uniqueQuantityField.value)
-  if (!validateFields(999, quantity, uniqueClientField, uniqueDiningRoomField)) return;
+  const data = Object.fromEntries(new FormData(e.target).entries())
+
+  const quantity = Number(data['unique-quantity-field'])
+  const uniqueClient = Number(data['unique-client-field'])
+  const uniqueDiningRoom = Number(data['unique-dinningroom-field'])
+
+  if (!validateFields(999, quantity, uniqueClient, uniqueDiningRoom)) return;
 
   const loader = getLoader('Generando vales', 'loader-unique-vouchers')
 
