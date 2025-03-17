@@ -36,28 +36,50 @@
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link {% if 'empleados' in segment %} active {% endif %}" href="/empleados.html">
+            <a class="nav-link {% if 'empleados' in segment and 'reporte' not in segment %} active {% endif %}" href="/empleados.html">
               <i class="ni ni-single-02 text-info"></i>
               <span class="nav-link-text">Empleados</span>
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link {% if 'administrador-vales' in segment %} active {% endif %}" href="/administrador-vales.html">
+            <a class="nav-link {% if 'generador-vales' in segment %} active {% endif %}" href="/generador-vales.html">
               <i class="ni ni-credit-card text-orange"></i>
-              <span class="nav-link-text">Administrador de Vales</span>
+              <span class="nav-link-text">Generador de Vales</span>
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link {% if 'historico-vales' in segment %} active {% endif %}" href="/historico-vales.html">
+            <a class="nav-link {% if 'administrador-vales' in segment %} active {% endif %}" href="/administrador-vales.html">
               <i class="ni ni-archive-2 text-yellow"></i>
-              <span class="nav-link-text">Historico vales</span>
+              <span class="nav-link-text">Administrador de vales</span>
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link {% if 'reportes' in segment %} active {% endif %}" href="/reportes.html">
-              <i class="ni ni-single-copy-04 text-folder"></i>
-              <span class="nav-link-text">Reportes</span>
+            <a class="nav-link {% if 'reporte' in segment %} active {% endif %}" href="#navbar-reportes" data-toggle="collapse" role="button" aria-expanded="{% if 'reporte' in segment %}true{% else %}false{% endif %}" aria-controls="navbar-reportes">
+                <i class="ni ni-single-copy-04 text-folder"></i>
+                <span class="nav-link-text">Reportes</span>
             </a>
+            <div class="collapse {% if 'reporte' in segment %} show {% endif %}" id="navbar-reportes">
+                <ul class="nav nav-sm flex-column">
+                    <li class="nav-item">
+                        <a href="/reporte-empleados.html" class="nav-link {% if 'reporte-empleados' in segment %} active {% endif %}">
+                          <i class="ni ni-single-02 text-folder"></i>
+                          <span class="nav-link-text">Empleados</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/reporte-unicos.html" class="nav-link {% if 'reporte-unicos' in segment %} active {% endif %}">
+                          <i class="fas fa-key text-folder"></i>
+                          <span class="nav-link-text">Vales Únicos</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="/reporte-perpetuos.html" class="nav-link {% if 'reporte-perpetuos' in segment %} active {% endif %}">
+                          <i class="fas fa-infinity text-folder"></i>
+                          <span class="nav-link-text">Vales Perpetuos</span>
+                        </a>
+                    </li>
+                  </ul>
+              </div>
           </li>
         </ul>
       </div>
