@@ -39,8 +39,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function mostrarComedorInfo() {
         try {
-            const response = await fetch('/entradas_view');
-            const data = await response.json();
+            const data = await getUsuarioEntrada();
             const cardContent = document.getElementById('cardContent');
             
             if (data.has_dining_room) {

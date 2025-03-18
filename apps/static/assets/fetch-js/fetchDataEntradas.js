@@ -20,6 +20,19 @@ async function getInformacionComedoresEntradas() {
     }
 }
 
+async function getUsuarioEntrada() {
+    try {
+        const response = await fetch('/entradas_view');
+        if (!response.ok) {
+            throw new Error(`Error al obtener la información del comedor asignado al usuario: ${response.statusText}`);
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Error en fetchComedorInfo:', error.message);
+        throw error;
+    }
+}
+
 async function validarVale(folio) {
     try {
         const response = await fetch(`/validar_vale`, {
