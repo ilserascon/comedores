@@ -258,6 +258,35 @@ document.addEventListener('DOMContentLoaded', function() {
         fetchAndDisplayGeneralReports(filters);
         fetchAndDisplaySummaryReports(filters);
     });
+    
+    document.getElementById('exportExcelButton').addEventListener('click', async function() {
+        const filters = {
+            filterClient: document.getElementById('filterClient').value,
+            filterDiningRoom: document.getElementById('filterDiningRoom').value,
+            filterEmployeeName: document.getElementById('filterEmployeeName').value,
+            filterVoucherFolio: document.getElementById('filterVoucherFolio').value,
+            filterStatus: document.getElementById('filterStatus').value,
+            filterStartDate: document.getElementById('filterStartDate').value,
+            filterEndDate: document.getElementById('filterEndDate').value
+        };
+        try {
+            const response = await fetchExportExcelPerpetuoReport(filters);
+            if(response.status === 200) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'reporte_perpetuo.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+            } else {
+                showToast('Ocurrió un error al exportar el reporte', 'danger');
+            }
+        } catch (error) {
+            showToast(error.message, 'danger');
+        }
+    });
 
     // Cerrar modal con esc o picando afuera
     viewDetailsModal._element.addEventListener('hidden.bs.modal', function() {

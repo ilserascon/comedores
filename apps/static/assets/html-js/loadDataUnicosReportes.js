@@ -43,10 +43,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Populate clients and dining rooms
     async function populateFilters() {
         const clients = await fetchClientsUniqueReports({});
-        console.log(clients);
-        const diningRooms = await fetchDinersUniqueReports({});
-        console.log(diningRooms);
-        
+        const diningRooms = await fetchDinersUniqueReports({});        
         const filterClient = document.getElementById('filterClient');
         const filterDiningRoom = document.getElementById('filterDiningRoom');
 
@@ -66,7 +63,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Fetch and display unique reports
     async function fetchAndDisplayUniqueReports(filters) {
         const data = await fetchUniqueReports({ ...filters });
-        console.log(data);
         if (data.unique_reports.length === 0) {
             uniqueVouchersTableBody.innerHTML = `
                 <tr>
@@ -189,6 +185,34 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         fetchAndDisplayUniqueReports(filters);
+    });
+    
+    document.getElementById('exportExcelButton').addEventListener('click', async function() {
+        const filters = {
+            filterClient: document.getElementById('filterClient').value,
+            filterDiningRoom: document.getElementById('filterDiningRoom').value,
+            filterVoucherNumber: document.getElementById('filterVoucherNumber').value,
+            filterStatus: document.getElementById('filterStatus').value,
+            filterStartDate: document.getElementById('filterStartDate').value,
+            filterEndDate: document.getElementById('filterEndDate').value
+        };
+        try {
+            const response = await fetchExportExcelUniqueReport(filters);
+            if(response.status === 200) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'reporte_unico.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+            } else {
+                showToast('Ocurrió un error al exportar el reporte', 'danger');
+            }
+        } catch (error) {
+            showToast(error.message, 'danger');
+        }
     });
 
     // Clear filters
