@@ -45,9 +45,10 @@ urlpatterns = [
     path('get_tipos_nomina', views.get_tipos_nomina, name='get_tipos_nomina'),
 
     # ===================== ENTRADAS ===================== #
-    path('get_informacion_comedor_entradas', views.get_informacion_comedor_entradas, name='get_informacion_comedor_entradas'),
-    path('validar_vale', views.validar_vale, name='validar_vale'),    
-    path('entradas_view', views.entradas_view, name='entradas_view'),
+    path('entradas_view', views.entradas_view, name='entradas_view'),    
+    path('validar_vale', views.validar_vale, name='validar_vale'),
+    path('validar_empleado', views.validar_empleado, name='validar_empleado'), 
+    path('get_informacion_comedor_entradas', views.get_informacion_comedor_entradas, name='get_informacion_comedor_entradas'),        
 
 
     # ===================== REPORTE EMPLEADOS ===================== #

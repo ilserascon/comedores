@@ -42,3 +42,27 @@ async function validarVale(folio) {
         console.error('Error:', error.message);        
     }
 }
+
+async function validarEmpleado(codigoEmpleado) {
+    try {
+        const response = await fetch('/validar_empleado', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ employeed_code: codigoEmpleado }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            showToast(errorData.message, errorData.status);
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error:', error.message);
+        return null;
+    }
+}

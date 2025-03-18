@@ -2300,3 +2300,50 @@ def validar_vale(request):
         return JsonResponse({"error": "El cuerpo de la solicitud debe ser un JSON válido"}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def validar_empleado(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            employeed_code = data.get('employeed_code')
+
+            if not employeed_code:
+                return JsonResponse({'message': 'El código de empleado es requerido', "status": "danger"}, status=400)
+
+            # Verificar si el empleado existe
+            employee = Employee.objects.filter(employeed_code=employeed_code).first()
+            if not employee:
+                return JsonResponse({'message': 'Empleado no encontrado', "status": "danger"}, status=404)
+
+            # Verificar si el empleado está activo
+            if not employee.status:
+                return JsonResponse({'message': 'Empleado inactivo', "status": "danger"}, status=400)
+
+            # Definir la zona horaria de Arizona
+            arizona_tz = pytz.timezone('America/Phoenix')
+            now = timezone.now().astimezone(arizona_tz)
+            today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            today_end = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+            # Verificar si el empleado ya ha registrado una entrada hoy
+            if Entry.objects.filter(employee_client_diner__employee=employee, created_at__range=(today_start, today_end)).exists():
+                return JsonResponse({'message': 'El empleado ya ha registrado una entrada hoy', "status": "info"}, status=400)
+
+            # Registrar la entrada
+            employee_client_diner = EmployeeClientDiner.objects.filter(employee=employee).first()
+            if not employee_client_diner:
+                return JsonResponse({'message': 'Empleado no asignado a un comedor', 'status': "danger"}, status=404)
+
+            entry = Entry(
+                employee_client_diner=employee_client_diner,
+                client_diner=employee_client_diner.client_diner,
+                created_at=now
+            )
+            entry.save()
+
+            return JsonResponse({'message': 'Bienvenido al comedor', 'status': 'success'}, status=200)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'El cuerpo de la solicitud debe ser un JSON válido'}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)

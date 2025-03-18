@@ -1,24 +1,47 @@
 document.addEventListener('DOMContentLoaded', function() {
     
-    async function validarValeEntrada() {
+    async function validarEntrada() {
+        const codigoEmpleado = document.getElementById('employeeCode').value;
         const folio = document.getElementById('voucherFolio').value;
-        
+
+        if (codigoEmpleado && !folio) {
+            await validarEmpleadoEntrada(codigoEmpleado);
+        } else if (folio && !codigoEmpleado) {
+            await validarValeEntrada(folio);
+        } else {                        
+            showToast('Por favor, ingrese solo el código de empleado o el folio del vale.', 'danger');
+            document.getElementById('employeeCode').value = '';
+            document.getElementById('voucherFolio').value = '';
+        }
+    }
+
+    async function validarEmpleadoEntrada(codigoEmpleado) {
+        const empleadoData = await validarEmpleado(codigoEmpleado);
+        if (empleadoData) {
+            showToast(empleadoData.message, empleadoData.status);
+            if (empleadoData.status === 'success') {
+                // Limpiar el campo de código de empleado
+                document.getElementById('employeeCode').value = '';
+            }
+        }
+    }
+
+    async function validarValeEntrada(folio) {
         const data = await validarVale(folio);
-        if (data) {        
+        if (data) {
             showToast(data.message, data.status);
             if (data.status === 'success') {
-                // Limpiar los campos de código de empleado y folio del vale
-                document.getElementById('employeeCode').value = '';
+                // Limpiar el campo de folio del vale
                 document.getElementById('voucherFolio').value = '';
-            }        
+            }
         }
-    }    
-    
+    }
+
     async function mostrarComedorInfo() {
         try {
             const response = await fetch('/entradas_view');
             const data = await response.json();
-            const cardContent = document.getElementById('cardContent');            
+            const cardContent = document.getElementById('cardContent');
             
             if (data.has_dining_room) {
                 cardContent.innerHTML = `
@@ -43,13 +66,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     <!-- Footer Section -->
                     <div class="card-footer bg-transparent d-flex justify-content-end">
-                        <button type="button" class="btn btn-primary" id="btnValidarVale">Validar</button>
+                        <button type="button" class="btn btn-primary" id="btnValidarEntrada">Validar</button>
                     </div>
                 `;
                 
-                const btnValidarVale = document.getElementById('btnValidarVale');
-                if (btnValidarVale) {
-                    btnValidarVale.addEventListener('click', validarValeEntrada);
+                const btnValidarEntrada = document.getElementById('btnValidarEntrada');
+                if (btnValidarEntrada) {
+                    btnValidarEntrada.addEventListener('click', validarEntrada);
                 }
             } else {
                 cardContent.innerHTML = `
