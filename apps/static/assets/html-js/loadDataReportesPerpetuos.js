@@ -249,6 +249,7 @@ document.addEventListener('DOMContentLoaded', function() {
             filterClient: document.getElementById('filterClient').value,
             filterDiningRoom: document.getElementById('filterDiningRoom').value,
             filterEmployeeName: document.getElementById('filterEmployeeName').value,
+            filterVoucherFolio: document.getElementById('filterVoucherFolio').value,
             filterStatus: document.getElementById('filterStatus').value,
             filterStartDate: document.getElementById('filterStartDate').value,
             filterEndDate: document.getElementById('filterEndDate').value
@@ -268,6 +269,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('filterClient').value = '';
         document.getElementById('filterDiningRoom').value = '';
         document.getElementById('filterEmployeeName').value = '';
+        document.getElementById('filterVoucherFolio').value = '';
         document.getElementById('filterStatus').value = '';
         document.getElementById('filterStartDate').value = '';
         document.getElementById('filterEndDate').value = '';

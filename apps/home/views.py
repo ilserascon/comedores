@@ -1582,7 +1582,8 @@ def get_perpetual_reports(request):
             'voucher__lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
             'employee__icontains': request.GET.get('filterEmployeeName'),
             'voucher__status': request.GET.get('filterStatus'),
-            'voucher__lots__voucher_type_id': 2  # Tipo de vale perpetuo
+            'voucher__lots__voucher_type_id': 2,  # Tipo de vale perpetuo
+            'voucher__folio__icontains': request.GET.get('filterVoucherFolio')
         }
 
         filters = {k: v for k, v in filters.items() if v}
@@ -1656,7 +1657,8 @@ def get_clients_perpetual_reports(request):
             'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
             'employee__icontains': request.GET.get('filterEmployeeName'),
             'status': request.GET.get('filterStatus'),
-            'lots__voucher_type_id': 2  # Tipo de vale perpetuo
+            'lots__voucher_type_id': 2,  # Tipo de vale perpetuo
+            'folio__icontains': request.GET.get('filterVoucherFolio')
         }
         filters = {k: v for k, v in filters.items() if v}
 
@@ -1700,7 +1702,8 @@ def get_diners_perpetual_reports(request):
             'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
             'employee__icontains': request.GET.get('filterEmployeeName'),
             'status': request.GET.get('filterStatus'),
-            'lots__voucher_type_id': 2  # Tipo de vale perpetuo
+            'lots__voucher_type_id': 2,  # Tipo de vale perpetuo
+            'folio__icontains': request.GET.get('filterVoucherFolio')
         }
         filters = {k: v for k, v in filters.items() if v}
 
@@ -1745,7 +1748,8 @@ def get_perpetual_report_summary(request):
             'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
             'employee__icontains': request.GET.get('filterEmployeeName'),
             'status': request.GET.get('filterStatus'),
-            'lots__voucher_type_id': 2  # Tipo de vale perpetuo
+            'lots__voucher_type_id': 2,  # Tipo de vale perpetuo
+            'folio__icontains': request.GET.get('filterVoucherFolio')
         }
         filters = {k: v for k, v in filters.items() if v}
 
