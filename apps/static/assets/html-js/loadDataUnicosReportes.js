@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const applyFiltersBtn = document.getElementById('applyFiltersBtn');
     const uniqueVouchersTableBody = document.getElementById('uniqueVouchersTableBody');
     const paginationUnique = document.getElementById('pagination-unique');
+    const filterForm = document.getElementById('filterForm')
 
     // Function to show toast
     function showToast(message, type = 'success') {
@@ -141,7 +142,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const handlePaginationClick = async function(event) {
             if (event.target.tagName === 'A' && !isFetching) {
                 const pageNumber = event.target.getAttribute('page-number');
-                
+                if (!filters || Object.keys(filters).length === 0) {
+                    filters = Object.fromEntries(new FormData(filterForm))
+                }
                 // Marcar que estamos en una solicitud para evitar duplicados
                 isFetching = true;
                 
@@ -175,7 +178,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Apply filters and fetch reports
     applyFiltersBtn.addEventListener('click', function() {
-        const filters = {
+        filters = {
             filterClient: document.getElementById('filterClient').value,
             filterDiningRoom: document.getElementById('filterDiningRoom').value,
             filterVoucherNumber: document.getElementById('filterVoucherNumber').value,

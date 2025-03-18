@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const paginationGeneral = document.getElementById('pagination-general');
     const paginationResumen = document.getElementById('pagination-resumen');
     const paginationDetalle = document.getElementById('pagination-detalle');
+    const filterForm = document.getElementById('filterForm')
 
     // Function to show toast
     function showToast(message, type = 'success') {
@@ -213,6 +214,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const handlePaginationClick = async function(event) {
             if (event.target.tagName === 'A' && !isFetching) {
                 const pageNumber = event.target.getAttribute('page-number');
+                if (!filters || Object.keys(filters).length === 0) {
+                    filters = Object.fromEntries(new FormData(filterForm))
+                }
                 
                 // Marcar que estamos en una solicitud para evitar duplicados
                 isFetching = true;

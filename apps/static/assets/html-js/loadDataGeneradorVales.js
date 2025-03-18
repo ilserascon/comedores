@@ -56,7 +56,7 @@ function loadPerpetualVouchersTable(vouchers){
     employeeInput.classList.add('form-control')
     const buttonTd = document.createElement('td')
     
- 
+    employeeInput.placeholder = 'Escribe el nombre del empleado'
     const qr = document.createElement('td')
     const saveButton = document.createElement('button')
     saveButton.classList.add('btn', 'btn-primary', 'rounded-pill')
