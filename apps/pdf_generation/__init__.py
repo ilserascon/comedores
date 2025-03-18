@@ -68,9 +68,6 @@ def generate_perpetual_voucher_pdf(voucher: Voucher, qr_path: str):
   
   filename = OUTPUT_DIR+f'/qr_{voucher.folio}.pdf'
   
-  if os.path.exists(filename):
-    return filename
-  
   dining_room = voucher.lots.client_diner.dining_room.name
   rendered_template = jinja_env.get_template(QR_CODE_PERPETUAL_TEMPLATE).render({"logo_path": LOGO_PATH, "folio": voucher.folio, "employee": voucher.employee, "qr_path":qr_path, "comedor": dining_room})
   

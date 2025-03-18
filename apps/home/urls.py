@@ -73,6 +73,7 @@ urlpatterns = [
     path('generate_perpetual_voucher', views.generate_perpetual_voucher, name='generate_perpetual_voucher'),
     path('send_lot_file_email', views.send_lot_file_email, name='send_lot_file_email'),
     path('generate_perpetual_voucher_qr', views.generate_perpetual_voucher_qr, name='generate_perpetual_voucher_qr'),
+    path('change_voucher_employee', views.change_voucher_employee, name='change_voucher_employee'),
 
     # Matches any html file
     re_path(r'^.*\.*', views.pages, name='pages'),

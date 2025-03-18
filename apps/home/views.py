@@ -1964,10 +1964,9 @@ def generate_perpetual_voucher(request):
         client_id = data.get('client_id')
         dining_room_id = data.get('dining_room_id')
         quantity = data.get('quantity')
-        employees = data.get('employees')
         
         
-        if not client_id or not dining_room_id or not quantity or not employees:
+        if not client_id or not dining_room_id or not quantity :
             return JsonResponse({'error': 'client_id, dining_room_id, quantity y employees son requeridos'}, status=400)
         
         if type(quantity) != int:
@@ -1979,15 +1978,10 @@ def generate_perpetual_voucher(request):
         if type(dining_room_id) != int:
             return JsonResponse({'error': 'El id del comedor debe ser un número entero'}, status=400)  
         
-        if type(employees) != list:
-            return JsonResponse({'error': 'Se tiene que incluir una lista de empleados'}, status=400)
         
         if quantity > 99:
             return JsonResponse({'error': 'La cantidad no puede ser mayor a 99'}, status=400)
 
-        if quantity != len(employees):
-            return JsonResponse({'error': 'La cantidad de empleados debe ser igual a la cantidad de vales'}, status=400)
-        
         
         perpetual_voucher = VoucherType.objects.filter(description="PERPETUO").first()
         
@@ -2014,28 +2008,20 @@ def generate_perpetual_voucher(request):
                 quantity=quantity,
                 created_by=request.user
             )
+            lots.save()
 
             vouchers = []
             
-            for employee in employees:
-                if type(employee) != str:
-                    return JsonResponse({"error": "Los empleados deben ser cadenas de texto"}, status=400)
-                if len(employee) > 100:
-                    return JsonResponse({"error": "El empleado no puede ser mayor a 100 caracteres"}, status=400)
-                if len(employee) < 3:
-                    return JsonResponse({"error": "El empleado no puede ser menor a 3 caracteres"})
-
-                voucher = Voucher(lots=lots, employee=employee)
-                vouchers.append(voucher)
-            
-            lots.save()
-            
-            for voucher in vouchers:
+            for _ in range(quantity):
+                voucher = Voucher(lots=lots)
                 voucher.save()
+                vouchers.append(voucher)
+    
             
-            vouchers_objects = [{"id": voucher.id, "folio": voucher.folio, "employee": voucher.employee} for voucher in vouchers]
+            
+            vouchers_objects = [{"id": voucher.id, "folio": voucher.folio} for voucher in vouchers]
 
-        return JsonResponse({'message': 'Vales generados con éxito', "vouchers": vouchers_objects})
+        return JsonResponse({'message': 'Vales generados con éxito', "lot": lots.id, "vouchers": vouchers_objects})
     except Exception as err:
         return JsonResponse({"error": str(err)}, status=500)
         
@@ -2162,7 +2148,41 @@ def generate_perpetual_voucher_qr(request):
     except:
         return JsonResponse({'error': 'Error al generar el QR'}, status=500)
         
+@csrf_exempt
+def change_voucher_employee(request):      
+    if request.method != 'PUT':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        voucher_id = data.get('voucher_id')
+        employee = data.get('employee')
         
+        if not voucher_id or not employee:        
+            return JsonResponse({'error': 'voucher_id y employee son requeridos'}, status=400)
+
+        voucher = Voucher.objects.filter(id=voucher_id).first()
+        
+        if not voucher:
+            return JsonResponse({'error': 'El vale no existe'}, status=404)
+        
+        perpetual_voucher_type = VoucherType.objects.filter(description="PERPETUO").first()
+        
+        if voucher.lots.voucher_type.id != perpetual_voucher_type.id:
+            return JsonResponse({'error': 'El vale no es de tipo perpetuo'}, status=400)
+
+        voucher.employee = employee
+        voucher.save()
+
+        
+        return JsonResponse({"message": "Nombre del vale actualizado con éxito" })
+        
+
+
+        
+    except Exception as err:
+        return JsonResponse({'error': str(err)}, status=500)
+
         
       
     

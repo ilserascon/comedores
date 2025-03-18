@@ -35,7 +35,8 @@ function loadPerpetualVouchersTable(vouchers){
               <tr>
                 <th scope="col" class="sort" data-sort="folio">Folio del vale</th>
                 <th scope="col" class="sort" data-sort="employee">Nombre del empleado</th>
-                <th scope="col" class="sort" data-sort="qr">Generación de QR</th>
+                <th scope="col" class="sort" data-sort="qr">Código QR</th>
+                <th scope="col" class="sort"></th>
               </tr>
             </thead>
             <tbody class="list" id="perpetual-vouchers-table-body">
@@ -51,13 +52,25 @@ function loadPerpetualVouchersTable(vouchers){
     const row = document.createElement('tr')
     const folio = document.createElement('td')
     const employee = document.createElement('td')
+    const employeeInput = document.createElement('input')
+    employeeInput.classList.add('form-control')
+    const buttonTd = document.createElement('td')
+    
+ 
     const qr = document.createElement('td')
+    const saveButton = document.createElement('button')
+    saveButton.classList.add('btn', 'btn-primary', 'rounded-pill')
+    saveButton.innerText = 'Guardar'
+    saveButton.disabled = true
+
+    employeeInput.addEventListener('input', () => {
+      saveButton.disabled = false
+    })
     
     folio.textContent = voucher.folio
-    employee.textContent = voucher.employee
     qr.innerHTML = `<a href="#" id="generate-voucher-${voucher.id}"><i class="fa fa-qrcode"></i></a>`
 
-    const handleClick = (e) => {
+    const handleGenerateQR = (e) => {
       e.preventDefault()
       loader = getLoader('Generando QR', `loader-qr-${voucher.id}`)
       qr.innerHTML = loader
@@ -65,28 +78,54 @@ function loadPerpetualVouchersTable(vouchers){
 
       generatePerpetualVoucherQR(voucher.id)
       .then(data => {
-        
         showToast(data.message, 'success')
-        qr.removeEventListener('click', handleClick)
+        qr.removeEventListener('click', handleGenerateQR)
         qr.innerHTML = `<a href="${data.filepath}" target="blank" id="generate-voucher-${voucher.id}">Mostrar QR</a>`
       })
       .catch(err => {
         showToast(err.message, 'danger')
         qr.innerHTML = `<a href="#" id="generate-voucher-${voucher.id}"><i class="fa fa-qrcode"></i></a>`
+      })      
+    }
+    
+    const handleSaveData = () => {
+      const loaderId = 'saving-perpetual-voucher-loader'
+      const loader = getLoader('Guardando', loaderId)
+
+      buttonTd.innerHTML = loader
+      
+      changeVoucherEmployee(voucher.id, employeeInput.value)
+    
+      .then(data => {
+          qr.innerHTML = `<a href="#" id="generate-voucher-${voucher.id}"><i class="fa fa-qrcode"></i></a>`
+          qr.removeEventListener('click', handleGenerateQR)
+          qr.addEventListener('click', handleGenerateQR)
+          saveButton.disabled = true
+          showToast(data.message, 'success')
+      })
+      .catch(err => {
+        showToast(err.message, 'danger')
+      })
+      .finally(() => {
+        buttonTd.removeChild(document.getElementById(loaderId))
+        buttonTd.appendChild(saveButton)
       })
 
-      
     }
 
-    qr.addEventListener('click', handleClick)
+    saveButton.addEventListener('click', handleSaveData)
+    qr.addEventListener('click', handleGenerateQR)
 
     tableBody.appendChild(row)
     row.appendChild(folio)
     row.appendChild(employee)
     row.appendChild(qr)
+    row.appendChild(buttonTd)
+    buttonTd.appendChild(saveButton)
+    employee.appendChild(employeeInput)
 
   })
-
+  secondCard.classList.add('show')
 }
 
 
@@ -106,52 +145,8 @@ function loadFillPerpetualVouchersCard(){
     fillPerpetualVouchersForm.addEventListener('submit', (e) => {
       e.preventDefault()
     
-      const formData = new FormData(e.target)
-      const obj = Object.fromEntries(formData.entries())
-      const values = Object.values(obj)
-    
-      const isInValid = values.reduce((isInvalid, val, index) => {
-        const input = document.getElementById(`perpetual-voucher-${index + 1}`)
-    
-        
-        if (val.length < 5) {
-    
-          if (input.parentNode.children.length == 3) return true;
-    
-          const invalidFeedback = document.createElement('div')
-          invalidFeedback.classList.add('invalid-feeedback')
-          invalidFeedback.style.color = 'var(--danger)'
-          input.classList.add('is-invalid')
-          invalidFeedback.innerText = 'El nombre del vale debe tener al menos 5 caracteres'
-          input.parentNode.appendChild(invalidFeedback)
-          return true;
-        } else {
-          input.classList.remove('is-invalid')
-          if (input.parentNode.children.length == 3) {
-            input.parentNode.removeChild(input.parentNode.children[2])
-          }
-    
-          return isInvalid || false;
-        }
-      }, false)
-    
-      if (isInValid) return
-    
-      const quantity = Number(perpetualQuantityField.value);
-      const perpetualClient = Number(perpetualClientField.value)
-      const perpetualDiningRoom = Number(perpetualDiningRoomField.value)
-    
-      if (!validateFields(99, quantity, perpetualClientField, perpetualDiningRoomField)) return;
-    
-      generatePerpetualVoucher(perpetualClient, perpetualDiningRoom, quantity, values)
-      .then(data => {
-        loadPerpetualVouchersTable(data.vouchers)
-        showToast(data.message, 'success')
-        
-      })
-      .catch(err => {
-        showToast(err.message, 'danger')
-      })
+      
+      
     })
   
   secondCard.classList.add('show')
@@ -385,49 +380,35 @@ generateUniqueVouchersForm.addEventListener('submit', (e) => {
 })
 
 
-function generatePerpetualVoucherField(number){
-  const field = document.createElement('div')
-  const input = document.createElement('input')
-  const label = document.createElement('label')
-  field.id = `field-voucher-${number}`
-  input.classList.add('form-control')
-  input.type = 'text'
-  input.id = `perpetual-voucher-${number}`
-  input.name = `perpetual-voucher-${number}`
-  input.required = true
-
-  label.htmlFor = `perpetual-voucher-${number}`
-  label.textContent = `Vale ${number}`
-
-  field.appendChild(label)
-  field.appendChild(input)
-
-  field.style.maxWidth = '50ch'
-
-  return field
-
-}
-
-
 generatePerpetualVouchersForm.addEventListener('submit', (e) => {
   e.preventDefault()
-  
-  const quantity = Number(perpetualQuantityField.value);
-  
+
+  const data = Object.fromEntries(new FormData(e.target).entries())
+
+  const quantity = Number(data['perpetual-quantity-field'])
+  const perpetualClient = Number(data['perpetual-client-field'])
+  const perpetualDiningRoom = Number(data['perpetual-dinningroom-field'])
+    
   if (!validateFields(99, quantity, perpetualClientField, perpetualDiningRoomField)) return;
-  loadFillPerpetualVouchersCard()
-  const fillPerpetualVouchersForm = document.getElementById('fill-perpetual-vouchers-form')
-
-  const formContent = document.createElement('div')
-  formContent.classList.add('responsive')
+  
  
+  const loader = getLoader('Generando vales', 'loader-perpetual-vouchers')
 
-  for (let i = 1; i <= quantity; i++) {
-    const field = generatePerpetualVoucherField(i)
-    formContent.appendChild(field)
-  }
-  fillPerpetualVouchersForm.appendChild(formContent)
-  fillPerpetualVouchersForm.appendChild(submitPerpetualVouchers)
+  generatePerpetualVouchersForm.innerHTML += loader
+
+  generatePerpetualVoucher(perpetualClient, perpetualDiningRoom, quantity)
+    .then(data => {
+      showToast(data.message, 'success')
+      loadPerpetualVouchersTable(data.vouchers)
+    })
+    .catch(err => {
+      showToast(err.message, 'danger')
+    })
+    .finally(() => {
+      generatePerpetualVouchersForm.removeChild(document.getElementById('loader-perpetual-vouchers'))
+    })
+
+  
 
 
 })
