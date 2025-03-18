@@ -33,3 +33,20 @@ async function fetchDinersUniqueReports(filters) {
     });
     return response.json();
 }
+
+// Fetch for export_excel_unique_reports
+async function fetchExportExcelUniqueReport(filters) {
+    const queryString = new URLSearchParams(filters).toString();
+    const response = await fetch(`/export_excel_unique_reports?${queryString}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    });
+    if (response.ok) {
+        return response;
+    } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al generar el archivo Excel');
+    }
+}

@@ -27,6 +27,10 @@ from django.shortcuts import get_object_or_404
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from .transactions.clients import change_client_status
 import pandas as pd
+from openpyxl.styles import Font, PatternFill, Border, Side
+import openpyxl
+from openpyxl.utils.dataframe import dataframe_to_rows
+from io import BytesIO
 from .admin import admin_views, user_views
 import os
 from email.message import EmailMessage
@@ -992,18 +996,13 @@ def upload_empleados(request):
                         # y el comedor es diferente se actualiza el comedor asignado
                         if employee_client_diner and employee_client_diner.client_diner.dining_room_id != comedor_id:
 
-                            print(employee_client_diner.client_diner.dining_room_id)
-                            print(comedor_id)
-                            print(employee_client_diner)
                             # Actualizar el comedor asignado
                             employee_client_diner.client_diner = client_diner
                             employee_client_diner.updated_by_id = request.user.id
                             employee_client_diner.save()
                             empleados_modificados += 1
-                            print("El código de empleado existe y el cliente es el mismo, pero el comedor es diferente. Se actualiza el comedor asignado.")
                         else:
                             empleados_no_insertados += 1
-                            print("El código de empleado existe y el cliente es el mismo, y el comedor es el mismo. No se inserta.")                            
                         continue
                     else:
                         # Si el código de empleado existe y el cliente no es el mismo, se inserta
@@ -1019,7 +1018,6 @@ def upload_empleados(request):
                         )
                         empleado.save()
                         empleados_insertados += 1
-                        print("El código de empleado existe y el cliente no es el mismo, se inserta.")
                 else:
                     # Si el código de empleado no existe, se inserta
                     empleado = Employee(
@@ -1034,7 +1032,6 @@ def upload_empleados(request):
                     )
                     empleado.save()
                     empleados_insertados += 1
-                    print("El código de empleado no existe, se inserta.")
 
                 # Crear la relación en EmployeeClientDiner
                 client_diner = ClientDiner.objects.get(client_id=cliente_id, dining_room_id=comedor_id)
@@ -1361,6 +1358,139 @@ def get_employee_report_summary_details(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
+@csrf_exempt
+def export_excel_employee_report(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+    try:
+        filters = {
+            'employee_client_diner__client_diner__client__id': request.GET.get('filterClient'),
+            'employee_client_diner__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
+            'employee_client_diner__employee__employeed_code__icontains': request.GET.get('filterEmployeeNumber'),
+            'employee_client_diner__employee__status': request.GET.get('filterStatus'),
+            'created_at__gte': request.GET.get('filterStartDate'),
+            'created_at__lte': request.GET.get('filterEndDate'),
+            'employee_client_diner__isnull': False,
+            'voucher__isnull': True
+        }
+
+        # Convert date filters to timezone-aware datetime
+        if filters.get('created_at__gte'):
+            filters['created_at__gte'] = timezone.make_aware(datetime.strptime(filters['created_at__gte'], '%Y-%m-%d'))
+        if filters.get('created_at__lte'):
+            filters['created_at__lte'] = timezone.make_aware(datetime.strptime(filters['created_at__lte'], '%Y-%m-%d'))
+
+        filters = {k: v for k, v in filters.items() if v}
+
+        entry_employee = Entry.objects.select_related(
+            'employee_client_diner__employee',
+            'employee_client_diner__client_diner__client',
+            'employee_client_diner__client_diner__dining_room'
+        ).filter(**filters).values(
+            client_company=F('employee_client_diner__client_diner__client__company'),
+            client_name=F('employee_client_diner__client_diner__client__name'),
+            client_lastname=F('employee_client_diner__client_diner__client__lastname'),
+            client_second_lastname=F('employee_client_diner__client_diner__client__second_lastname'),
+            dining_room_name=F('employee_client_diner__client_diner__dining_room__name'),
+            employee_code=F('employee_client_diner__employee__employeed_code'),
+            employee_name=F('employee_client_diner__employee__name'),
+            employee_lastname=F('employee_client_diner__employee__lastname'),
+            employee_second_lastname=F('employee_client_diner__employee__second_lastname'),
+            employee_status=F('employee_client_diner__employee__status'),
+            entry_created_at=F('created_at')
+        ).order_by('-created_at')
+
+        # Create a DataFrame from the queryset
+        df = pd.DataFrame(list(entry_employee))
+
+        # Remove timezone information from datetime objects
+        if 'entry_created_at' in df.columns:
+            df['entry_created_at'] = df['entry_created_at'].apply(lambda x: x.replace(tzinfo=None) if pd.notnull(x) else x)
+        
+        # Si el estado del empleado es True, cambiar a 'Activo', de lo contrario 'Inactivo'
+        df['employee_status'] = df['employee_status'].apply(lambda x: 'Activo' if x else 'Inactivo')
+
+        # Define the custom headers for the Excel sheet
+        headers = [
+            'Compañía Cliente',
+            'Nombre Cliente',
+            'Apellido Paterno Cliente',
+            'Apellido Materno Cliente',
+            'Nombre Comedor',
+            'Código Empleado',
+            'Nombre Empleado',
+            'Apellido Paterno Empleado',
+            'Apellido Materno Empleado',
+            'Estado Empleado',
+            'Fecha de Creación'
+        ]
+
+        # Create a new Excel workbook and add two sheets
+        wb = openpyxl.Workbook()
+
+        # Sheet 1: Employee Report
+        ws1 = wb.active
+        ws1.title = "Employee Report"
+        ws1.append(headers)
+        add_styles(ws1, headers)
+
+        for row in dataframe_to_rows(df, index=False, header=False):
+            ws1.append(row)
+        
+        # Sheet 2: Employee Report Summary (simplified version)
+        ws2 = wb.create_sheet(title="Summary Report")
+        simplified_headers = [
+            'Código Empleado',
+            'Nombre Empleado',
+            'Apellido Paterno Empleado',
+            'Apellido Materno Empleado',
+            'Estado Empleado',
+            'Nombre Comedor',
+            'Total Entradas'
+        ]
+        ws2.append(simplified_headers)
+        add_styles(ws2, simplified_headers)
+
+        # Generate a summary report (aggregating by employee)
+        summary_df = df.groupby(['employee_code', 'employee_name', 'employee_lastname', 'employee_second_lastname', 'dining_room_name', 'employee_status']).size().reset_index(name='Total Entradas')
+
+        for row in dataframe_to_rows(summary_df, index=False, header=False):
+            ws2.append(row)
+
+        # Create a BytesIO buffer to hold the Excel file
+        buffer = BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+
+        # Set the response content type to Excel
+        response = HttpResponse(buffer, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=employee_report.xlsx'
+
+        return response
+    except Exception as e:
+        return JsonResponse({'error': 'No hay registros'}, status=500)
+
+
+def add_styles(ws, headers):
+    # Set font and style for headers
+    bold_font = Font(bold=True)
+    fill_color = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
+    border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
+    
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_num)
+        cell.font = bold_font
+        cell.fill = fill_color
+        cell.border = border
+        cell.value = header
+
+    # Apply border to all cells in the sheet
+    for row in ws.iter_rows(min_row=2, min_col=1, max_row=ws.max_row, max_col=ws.max_column):
+        for cell in row:
+            cell.border = border
+
+
 # ===================== REPORTE VALES UNICOS ===================== #
 @csrf_exempt
 def get_unique_reports(request):
@@ -1565,6 +1695,151 @@ def get_diners_unique_reports(request):
         return JsonResponse(context)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+    
+@csrf_exempt
+def export_excel_unique_reports(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+    try:
+        # Filtros de vales
+        filters = {
+            'lots__client_diner__client__id': request.GET.get('filterClient'),
+            'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
+            'folio__icontains': request.GET.get('filterVoucherNumber'),
+            'status': request.GET.get('filterStatus'),
+            'lots__voucher_type_id': 1
+        }
+
+        filters = {k: v for k, v in filters.items() if v}
+
+        # Convertir las fechas a datetime si están presentes
+        start_date = request.GET.get('filterStartDate')
+        end_date = request.GET.get('filterEndDate')
+        
+        if start_date:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+        if end_date:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+
+        # Filtro de entradas solo cuando se han proporcionado fechas
+        entry_filter = {}
+        if start_date:
+            entry_filter['created_at__gte'] = start_date
+        if end_date:
+            entry_filter['created_at__lte'] = end_date
+
+        # Si se especifica alguna fecha, se filtran solo los vales con entradas dentro del rango
+        if entry_filter:
+            vouchers = Voucher.objects.select_related(
+                'lots__client_diner__client',
+                'lots__client_diner__dining_room',
+            ).filter(**filters).filter(
+                Exists(
+                    Entry.objects.filter(voucher_id=OuterRef('id')).filter(**entry_filter)
+                )
+            ).values(
+                'id',
+                client_company=F('lots__client_diner__client__company'),
+                client_name=F('lots__client_diner__client__name'),
+                client_lastname=F('lots__client_diner__client__lastname'),
+                client_second_lastname=F('lots__client_diner__client__second_lastname'),
+                dining_room_name=F('lots__client_diner__dining_room__name'),
+                voucher_folio=F('folio'),
+                voucher_status=F('status')
+            ).order_by('-id')
+        else:
+            # Si no hay fechas, no aplicamos el filtro de entradas
+            vouchers = Voucher.objects.select_related(
+                'lots__client_diner__client',
+                'lots__client_diner__dining_room',
+            ).filter(**filters).values(
+                'id',
+                client_company=F('lots__client_diner__client__company'),
+                client_name=F('lots__client_diner__client__name'),
+                client_lastname=F('lots__client_diner__client__lastname'),
+                client_second_lastname=F('lots__client_diner__client__second_lastname'),
+                dining_room_name=F('lots__client_diner__dining_room__name'),
+                voucher_folio=F('folio'),
+                voucher_status=F('status')
+            ).order_by('-id')
+
+        # Obtener los IDs de los vales para buscar las entradas
+        voucher_ids = [voucher['id'] for voucher in vouchers]
+        
+        # Obtener las entradas dentro del rango de fechas si existen fechas
+        entry_filters = {
+            'voucher_id__in': voucher_ids
+        }
+        if start_date:
+            entry_filters['created_at__gte'] = start_date
+        if end_date:
+            entry_filters['created_at__lte'] = end_date
+
+        entries = Entry.objects.filter(**entry_filters).values(
+            'voucher_id',
+            'created_at'
+        )
+
+        # Crear un diccionario para mapear las entradas a los vales
+        entry_map = {entry['voucher_id']: entry['created_at'] for entry in entries}
+
+        # Añadir la información de las entradas a los vales
+        for voucher in vouchers:
+            voucher['entry_created_at'] = entry_map.get(voucher['id'], None)
+
+        # Create a DataFrame from the queryset
+        df = pd.DataFrame(list(vouchers))
+
+        # Remove the 'id' column
+        df.drop(columns=['id'], inplace=True)
+
+        # Remove timezone information from datetime objects and handle null values
+        if 'entry_created_at' in df.columns:
+            df['entry_created_at'] = df['entry_created_at'].apply(lambda x: x.replace(tzinfo=None) if pd.notnull(x) else "Sin usar")
+
+        # Si el estado del vale es True, cambiar a 'Activo', de lo contrario 'Inactivo'
+        df['voucher_status'] = df['voucher_status'].apply(lambda x: 'Activo' if x else 'Inactivo')
+
+        # Define the custom headers for the Excel sheet
+        headers = [
+            'Compañía Cliente',
+            'Nombre Cliente',
+            'Apellido Paterno Cliente',
+            'Apellido Materno Cliente',
+            'Nombre Comedor',
+            'Folio Vale',
+            'Fecha de Uso',
+            'Estado Vale'
+        ]
+
+        # Reorder the DataFrame columns to match the headers
+        df = df[['client_company', 'client_name', 'client_lastname', 'client_second_lastname', 'dining_room_name', 'voucher_folio', 'entry_created_at', 'voucher_status']]
+
+        # Create a new Excel workbook and add two sheets
+        wb = openpyxl.Workbook()
+
+        # Sheet 1: Unique Voucher Report
+        ws1 = wb.active
+        ws1.title = "Unique Voucher Report"
+        ws1.append(headers)
+        add_styles(ws1, headers)
+
+        for row in dataframe_to_rows(df, index=False, header=False):
+            ws1.append(row)
+
+        # Create a BytesIO buffer to hold the Excel file
+        buffer = BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+
+        # Set the response content type to Excel
+        response = HttpResponse(buffer, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=unique_voucher_report.xlsx'
+
+        return response
+    except Exception as e:
+        return JsonResponse({'error': 'No hay registros'}, status=500)
 
 # ===================== REPORTE VALES PERPETUOS ===================== #
 @csrf_exempt
@@ -1644,7 +1919,6 @@ def get_perpetual_reports(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
-    
 @csrf_exempt
 def get_clients_perpetual_reports(request):
     if request.method != 'GET':
@@ -1865,7 +2139,143 @@ def get_perpetual_report_summary_details(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
+@csrf_exempt
+def export_excel_perpetuo_report(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        filters = {
+            'voucher__lots__client_diner__client__id': request.GET.get('filterClient'),
+            'voucher__lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
+            'employee__icontains': request.GET.get('filterEmployeeName'),
+            'voucher__status': request.GET.get('filterStatus'),
+            'voucher__lots__voucher_type_id': 2,  # Tipo de vale perpetuo
+            'voucher__folio__icontains': request.GET.get('filterVoucherFolio')
+        }
 
+        # Convert date filters to timezone-aware datetime
+        if filters.get('created_at__gte'):
+            filters['created_at__gte'] = timezone.make_aware(datetime.strptime(filters['created_at__gte'], '%Y-%m-%d'))
+        if filters.get('created_at__lte'):
+            filters['created_at__lte'] = timezone.make_aware(datetime.strptime(filters['created_at__lte'], '%Y-%m-%d'))
+
+        filters = {k: v for k, v in filters.items() if v}
+
+        entry_perpetual = Entry.objects.select_related(
+            'voucher__lots__client_diner__client',
+            'voucher__lots__client_diner__dining_room'
+        ).filter(**filters).values(
+            client_company=F('voucher__lots__client_diner__client__company'),
+            client_name=F('voucher__lots__client_diner__client__name'),
+            client_lastname=F('voucher__lots__client_diner__client__lastname'),
+            client_second_lastname=F('voucher__lots__client_diner__client__second_lastname'),
+            dining_room_name=F('voucher__lots__client_diner__dining_room__name'),
+            employee_name=F('voucher__employee'),
+            voucher_folio=F('voucher__folio'),
+            voucher_status=F('voucher__status'),
+            entry_created_at=F('created_at')
+        ).order_by('-created_at')
+
+        # Create a DataFrame from the queryset
+        df = pd.DataFrame(list(entry_perpetual))
+
+        # Remove timezone information from datetime objects
+        if 'entry_created_at' in df.columns:
+            df['entry_created_at'] = df['entry_created_at'].apply(lambda x: x.replace(tzinfo=None) if pd.notnull(x) else x)
+
+        # Si el estado del vale es verdadero asignar "Activo" y si es falso asignar "Inactivo"
+        df['voucher_status'] = df['voucher_status'].apply(lambda x: 'Activo' if x else 'Inactivo')
+
+        # Define the custom headers for the Excel sheet
+        headers = [
+            'Compañía Cliente',
+            'Nombre Cliente',
+            'Apellido Paterno Cliente',
+            'Apellido Materno Cliente',
+            'Nombre Comedor',
+            'Nombre Empleado',
+            'Folio Vale',
+            'Estado Vale',
+            'Fecha de Creación'
+        ]
+
+        # Create a new Excel workbook and add two sheets
+        wb = openpyxl.Workbook()
+
+        # Sheet 1: Perpetual Report
+        ws1 = wb.active
+        ws1.title = "Perpetual Report"
+        ws1.append(headers)
+        add_styles(ws1, headers)
+
+        for row in dataframe_to_rows(df, index=False, header=False):
+            ws1.append(row)
+
+        # Sheet 2: Perpetual Report Summary (simplified version)
+        ws2 = wb.create_sheet(title="Summary Report")
+        simplified_headers = [
+            'Compañía Cliente',
+            'Nombre Cliente',
+            'Apellido Paterno Cliente',
+            'Apellido Materno Cliente',
+            'Nombre Comedor',
+            'Folio Vale',
+            'Nombre Empleado',
+            'Estado Vale',
+            'Número de usos'
+        ]
+        ws2.append(simplified_headers)
+        add_styles(ws2, simplified_headers)
+
+        # Generate a summary report (aggregating by employee)
+        filters = {
+            'lots__client_diner__client__id': request.GET.get('filterClient'),
+            'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
+            'employee__icontains': request.GET.get('filterEmployeeName'),
+            'status': request.GET.get('filterStatus'),
+            'lots__voucher_type_id': 2,  # Tipo de vale perpetuo
+            'folio__icontains': request.GET.get('filterVoucherFolio')
+        }
+        filters = {k: v for k, v in filters.items() if v}
+
+        # Obtener los vales de tipo 1
+        perpetual_report_summary = Voucher.objects.select_related(
+            'lots__client_diner__client',
+            'lots__client_diner__dining_room'
+        ).filter(**filters).values(
+            client_company=F('lots__client_diner__client__company'),
+            client_name=F('lots__client_diner__client__name'),
+            client_lastname=F('lots__client_diner__client__lastname'),
+            client_second_lastname=F('lots__client_diner__client__second_lastname'),
+            dining_room_name=F('lots__client_diner__dining_room__name'),
+            voucher_folio=F('folio'),
+            employee_name=F('employee'),
+            voucher_status=F('status')
+        ).annotate(
+            entry_count=Count('entry_voucher')
+        ).order_by('voucher_folio')
+
+        summary_df = pd.DataFrame(list(perpetual_report_summary))
+
+        # Si el estado del vale es verdadero asignar "Activo" y si es falso asignar "Inactivo"
+        summary_df['voucher_status'] = summary_df['voucher_status'].apply(lambda x: 'Activo' if x else 'Inactivo')
+
+        for row in dataframe_to_rows(summary_df, index=False, header=False):
+            ws2.append(row)
+
+        # Create a BytesIO buffer to hold the Excel file
+        buffer = BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+
+        # Set the response content type to Excel
+        response = HttpResponse(buffer, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=perpetual_report.xlsx'
+
+        return response
+    except Exception as e:
+        return JsonResponse({'error': 'No hay registros'}, status=500)
 
 # ===================== GENERAR VALES UNICOS ===================== #
 
@@ -2074,7 +2484,6 @@ def send_lot_file_email(request):
         try:
             filepath = generate_lot_pdf(lot) 
         except Exception as err:
-            print(err)
             return JsonResponse({"error": "Hubo un error generando el pdf"}, status=500)
 
 

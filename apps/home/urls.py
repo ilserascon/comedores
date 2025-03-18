@@ -55,11 +55,13 @@ urlpatterns = [
     path('get_diner_employee_reports', views.get_diner_employee_reports, name='get_diner_employee_reports'),
     path('get_employee_report_summary', views.get_employee_report_summary, name='get_employee_report_summary'),
     path('get_employee_report_summary_details', views.get_employee_report_summary_details, name='get_employee_report_summary_details'),
+    path('export_excel_employee_report', views.export_excel_employee_report, name='export_excel_employee_report'),
 
     # ===================== REPORTE VALES UNICOS ===================== #
     path('get_unique_reports', views.get_unique_reports, name='get_unique_reports'),
     path('get_clients_unique_reports', views.get_clients_unique_reports, name='get_clients_unique_reports'),
     path('get_diners_unique_reports', views.get_diners_unique_reports, name='get_diners_unique_reports'),
+    path('export_excel_unique_reports', views.export_excel_unique_reports, name='export_excel_unique_reports'),
 
     # ===================== REPORTE VALES PERPETUOS ===================== #
     path('get_perpetual_reports', views.get_perpetual_reports, name='get_perpetual_reports'),
@@ -67,6 +69,7 @@ urlpatterns = [
     path('get_diners_perpetual_reports', views.get_diners_perpetual_reports, name='get_diners_perpetual_reports'),
     path('get_perpetual_report_summary', views.get_perpetual_report_summary, name='get_perpetual_report_summary'),
     path('get_perpetual_report_summary_details', views.get_perpetual_report_summary_details, name='get_perpetual_report_summary_details'),
+    path('export_excel_perpetuo_report', views.export_excel_perpetuo_report, name='export_excel_perpetuo_report'),
 
     # ===================== GENERAR VOUCHERS ===================== #
     path('generate_unique_voucher', views.generate_unique_voucher, name='generate_unique_voucher'),
