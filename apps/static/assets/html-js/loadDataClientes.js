@@ -97,6 +97,8 @@ document.addEventListener('DOMContentLoaded', function() {
         pagination.innerHTML = createPagination(data.page, data.pages);
     }
 
+    let isFetching = false;
+
     // Create pagination links
     function createPagination(currentPage, totalPages) {
         let paginationHTML = '';
@@ -110,9 +112,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Add a single event listener to the pagination element
         pagination.addEventListener('click', async function(event) {
-            if (event.target.tagName === 'A') {
+            if (event.target.tagName === 'A' && !isFetching) {
                 const pageNumber = event.target.getAttribute('page-number');
+                isFetching = true;
                 await populateClients(pageNumber); // Ensure to await the function call
+                isFetching = false;
             }
         });
         

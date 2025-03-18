@@ -118,6 +118,8 @@ document.addEventListener('DOMContentLoaded', function() {
         pagination.innerHTML = createPagination(data.page, data.pages);
     }
     
+    let isFetching = false;
+
     // Create pagination links
     function createPagination(currentPage, totalPages) {
         let paginationHTML = '';
@@ -162,11 +164,16 @@ document.addEventListener('DOMContentLoaded', function() {
         pagination.innerHTML = paginationHTML;
     
         pagination.addEventListener('click', async function(event) {
-            if (event.target.tagName === 'A') {
+            if (event.target.tagName === 'A' && !isFetching) {
                 const pageNumber = event.target.getAttribute('page-number');
+
+                isFetching = true;
                 pagination.removeEventListener('click', arguments.callee); // Desactivar evento
+
                 await populateUsers(pageNumber, searchUserInput.value, roleFilter.value);
                 pagination.addEventListener('click', arguments.callee); // Reactivar evento
+
+                isFetching = false;
             }
         });
     
