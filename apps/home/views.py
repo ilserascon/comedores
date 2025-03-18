@@ -679,7 +679,7 @@ def role_list(request):
 @csrf_exempt
 def get_diner_without_in_charge(request):
     try:
-        diners = DiningRoom.objects.filter(in_charge=None).values('id', 'name')
+        diners = DiningRoom.objects.filter(in_charge=None, status=1).values('id', 'name')
         return JsonResponse(list(diners), safe=False)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)

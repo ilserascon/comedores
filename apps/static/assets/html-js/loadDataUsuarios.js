@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', function() {
         toast.role = 'alert';
         toast.ariaLive = 'assertive';
         toast.ariaAtomic = 'true';
-        toast.style.zIndex = '1';
+        toast.style.zIndex = '1070'; // To display over the modal
     
         toast.innerHTML = `
             <div class="toast-header bg-${type} text-white d-flex align-items-center justify-content-between p-1 px-1 rounded-pill shadow-sm">
@@ -51,12 +51,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const toastContainer = document.getElementById('toastContainer');
         toastContainer.appendChild(toast);
     
-        const bsToast = new bootstrap.Toast(toast, { delay: 4000 });
+        const bsToast = new bootstrap.Toast(toast, { delay: 50000 });
         bsToast.show();
     
         setTimeout(() => {
             toast.remove();
-        }, 4000);
+        }, 50000);
     
         toast.querySelector('.btn-close').addEventListener('click', function() {
             toast.remove();
@@ -241,6 +241,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const result = await saveUser(userId, formData);
         if (result.message) {
             editUserModal.hide();
+            enablePasswordEditCheckbox.checked = false;
+            editPasswordInput.disabled = true;
+            editPasswordInput.value = '';
             populateUsers();
             showToast('Usuario actualizado correctamente', 'success');
         } else {
@@ -290,6 +293,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const user = await fetchUserDetails(userId);
         const result = await populateDiningRooms();
 
+        enablePasswordEditCheckbox.checked = false;
+        editPasswordInput.disabled = true;
+        editPasswordInput.value = '';
         editDiningRoomInput.innerHTML = '';
         if (user.dining_room_in_charge__name) {
             editDiningRoomInput.innerHTML = `<option value="${user.dining_room_in_charge}">${user.dining_room_in_charge__name}</option>`;
