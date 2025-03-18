@@ -2,7 +2,7 @@
 """
 Copyright (c) 2019 - present AppSeed.us
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 from django import template
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse, HttpResponseForbidden
@@ -1796,7 +1796,7 @@ def export_excel_unique_reports(request):
 
         # Remove timezone information from datetime objects and handle null values
         if 'entry_created_at' in df.columns:
-            df['entry_created_at'] = df['entry_created_at'].apply(lambda x: x.replace(tzinfo=None) if pd.notnull(x) else "Sin usar")
+            df['entry_created_at'] = df['entry_created_at'].apply(lambda x: format_date(x) if pd.notnull(x) else "Sin usar")
 
         # Si el estado del vale es True, cambiar a 'Activo', de lo contrario 'Inactivo'
         df['voucher_status'] = df['voucher_status'].apply(lambda x: 'Activo' if x else 'Inactivo')
@@ -1840,6 +1840,18 @@ def export_excel_unique_reports(request):
         return response
     except Exception as e:
         return JsonResponse({'error': 'No hay registros'}, status=500)
+
+def format_date(date):
+    if not date:
+        return "Sin usar"
+    date_obj = date.replace(tzinfo=None) - timedelta(hours=7)
+    day = date_obj.day
+    month = date_obj.month
+    year = date_obj.year
+    hours = date_obj.hour
+    minutes = date_obj.minute
+    seconds = date_obj.second
+    return f"{day:02d}/{month:02d}/{year} - {hours:02d}:{minutes:02d}:{seconds:02d}"
 
 # ===================== REPORTE VALES PERPETUOS ===================== #
 @csrf_exempt
@@ -2701,5 +2713,117 @@ def validar_vale(request):
 
     except json.JSONDecodeError:
         return JsonResponse({"error": "El cuerpo de la solicitud debe ser un JSON válido"}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+    
+# ===================== ADMINISTRADOR DE VALES ===================== #
+@csrf_exempt
+def get_voucher_lots(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+    try:
+        # Filtros
+        lot_id = request.GET.get('lot_id')
+        voucher_type = request.GET.get('voucher_type')
+        page_number = int(request.GET.get('page', 1))
+        page_size = int(request.GET.get('page_size', 10))
+
+        lots_query = Lots.objects.select_related('voucher_type', 'created_by', 'client_diner__client', 'client_diner__dining_room').values(
+            'id',
+            'voucher_type__description',
+            'quantity',
+            'email',
+            'created_at',
+            'created_by__username',
+            'client_diner__client__company',
+            'client_diner__client__email',
+            'client_diner__dining_room__name'
+        ).order_by('-id')
+
+        if lot_id:
+            lots_query = lots_query.filter(id=lot_id)
+        if voucher_type:
+            lots_query = lots_query.filter(voucher_type__description__iexact=voucher_type)
+
+        lots = [
+            {
+                'id': lot['id'],
+                'voucher_type': lot['voucher_type__description'] or 'N/A',
+                'quantity': lot['quantity'] or 'N/A',
+                'email': lot['email'] or lot['client_diner__client__email'] or 'N/A',
+                'created_at': lot['created_at'].strftime('%Y-%m-%d %H:%M:%S') if lot['created_at'] else 'N/A',
+                'created_by': lot['created_by__username'] or 'N/A',
+                'client': lot['client_diner__client__company'] or 'N/A',
+                'dining_room': lot['client_diner__dining_room__name'] or 'N/A'
+            }
+            for lot in lots_query
+        ]
+
+        paginator = Paginator(lots, page_size)
+        page_obj = paginator.get_page(page_number)
+
+        return JsonResponse({
+            'lots': list(page_obj),
+            'page': page_obj.number,
+            'pages': paginator.num_pages,
+            'has_next': page_obj.has_next(),
+            'has_previous': page_obj.has_previous()
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def get_vouchers_by_lot(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+    try:
+        lot_id = request.GET.get('lot_id')
+        page_number = int(request.GET.get('page', 1))
+        page_size = int(request.GET.get('page_size', 10))
+
+        if not lot_id:
+            return JsonResponse({'error': 'El parámetro lot_id es obligatorio'}, status=400)
+
+        vouchers_query = Voucher.objects.filter(lots_id=lot_id).select_related(
+            'lots__voucher_type',
+            'lots__client_diner__client'
+        ).values(
+            'id',
+            'folio',
+            'employee',
+            'status',
+            'lots__voucher_type__description',
+            'lots__email',
+            'lots__client_diner__client__company',
+            'lots__client_diner__client__email',
+            'lots__client_diner__dining_room__name'
+        ).order_by('-id')
+
+        vouchers = [
+            {
+                'id': voucher['id'],
+                'folio': voucher['folio'] or 'N/A',
+                'employee': voucher['employee'] or 'N/A',
+                'status': 1 if voucher['status'] else 0,
+                'voucher_type': voucher['lots__voucher_type__description'] or 'N/A',
+                'client': voucher['lots__client_diner__client__company'] or 'N/A',
+                'email': voucher['lots__email'] or voucher['lots__client_diner__client__email'] or 'N/A',
+                'dining_room': voucher['lots__client_diner__dining_room__name'] or 'N/A'
+            }
+            for voucher in vouchers_query
+        ]
+
+        paginator = Paginator(vouchers, page_size)
+        page_obj = paginator.get_page(page_number)
+
+        return JsonResponse({
+            'vouchers': list(page_obj),
+            'page': page_obj.number,
+            'pages': paginator.num_pages,
+            'has_next': page_obj.has_next(),
+            'has_previous': page_obj.has_previous()
+        })
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)

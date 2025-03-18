@@ -78,6 +78,10 @@ urlpatterns = [
     path('generate_perpetual_voucher_qr', views.generate_perpetual_voucher_qr, name='generate_perpetual_voucher_qr'),
     path('change_voucher_employee', views.change_voucher_employee, name='change_voucher_employee'),
 
+    # ===================== ADMINISTRADOR DE VALES ===================== #
+    path('get_voucher_lots/', views.get_voucher_lots, name='get_voucher_lots'),
+    path('get_vouchers_by_lot/', views.get_vouchers_by_lot, name='get_vouchers_by_lot'),
+
     # Matches any html file
     re_path(r'^.*\.*', views.pages, name='pages'),
 

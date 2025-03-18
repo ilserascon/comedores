@@ -1,6 +1,6 @@
 {% extends 'layouts/base.html' %}
 
-{% block title %} Administrador de Vales {% endblock title %}
+{% block title %} Detalles del Lote {% endblock title %}
 
 {% block content %}
 <div class="header bg-primary pb-6">
@@ -14,32 +14,27 @@
     <div class="col">
       <div class="card">
         <div class="card-header border-0 d-flex justify-content-between align-items-center">
-          <h3 class="mb-0">Lotes de Vales</h3>
-          <div class="d-flex">
-            <input type="text" class="form-control rounded-pill mr-2" id="searchLotInput" placeholder="Buscar por ID">
-            <select class="form-control rounded-pill" id="filterVoucherType">
-              <option value="">Todos los Tipos</option>
-              <option value="UNICO">Único</option>
-              <option value="PERPETUO">Perpetuo</option>
-            </select>
-          </div>
+          <h3 class="mb-0">Vales del Lote</h3>
+          <a href="/administrador-vales.html" class="btn btn-secondary btn-sm">Volver al Administrador</a>
+        </div>
+        <!-- Botones para lotes únicos -->
+        <div id="uniqueLotActions" class="mb-3 ml-3" style="display: none;">
+          <button id="downloadVouchersBtn" class="btn btn-primary btn-sm">Descargar Vales</button>
+          <button id="resendEmailBtn" class="btn btn-warning btn-sm">Volver a Enviar por Correo</button>
         </div>
         <div class="table-responsive">
           <table class="table align-items-center table-flush">
             <thead class="thead-light">
               <tr>
-                <th>ID</th>
-                <th>Tipo</th>
-                <th>Cantidad</th>
+                <th>Folio</th>
                 <th>Cliente</th>
                 <th>Comedor</th>
-                <th>Email</th>
-                <th>Fecha Creación</th>
-                <th>Creado Por</th>
-                <th>Acciones</th>
+                <th id="employeeHeader" style="display: none;">Empleado</th>
+                <th>Estado</th>
+                <th id="actionsHeader" style="display: none;">Acciones</th>
               </tr>
             </thead>
-            <tbody id="lotTableBody"></tbody>
+            <tbody id="voucherTableBody"></tbody>
           </table>
         </div>
         <div class="card-footer py-4">
@@ -56,5 +51,5 @@
 {% endblock content %}
 
 {% block javascripts %}
-<script src="/static/assets/html-js/loadDataLots.js"></script>
+<script src="/static/assets/html-js/loadDataLotDetails.js"></script>
 {% endblock javascripts %}

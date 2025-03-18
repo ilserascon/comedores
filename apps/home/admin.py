@@ -14,6 +14,7 @@ admin_views = [
   'usuarios',
   'reporte-unicos',
   'reporte-perpetuos',
+  'lot_details',
 ]
 
 user_views = [
