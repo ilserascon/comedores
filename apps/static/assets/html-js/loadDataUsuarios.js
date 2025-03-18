@@ -51,12 +51,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const toastContainer = document.getElementById('toastContainer');
         toastContainer.appendChild(toast);
     
-        const bsToast = new bootstrap.Toast(toast, { delay: 50000 });
+        const bsToast = new bootstrap.Toast(toast, { delay: 4000 });
         bsToast.show();
     
         setTimeout(() => {
             toast.remove();
-        }, 50000);
+        }, 4000);
     
         toast.querySelector('.btn-close').addEventListener('click', function() {
             toast.remove();
@@ -103,6 +103,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td>${user.email}</td>
                     <td>${user.role__name}</td>
                     <td>${user.dining_room_in_charge__name ? user.dining_room_in_charge__name : 'Sin asignar'}</td>
+                    <td>${user.dining_room_in_charge__client_diner_dining_room__client__company ? user.dining_room_in_charge__client_diner_dining_room__client__company : 'N/A'}</td>
                     <td>
                         <span class="badge badge-dot mr-4">
                             <i class="${user.status ? 'bg-success' : 'bg-danger'}"></i>
@@ -298,14 +299,14 @@ document.addEventListener('DOMContentLoaded', function() {
         editPasswordInput.value = '';
         editDiningRoomInput.innerHTML = '';
         if (user.dining_room_in_charge__name) {
-            editDiningRoomInput.innerHTML = `<option value="${user.dining_room_in_charge}">${user.dining_room_in_charge__name}</option>`;
+            editDiningRoomInput.innerHTML = `<option value="${user.dining_room_in_charge}">${user.dining_room_in_charge__name}(${user.dining_room_in_charge__client_diner_dining_room__client__company ? user.dining_room_in_charge__client_diner_dining_room__client__company : 'N/A'})</option>`;
         }
         if(result.message === 'No hay comedores disponibles' && user.dining_room_in_charge__name) {
             editDiningRoomInput.innerHTML +=`<option value="no">Sin Asignar</option>`;
         }else if(result.message === 'No hay comedores disponibles') {
             editDiningRoomInput.innerHTML +=`<option value="no">No hay comedores disponibles</option>`;
         }else {
-            editDiningRoomInput.innerHTML +=`<option value="no">Sin Asignar</option>` + result.diners.map(diner => `<option value="${diner.id}">${diner.name}</option>`).join('');
+            editDiningRoomInput.innerHTML +=`<option value="no">Sin Asignar</option>` + result.diners.map(diner => `<option value="${diner.id}">${diner.name}(${diner.client_diner_dining_room__client__company ? diner.client_diner_dining_room__client__company : 'N/A'})</option>`).join('');
         }
         if (user) {
             editUserIdInput.value = user.id;
@@ -348,7 +349,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if(result.message === 'No hay comedores disponibles') {
             createDiningRoomInput.innerHTML = `<option value="no">No hay comedores disponibles</option>`;
         }else {
-            createDiningRoomInput.innerHTML = `<option value="no">Sin Asignar</option>` + result.diners.map(diner => `<option value="${diner.id}">${diner.name}</option>`).join('');
+            createDiningRoomInput.innerHTML = `<option value="no">Sin Asignar</option>` + result.diners.map(diner => `<option value="${diner.id}">${diner.name}(${diner.client_diner_dining_room__client__company ? diner.client_diner_dining_room__client__company : 'N/A'})</option>`).join('');
         }
         handleRoleStatusChange(createRoleInput, createDiningRoomInput, createStatusInput);
     });

@@ -501,7 +501,7 @@ def user_list(request):
         role_filter = request.GET.get('role', '')
 
         users = CustomUser.objects.all().order_by('id').values(
-            'id', 'username', 'first_name', 'last_name', 'second_last_name', 'email', 'role__name', 'dining_room_in_charge__name', 'status'
+            'id', 'username', 'first_name', 'last_name', 'second_last_name', 'email', 'role__name', 'dining_room_in_charge__name', 'dining_room_in_charge__client_diner_dining_room__client__company', 'status'
         ).distinct()
 
         if search_query:
@@ -679,7 +679,7 @@ def role_list(request):
 @csrf_exempt
 def get_diner_without_in_charge(request):
     try:
-        diners = DiningRoom.objects.filter(in_charge=None, status=1).values('id', 'name')
+        diners = DiningRoom.objects.filter(in_charge=None, status=1).values('id', 'name','client_diner_dining_room__client__company')
         return JsonResponse(list(diners), safe=False)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
