@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     const clientTableBody = document.getElementById('clientTableBody');
+    const createClientBtn = document.getElementById('createClientBtn');
     const editClientModal = new bootstrap.Modal(document.getElementById('editClientModal'));
     const createClientForm = document.getElementById('createClientForm');
     const editClientForm = document.getElementById('editClientForm');
@@ -123,11 +124,9 @@ document.addEventListener('DOMContentLoaded', function() {
         return paginationHTML; // This return is optional now
     }
 
-    // Handle page click event
-    async function handlePageClick(event) {
-        const pageNumber = event.target.getAttribute('page-number');
-        populateClients(pageNumber);
-    }
+    createClientBtn.addEventListener('click', async function() {
+        createClientForm.reset();
+    });
 
     // Create client
     createClientForm.addEventListener('submit', async function(event) {
