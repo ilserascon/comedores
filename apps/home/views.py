@@ -2275,6 +2275,7 @@ def validar_vale(request):
         data = json.loads(request.body)
         folio = data.get("folio")
 
+        # Verificar si el folio fue proporcionado
         if not folio:
             return JsonResponse({"message": "Debes ingresar un folio", "status": "danger"}, status=400)
 
@@ -2283,10 +2284,25 @@ def validar_vale(request):
         if not folio_regex.match(folio):
             return JsonResponse({"message": "Formato incorrecto", "status": "info"}, status=400)
 
-        voucher = Voucher.objects.filter(folio=folio).select_related('lots__voucher_type').first()
+        voucher = Voucher.objects.filter(folio=folio).select_related('lots__voucher_type', 'lots__client_diner__dining_room').first()
 
+        # Verificar que el vale exista
         if not voucher:
             return JsonResponse({"message": "Vale no encontrado", "status": "danger"}, status=404)
+
+        # Verificar si el usuario tiene un comedor asignado
+        user_id = request.user.id
+        dining_room = DiningRoom.objects.filter(in_charge_id=user_id).first()
+        if not dining_room:
+            return JsonResponse({'message': 'No tienes un comedor asignado', "status": "danger"}, status=403)
+        
+        # Verificar si el comedor asignado está activo
+        if not dining_room.status:
+            return JsonResponse({'message': 'El comedor asignado está inactivo', "status": "danger"}, status=403)
+
+        # Verificar si el vale corresponde al comedor asignado
+        if voucher.lots.client_diner.dining_room != dining_room:
+            return JsonResponse({"message": "El vale no corresponde al comedor asignado", "status": "danger"}, status=403)
 
         # Identificar el tipo de vale y manejar la lógica correspondiente
         if voucher.lots.voucher_type.description == "UNICO":
