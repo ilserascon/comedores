@@ -2308,6 +2308,7 @@ def validar_empleado(request):
             data = json.loads(request.body)
             employeed_code = data.get('employeed_code')
 
+            # Verificar si el código de empleado fue proporcionado
             if not employeed_code:
                 return JsonResponse({'message': 'El código de empleado es requerido', "status": "danger"}, status=400)
 
@@ -2319,6 +2320,21 @@ def validar_empleado(request):
             # Verificar si el empleado está activo
             if not employee.status:
                 return JsonResponse({'message': 'Empleado inactivo', "status": "danger"}, status=400)
+ 
+            # Verificar si el usuario tiene un comedor asignado
+            user_id = request.user.id
+            dining_room = DiningRoom.objects.filter(in_charge_id=user_id).first()
+            if not dining_room:
+                return JsonResponse({'message': 'No tienes un comedor asignado', "status": "danger"}, status=403)
+            
+            # Verificar si el comedor asignado está activo
+            if not dining_room.status:
+                return JsonResponse({'message': 'El comedor asignado está inactivo', "status": "danger"}, status=403)
+
+            # Verificar si el empleado tiene acceso al comedor asignado
+            employee_client_diner = EmployeeClientDiner.objects.filter(employee=employee, client_diner__dining_room=dining_room).first()
+            if not employee_client_diner:
+                return JsonResponse({'message': 'El empleado no tiene acceso a este comedor', 'status': "danger"}, status=403)
 
             # Definir la zona horaria de Arizona
             arizona_tz = pytz.timezone('America/Phoenix')
@@ -2331,10 +2347,6 @@ def validar_empleado(request):
                 return JsonResponse({'message': 'El empleado ya ha registrado una entrada hoy', "status": "info"}, status=400)
 
             # Registrar la entrada
-            employee_client_diner = EmployeeClientDiner.objects.filter(employee=employee).first()
-            if not employee_client_diner:
-                return JsonResponse({'message': 'Empleado no asignado a un comedor', 'status': "danger"}, status=404)
-
             entry = Entry(
                 employee_client_diner=employee_client_diner,
                 client_diner=employee_client_diner.client_diner,
