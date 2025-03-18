@@ -36,7 +36,7 @@ import os
 from email.message import EmailMessage
 import ssl
 import smtplib
-from apps.pdf_generation import generate_qrs_pdf, prepare_qrs, generate_lot_pdf, clean_pdf_dir, prepare_qr, generate_perpetual_voucher_pdf
+from apps.pdf_generation import generate_qrs_pdf, prepare_qrs, generate_lot_pdf, clean_pdf_dir, prepare_qr, generate_perpetual_voucher_pdf, verify_lot_pdf_exists, verify_voucher_pdf_exists, create_lot_pdf_name, create_voucher_pdf_name
 import re
 
 @login_required(login_url="/login/")
@@ -2330,9 +2330,6 @@ def generate_unique_voucher(request):
         if not client_dinner.status:
             return JsonResponse({"error": f"El uso del comedor por parte de  {client_dinner.client.company} ha sido desactivado."}, status=400)
         
-
-
-
         diningroom = client_dinner.dining_room
         
         clean_pdf_dir()
@@ -2597,10 +2594,6 @@ def change_voucher_employee(request):
 
         
         return JsonResponse({"message": "Nombre del vale actualizado con éxito" })
-        
-
-
-        
     except Exception as err:
         return JsonResponse({'error': str(err)}, status=500)
 
@@ -2742,7 +2735,7 @@ def get_voucher_lots(request):
         ).order_by('-id')
 
         if lot_id:
-            lots_query = lots_query.filter(id=lot_id)
+            lots_query = lots_query.filter(id__icontains=lot_id)
         if voucher_type:
             lots_query = lots_query.filter(voucher_type__description__iexact=voucher_type)
 
@@ -2780,13 +2773,20 @@ def get_vouchers_by_lot(request):
 
     try:
         lot_id = request.GET.get('lot_id')
+        folio = request.GET.get('folio')
         page_number = int(request.GET.get('page', 1))
         page_size = int(request.GET.get('page_size', 10))
 
         if not lot_id:
             return JsonResponse({'error': 'El parámetro lot_id es obligatorio'}, status=400)
+        
+        # Filtros dinámicos
+        filters = {'lots_id': lot_id}
 
-        vouchers_query = Voucher.objects.filter(lots_id=lot_id).select_related(
+        if folio:  # Solo agregar el filtro de folio si se proporciona
+            filters['folio__icontains'] = folio
+
+        vouchers_query = Voucher.objects.filter(**filters).select_related(
             'lots__voucher_type',
             'lots__client_diner__client'
         ).values(
@@ -2805,7 +2805,7 @@ def get_vouchers_by_lot(request):
             {
                 'id': voucher['id'],
                 'folio': voucher['folio'] or 'N/A',
-                'employee': voucher['employee'] or 'N/A',
+                'employee': voucher['employee'] or '',
                 'status': 1 if voucher['status'] else 0,
                 'voucher_type': voucher['lots__voucher_type__description'] or 'N/A',
                 'client': voucher['lots__client_diner__client__company'] or 'N/A',
@@ -2818,6 +2818,8 @@ def get_vouchers_by_lot(request):
         paginator = Paginator(vouchers, page_size)
         page_obj = paginator.get_page(page_number)
 
+        print(list(page_obj))
+
         return JsonResponse({
             'vouchers': list(page_obj),
             'page': page_obj.number,
@@ -2826,4 +2828,96 @@ def get_vouchers_by_lot(request):
             'has_previous': page_obj.has_previous()
         })
     except Exception as e:
+        print(e)
         return JsonResponse({'error': str(e)}, status=500)
+    
+@csrf_exempt
+def search_pdf_qr_unique_voucher_and_generate(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        lot_id = data.get('lot_id')
+        print(lot_id)
+        
+        if not lot_id:
+            return JsonResponse({'error': 'lot_id es requerido'}, status=400)
+        
+        lot = Lots.objects.filter(id=lot_id).first()
+        
+        if not lot:
+            return JsonResponse({'error': 'Lote no encontrado'}, status=404)
+        
+        if lot.voucher_type.description != 'UNICO':
+            return JsonResponse({'error': 'El lote no es de tipo único'}, status=400)
+        
+        existing_filepath = verify_lot_pdf_exists(lot.id)
+        if existing_filepath:
+            filename = existing_filepath.split('/')[-1]
+            return JsonResponse({'pdf': f'/static/pdfs/{filename}', 'message': 'PDF ya existente'})
+        
+
+        # Generar los códigos QR y el PDF si no existe
+        vouchers = Voucher.objects.filter(lots=lot)
+        qr_paths = prepare_qrs(vouchers, lot.id, lot.client_diner.dining_room.name)
+
+        filename = create_lot_pdf_name(lot.id)
+        
+        generate_qrs_pdf(qr_paths, filename)
+        
+        # Eliminar los archivos temporales de los códigos QR
+        for qr in qr_paths:
+            os.remove(qr[0])
+        
+
+        
+        return JsonResponse({'pdf': f'/static/pdfs{filename}', 'message': 'PDF generado con éxito'})
+    except Exception as e:
+        print(e)
+        return JsonResponse({'error': str(e)}, status=500)
+    
+@csrf_exempt
+def search_pdf_qr_perpetual_voucher_and_generate(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        voucher_folio = data.get('voucher_folio')
+        
+        print(voucher_folio)
+        if not voucher_folio:
+            return JsonResponse({'error': 'voucher_folio es requerido'}, status=400)
+        
+        voucher = Voucher.objects.filter(folio=voucher_folio).first()
+
+        if not voucher:
+            return JsonResponse({'error': 'Vale no encontrado'}, status=404)
+
+        if voucher.lots.voucher_type.description != 'PERPETUO':
+            return JsonResponse({'error': 'El vale no es de tipo perpetuo'}, status=400)
+        
+        existing_filepath = verify_voucher_pdf_exists(voucher.id)
+        if existing_filepath:
+            filename = existing_filepath.split('/')[-1]
+            return JsonResponse({'pdf': f'/static/pdfs/{filename}', 'message': 'PDF ya existente'})
+        
+        qr_path = prepare_qr(voucher)
+    
+        filepath = None
+        try: 
+            filepath = generate_perpetual_voucher_pdf(voucher, qr_path)
+        except:
+            return JsonResponse({'error': 'Error al generar el PDF'}, status=500)
+
+        match = re.search(r"\\static\\.*", filepath)
+        relative_path = match.group(0)[1:] if match else filepath
+        relative_path = relative_path.replace("\\", "/")  
+
+
+        return JsonResponse({'pdf': relative_path, 'message': 'PDF generado con éxito'})
+    except Exception as e:
+        print(e)
+        return JsonResponse({'error': str(e)}, status=500)
+    

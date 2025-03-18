@@ -81,6 +81,9 @@ urlpatterns = [
     # ===================== ADMINISTRADOR DE VALES ===================== #
     path('get_voucher_lots/', views.get_voucher_lots, name='get_voucher_lots'),
     path('get_vouchers_by_lot/', views.get_vouchers_by_lot, name='get_vouchers_by_lot'),
+    path('search_pdf_qr_unique_voucher_and_generate/', views.search_pdf_qr_unique_voucher_and_generate, name='search_pdf_qr_unique_voucher_and_generate'),
+    path('search_pdf_qr_perpetual_voucher_and_generate/', views.search_pdf_qr_perpetual_voucher_and_generate, name='search_pdf_qr_perpetual_voucher_and_generate'),
+
 
     # Matches any html file
     re_path(r'^.*\.*', views.pages, name='pages'),

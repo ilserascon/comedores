@@ -79,6 +79,22 @@ def generate_perpetual_voucher_pdf(voucher: Voucher, qr_path: str):
     configuration=wkconfig
   )
   return filename
+
+def verify_lot_pdf_exists(lot_id: int):
+  filename = OUTPUT_DIR + f'/LOT-{lot_id}.pdf'
+
+  if os.path.exists(filename):
+    return filename
+  
+  return None
+
+def verify_voucher_pdf_exists(voucher_folio: str):
+  filename = OUTPUT_DIR + f'/qr_{voucher_folio}.pdf'
+
+  if os.path.exists(filename):
+    return filename
+  
+  return None
   
 def prepare_qrs(vouchers:list[Voucher], lots_id:int, diningroom):
 
@@ -95,34 +111,37 @@ def prepare_qrs(vouchers:list[Voucher], lots_id:int, diningroom):
   
   return qr_paths
 
-def create_pdf_name(lotId: int):
+def create_lot_pdf_name(lotId: int):
   return f'/LOT-{lotId}.pdf'
 
-def get_pdf_path(lotId: int):
-  filename = create_pdf_name(lotId)
+def create_voucher_pdf_name(voucher_folio: str):
+  return f'/qr_{voucher_folio}.pdf'
+
+def get_lot_pdf_path(lotId: int):
+  filename = create_lot_pdf_name(lotId)
   return OUTPUT_DIR+filename
   
 def unique_vouchers_pdf_exists(lotId: int):
-  filename = create_pdf_name(lotId)
+  filename = create_lot_pdf_name(lotId)
   return os.path.exists(OUTPUT_DIR+filename)
 
 def generate_lot_pdf(lot_id: int):
   clean_temp_dir()
   if unique_vouchers_pdf_exists(lot_id):
-    return get_pdf_path(lot_id)
+    return get_lot_pdf_path(lot_id)
   
   lot = Lots.objects.filter(id=lot_id).first()
   dining_room = lot.client_diner.dining_room.name
 
   vouchers = list(Voucher.objects.filter(id=lot_id))
   qr_paths = prepare_qrs(vouchers, lot_id, dining_room)
-  filename = create_pdf_name(lot_id)
+  filename = create_lot_pdf_name(lot_id)
   generate_qrs_pdf(qr_paths, filename)
 
   for qr_path in qr_paths:
     os.remove(qr_path[0])
   
-  return get_pdf_path(lot_id)
+  return get_lot_pdf_path(lot_id)
 
   
 def clean_pdf_dir():
@@ -149,3 +168,10 @@ def clean_temp_dir():
       time_difference = current_time - datetime.datetime.fromtimestamp(creation_time)
       if time_difference.days  > LIMIT_DAYS:
         os.remove(file_path)
+
+def prepare_url_pdf(complete_url: str):
+  #conseguir la url hasta el penultimo /
+  url = complete_url.split('/')
+  url = url[-3:]
+  url = '/'.join(url)
+  return url
