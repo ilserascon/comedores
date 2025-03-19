@@ -86,7 +86,6 @@ async function getClientes() {
 
         return data;
     } catch (error) {
-        console.error('Error:', error.message);
         throw new Error(error.message || 'Error al obtener clientes');
     }
 }

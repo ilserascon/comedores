@@ -124,7 +124,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   downloadVouchersBtn.addEventListener('click', async () => {
-    console.log(lotId)
     try {
       const data = await fetchDownloadVouchers(lotId);
       const a = document.createElement('a');
@@ -132,7 +131,6 @@ document.addEventListener('DOMContentLoaded', () => {
       a.download = `LOT-${lotId}.pdf`;
       a.click();
     } catch (error) {
-      console.error('Error:', error);
       showToast('Error al descargar los vales', 'danger');
     }
   });
