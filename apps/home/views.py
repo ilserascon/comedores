@@ -1408,8 +1408,6 @@ def export_excel_employee_report(request):
         if end_date:
             filters['created_at__lte'] = end_date
 
-        print(filters)
-
         filters = {k: v for k, v in filters.items() if v}
 
         entry_employee = Entry.objects.select_related(
@@ -2972,8 +2970,6 @@ def get_vouchers_by_lot(request):
         paginator = Paginator(vouchers, page_size)
         page_obj = paginator.get_page(page_number)
 
-        print(list(page_obj))
-
         return JsonResponse({
             'vouchers': list(page_obj),
             'page': page_obj.number,
@@ -2993,7 +2989,6 @@ def search_pdf_qr_unique_voucher_and_generate(request):
     try:
         data = json.loads(request.body)
         lot_id = data.get('lot_id')
-        print(lot_id)
         
         if not lot_id:
             return JsonResponse({'error': 'lot_id es requerido'}, status=400)
@@ -3040,7 +3035,6 @@ def search_pdf_qr_perpetual_voucher_and_generate(request):
         data = json.loads(request.body)
         voucher_folio = data.get('voucher_folio')
         
-        print(voucher_folio)
         if not voucher_folio:
             return JsonResponse({'error': 'voucher_folio es requerido'}, status=400)
         
