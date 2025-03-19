@@ -606,7 +606,7 @@ def user_detail(request, user_id):
     user = get_object_or_404(CustomUser, id=user_id)
     if request.method == 'GET':
         try:
-            user_data = CustomUser.objects.filter(id=user_id).values('id', 'username', 'first_name', 'last_name', 'second_last_name', 'email', 'role', 'role__name', 'dining_room_in_charge','dining_room_in_charge__name','status', 'created_by', 'updated_by').first()
+            user_data = CustomUser.objects.filter(id=user_id).values('id', 'username', 'first_name', 'last_name', 'second_last_name', 'email', 'role', 'role__name', 'dining_room_in_charge','dining_room_in_charge__client_diner_dining_room__client__company', 'dining_room_in_charge__name','status', 'created_by', 'updated_by').first()
             return JsonResponse(user_data)
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
@@ -683,11 +683,24 @@ def role_list(request):
 @csrf_exempt
 def get_diner_without_in_charge(request):
     try:
-        diners = DiningRoom.objects.filter(in_charge=None, status=1).values('id', 'name','client_diner_dining_room__client__company')
-        return JsonResponse(list(diners), safe=False)
+        diners = ClientDiner.objects.filter(dining_room__in_charge__isnull=True, dining_room__status=1).values(
+            'dining_room', 'dining_room__name', 'client__company'
+        )
+        
+        # Convert QuerySet to a list of dictionaries
+        diners_list = [
+            {
+                'id': diner['dining_room'],
+                'name': diner['dining_room__name'],
+                'client_diner_dining_room__client__company': diner['client__company']
+            }
+            for diner in diners
+        ]
+        
+        return JsonResponse(diners_list, safe=False)
     except Exception as e:
+        print(e)
         return JsonResponse({'error': str(e)}, status=500)
-
 
 # ===================== EMPLEADOS ===================== #
 @csrf_exempt
@@ -1369,17 +1382,33 @@ def export_excel_employee_report(request):
             'employee_client_diner__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
             'employee_client_diner__employee__employeed_code__icontains': request.GET.get('filterEmployeeNumber'),
             'employee_client_diner__employee__status': request.GET.get('filterStatus'),
-            'created_at__gte': request.GET.get('filterStartDate'),
-            'created_at__lte': request.GET.get('filterEndDate'),
             'employee_client_diner__isnull': False,
             'voucher__isnull': True
         }
 
-        # Convert date filters to timezone-aware datetime
-        if filters.get('created_at__gte'):
-            filters['created_at__gte'] = timezone.make_aware(datetime.strptime(filters['created_at__gte'], '%Y-%m-%d'))
-        if filters.get('created_at__lte'):
-            filters['created_at__lte'] = timezone.make_aware(datetime.strptime(filters['created_at__lte'], '%Y-%m-%d'))
+        # Convertir las fechas a objetos datetime conscientes de la zona horaria
+        start_date_str = request.GET.get('filterStartDate')
+        end_date_str = request.GET.get('filterEndDate')
+
+        if start_date_str:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+            start_date = timezone.make_aware(start_date)
+        else:
+            start_date = None
+
+        if end_date_str:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+            end_date = timezone.make_aware(end_date)
+        else:
+            end_date = None
+
+        # Filtro de entradas solo cuando se han proporcionado fechas
+        if start_date:
+            filters['created_at__gte'] = start_date
+        if end_date:
+            filters['created_at__lte'] = end_date
+
+        print(filters)
 
         filters = {k: v for k, v in filters.items() if v}
 
@@ -1401,17 +1430,17 @@ def export_excel_employee_report(request):
             entry_created_at=F('created_at')
         ).order_by('-created_at')
 
-        # Create a DataFrame from the queryset
+        # Crear un DataFrame a partir del queryset
         df = pd.DataFrame(list(entry_employee))
 
-        # Remove timezone information from datetime objects
+        # Eliminar la información de la zona horaria de los objetos datetime
         if 'entry_created_at' in df.columns:
-            df['entry_created_at'] = df['entry_created_at'].apply(lambda x: x.replace(tzinfo=None) if pd.notnull(x) else x)
+            df['entry_created_at'] = df['entry_created_at'].apply(lambda x: format_date(x) if pd.notnull(x) else "Sin fecha")
         
         # Si el estado del empleado es True, cambiar a 'Activo', de lo contrario 'Inactivo'
         df['employee_status'] = df['employee_status'].apply(lambda x: 'Activo' if x else 'Inactivo')
 
-        # Define the custom headers for the Excel sheet
+        # Definir los encabezados personalizados para la hoja de Excel
         headers = [
             'Compañía Cliente',
             'Nombre Cliente',
@@ -1426,10 +1455,10 @@ def export_excel_employee_report(request):
             'Fecha de Creación'
         ]
 
-        # Create a new Excel workbook and add two sheets
+        # Crear un nuevo libro de Excel y agregar dos hojas
         wb = openpyxl.Workbook()
 
-        # Sheet 1: Employee Report
+        # Hoja 1: Informe de empleados
         ws1 = wb.active
         ws1.title = "Employee Report"
         ws1.append(headers)
@@ -1438,7 +1467,7 @@ def export_excel_employee_report(request):
         for row in dataframe_to_rows(df, index=False, header=False):
             ws1.append(row)
         
-        # Sheet 2: Employee Report Summary (simplified version)
+        # Hoja 2: Informe resumido de empleados
         ws2 = wb.create_sheet(title="Summary Report")
         simplified_headers = [
             'Código Empleado',
@@ -1452,25 +1481,24 @@ def export_excel_employee_report(request):
         ws2.append(simplified_headers)
         add_styles(ws2, simplified_headers)
 
-        # Generate a summary report (aggregating by employee)
+        # Generar un informe resumido (agregando por empleado)
         summary_df = df.groupby(['employee_code', 'employee_name', 'employee_lastname', 'employee_second_lastname', 'dining_room_name', 'employee_status']).size().reset_index(name='Total Entradas')
 
         for row in dataframe_to_rows(summary_df, index=False, header=False):
             ws2.append(row)
 
-        # Create a BytesIO buffer to hold the Excel file
+        # Crear un buffer de BytesIO para contener el archivo de Excel
         buffer = BytesIO()
         wb.save(buffer)
         buffer.seek(0)
 
-        # Set the response content type to Excel
+        # Establecer el tipo de contenido de la respuesta a Excel
         response = HttpResponse(buffer, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         response['Content-Disposition'] = 'attachment; filename=employee_report.xlsx'
 
         return response
     except Exception as e:
         return JsonResponse({'error': 'No hay registros'}, status=500)
-
 
 def add_styles(ws, headers):
     # Set font and style for headers
@@ -2166,11 +2194,27 @@ def export_excel_perpetuo_report(request):
             'voucher__folio__icontains': request.GET.get('filterVoucherFolio')
         }
 
-        # Convert date filters to timezone-aware datetime
-        if filters.get('created_at__gte'):
-            filters['created_at__gte'] = timezone.make_aware(datetime.strptime(filters['created_at__gte'], '%Y-%m-%d'))
-        if filters.get('created_at__lte'):
-            filters['created_at__lte'] = timezone.make_aware(datetime.strptime(filters['created_at__lte'], '%Y-%m-%d'))
+        # Convertir las fechas a objetos datetime conscientes de la zona horaria
+        start_date_str = request.GET.get('filterStartDate')
+        end_date_str = request.GET.get('filterEndDate')
+
+        if start_date_str:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+            start_date = timezone.make_aware(start_date)
+        else:
+            start_date = None
+
+        if end_date_str:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+            end_date = timezone.make_aware(end_date)
+        else:
+            end_date = None
+
+        # Filtro de entradas solo cuando se han proporcionado fechas
+        if start_date:
+            filters['created_at__gte'] = start_date
+        if end_date:
+            filters['created_at__lte'] = end_date
 
         filters = {k: v for k, v in filters.items() if v}
 
@@ -2194,7 +2238,7 @@ def export_excel_perpetuo_report(request):
 
         # Remove timezone information from datetime objects
         if 'entry_created_at' in df.columns:
-            df['entry_created_at'] = df['entry_created_at'].apply(lambda x: x.replace(tzinfo=None) if pd.notnull(x) else x)
+            df['entry_created_at'] = df['entry_created_at'].apply(lambda x: format_date(x) if pd.notnull(x) else "Sin fecha")
 
         # Si el estado del vale es verdadero asignar "Activo" y si es falso asignar "Inactivo"
         df['voucher_status'] = df['voucher_status'].apply(lambda x: 'Activo' if x else 'Inactivo')
@@ -2249,6 +2293,11 @@ def export_excel_perpetuo_report(request):
             'lots__voucher_type_id': 2,  # Tipo de vale perpetuo
             'folio__icontains': request.GET.get('filterVoucherFolio')
         }
+                # Convert date filters to timezone-aware datetime
+        if filters.get('created_at__gte'):
+            filters['created_at__gte'] = timezone.make_aware(datetime.strptime(filters['created_at__gte'], '%Y-%m-%d'))
+        if filters.get('created_at__lte'):
+            filters['created_at__lte'] = timezone.make_aware(datetime.strptime(filters['created_at__lte'], '%Y-%m-%d'))
         filters = {k: v for k, v in filters.items() if v}
 
         # Obtener los vales de tipo 1
