@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function showToast(message, type = 'success') {
         const toast = document.createElement('div');
         const header = type === 'success' ? 'Éxito' : type === 'info' ? 'Aviso' : 'Error';
-        toast.className = `toast align-items-center text-white bg-${type} border-0 rounded-pill shadow-sm p-2 px-3 m-1`;
+        toast.className = `toast align-items-center text-white bg-${type} border-0 shadow-sm p-2 px-3 m-1`;
         toast.role = 'alert';
         toast.ariaLive = 'assertive';
         toast.ariaAtomic = 'true';
