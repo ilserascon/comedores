@@ -198,8 +198,8 @@ async function actualizarComedor() {
     const name = document.getElementById('editarComedorName').value.trim();
     const description = document.getElementById('editarComedorDescription').value.trim();
     const client = document.getElementById('editarComedorClient').value;
-    const inCharge = document.getElementById('editarComedorInCharge').value;
-    const status = document.getElementById('editarComedorStatus').value;
+    const status = document.getElementById('editarComedorStatus').value === '1';
+    const inCharge = status ? document.getElementById('editarComedorInCharge').value : null;
 
     const data = {
         dining_room_id: id,
@@ -218,7 +218,7 @@ async function actualizarComedor() {
             data.description !== originalComedor.description ||
             data.client !== (originalComedor.client ? originalComedor.client.id.toString() : '') ||
             (data.inCharge || '') !== (originalComedor.in_charge && originalComedor.in_charge.id ? originalComedor.in_charge.id.toString() : '') ||
-            data.status !== (originalComedor.status ? '1' : '0')
+            data.status !== originalComedor.status
         );
 
         if (!hasChanged) {
@@ -270,8 +270,9 @@ async function llenarSelectEncargados(selectId, currentInCharge) {
                 select.appendChild(currentOption);
             }
             select.value = currentInCharge.id;
+        } else {
+            select.value = ''; // Seleccionar "Sin asignar" si no hay encargado
         }
-
     } catch (error) {
         console.error('Error al llenar el select de encargados:', error.message);
     }

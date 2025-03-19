@@ -129,30 +129,34 @@ def get_comedores(request):
         filter_value = request.GET.get('filter', 'all')
 
         # Obtener todos los comedores con la información del cliente y del encargado
-        dining_rooms_query = ClientDiner.objects.select_related('client', 'dining_room', 'dining_room__in_charge').values(
-            'client__company',
-            'dining_room__id',
-            'dining_room__name',
-            'dining_room__description',
-            'dining_room__in_charge__first_name',
-            'dining_room__in_charge__last_name',
-            'dining_room__status'
+        dining_rooms_query = DiningRoom.objects.select_related('in_charge').prefetch_related(
+            'client_diner_dining_room__client'
+        ).values(
+            'id',
+            'name',
+            'description',
+            'status',
+            'in_charge__id',
+            'in_charge__first_name',
+            'in_charge__last_name',
+            'client_diner_dining_room__client__company'
         ).distinct()
 
         # Aplicar el filtro si no es 'all'
         if filter_value != 'all':
-            dining_rooms_query = dining_rooms_query.filter(client__id=filter_value)
+            dining_rooms_query = dining_rooms_query.filter(client_diner_dining_room__client__id=filter_value)
 
         # Renombrar campos para evitar confusión
         dining_rooms_list = [
             {
-                'company': dr['client__company'],
-                'id': dr['dining_room__id'],
-                'name': dr['dining_room__name'],
-                'description': dr['dining_room__description'],
-                'in_charge_first_name': dr['dining_room__in_charge__first_name'],
-                'in_charge_last_name': dr['dining_room__in_charge__last_name'],
-                'status': dr['dining_room__status']
+                'id': dr['id'],
+                'name': dr['name'],
+                'description': dr['description'],
+                'status': dr['status'],
+                'in_charge_id': dr['in_charge__id'],
+                'in_charge_first_name': dr['in_charge__first_name'],
+                'in_charge_last_name': dr['in_charge__last_name'],
+                'company': dr['client_diner_dining_room__client__company']
             }
             for dr in dining_rooms_query
         ]
@@ -183,26 +187,43 @@ def get_comedor(request):
     try:
         dining_room_id = request.GET.get('dining_room_id')
 
+        # Validar que se proporcione el ID del comedor
+        if not dining_room_id:
+            return JsonResponse({'error': 'El ID del comedor es obligatorio'}, status=400)
+
         # Realizar la consulta con las uniones necesarias
-        dining_room = DiningRoom.objects.filter(id=dining_room_id).select_related('in_charge').prefetch_related('client_diner_dining_room__client').values(
-            'id', 'name', 'description', 'status', 'in_charge__first_name', 'in_charge__last_name', 'in_charge_id',
-            'client_diner_dining_room__client__id', 'client_diner_dining_room__client__company'
+        dining_room = DiningRoom.objects.filter(id=dining_room_id).select_related('in_charge').prefetch_related(
+            'client_diner_dining_room__client'
+        ).values(
+            'id',
+            'name',
+            'description',
+            'status',
+            'in_charge__id',
+            'in_charge__first_name',
+            'in_charge__last_name',
+            'client_diner_dining_room__client__id',
+            'client_diner_dining_room__client__company'
         ).first()
 
+        # Verificar si el comedor existe
         if not dining_room:
             return JsonResponse({'error': 'Comedor no encontrado'}, status=404)
 
+        # Formatear los datos del encargado
         in_charge = {
-            'id': dining_room['in_charge_id'],
+            'id': dining_room['in_charge__id'],
             'first_name': dining_room['in_charge__first_name'],
             'last_name': dining_room['in_charge__last_name']
-        }
+        } if dining_room['in_charge__id'] else None
 
+        # Formatear los datos del cliente
         client = {
             'id': dining_room['client_diner_dining_room__client__id'],
             'company': dining_room['client_diner_dining_room__client__company']
         }
 
+        # Construir el contexto de respuesta
         context = {
             'dining_room_id': dining_room['id'],
             'name': dining_room['name'],
@@ -213,8 +234,6 @@ def get_comedor(request):
         }
 
         return JsonResponse(context)
-    except DiningRoom.DoesNotExist:
-        return JsonResponse({'error': 'Comedor no encontrado'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
@@ -233,8 +252,12 @@ def create_comedor(request):
         if not client_id:
             return JsonResponse({'error': 'El campo client es obligatorio'}, status=400)
 
+        # Validar longitud de la descripción
+        if len(description) > 100:
+            return JsonResponse({'error': 'La descripción no puede tener más de 100 caracteres'}, status=400)
+
         # Crear el comedor en el modelo DiningRoom
-        dining_room = DiningRoom(
+        dining_room = DiningRoom.objects.create(
             name=name,
             description=description,
             status=status,
@@ -243,21 +266,31 @@ def create_comedor(request):
             updated_by_id=created_by_id
         )
 
-        if len(dining_room.description) > 100:
-            return JsonResponse({'error': 'La descripción no puede tener más de 100 caracteres'}, status=400)
-
-        dining_room.save()
-
         # Crear la entrada en el modelo ClientDiner
-        client_diner = ClientDiner(
+        ClientDiner.objects.create(
             dining_room_id=dining_room.id,
             client_id=client_id,
             created_by_id=created_by_id,
-            updated_by_id=request.user.id
+            updated_by_id=created_by_id
         )
-        client_diner.save()
 
-        return JsonResponse({'message': 'Comedor creado correctamente'}, status=201)
+        # Formatear la respuesta
+        response = {
+            'id': dining_room.id,
+            'name': dining_room.name,
+            'description': dining_room.description,
+            'status': dining_room.status,
+            'in_charge': {
+                'id': dining_room.in_charge.id if dining_room.in_charge else None,
+                'first_name': dining_room.in_charge.first_name if dining_room.in_charge else None,
+                'last_name': dining_room.in_charge.last_name if dining_room.in_charge else None
+            },
+            'client': {
+                'id': client_id
+            }
+        }
+
+        return JsonResponse({'message': 'Comedor creado correctamente', 'dining_room': response}, status=201)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
@@ -273,27 +306,55 @@ def update_comedor(request):
         in_charge = data.get('inCharge')
         client_id = data.get('client')  # Obtener el client_id del request
 
+        # Validar que el comedor exista
         dining_room = DiningRoom.objects.get(id=dining_room_id)
+
+        # Validar longitud de la descripción
+        if len(description) > 100:
+            return JsonResponse({'error': 'La descripción no puede tener más de 100 caracteres'}, status=400)
+
+        # Actualizar los campos del comedor
         dining_room.name = name
         dining_room.description = description
         dining_room.status = status
 
-        if len(dining_room.description) > 100:
-            return JsonResponse({'error': 'La descripción no puede tener más de 100 caracteres'}, status=400)
+        # Si el comedor se actualiza a inactivo, eliminar el encargado
+        if not status:  # status es False
+            dining_room.in_charge = None
+        else:
+            # Permitir que in_charge sea nulo si no está inactivo
+            dining_room.in_charge_id = in_charge if in_charge else None
 
-        # Permitir que in_charge sea nulo
-        dining_room.in_charge_id = in_charge if in_charge else None        
-
+        dining_room.updated_by_id = user_id
         dining_room.save()
 
-        # Actualizar la entrada en el modelo ClientDiner
+        # Actualizar o crear la entrada en el modelo ClientDiner
         client_diner, created = ClientDiner.objects.update_or_create(
             dining_room_id=dining_room_id,
-            defaults={'client_id': client_id},
-            updated_by_id=user_id
+            defaults={
+                'client_id': client_id,
+                'updated_by_id': user_id
+            }
         )
 
-        return JsonResponse({'message': 'Comedor actualizado correctamente'})
+        # Formatear la respuesta
+        response = {
+            'id': dining_room.id,
+            'name': dining_room.name,
+            'description': dining_room.description,
+            'status': dining_room.status,
+            'in_charge': {
+                'id': dining_room.in_charge.id if dining_room.in_charge else None,
+                'first_name': dining_room.in_charge.first_name if dining_room.in_charge else None,
+                'last_name': dining_room.in_charge.last_name if dining_room.in_charge else None
+            },
+            'client': {
+                'id': client_diner.client_id,
+                'company': client_diner.client.company
+            }
+        }
+
+        return JsonResponse({'message': 'Comedor actualizado correctamente', 'dining_room': response})
     except DiningRoom.DoesNotExist:
         return JsonResponse({'error': 'Comedor no encontrado'}, status=404)
     except Exception as e:
