@@ -25,7 +25,7 @@ async function generateUniqueVoucher(clientId, diningRoomId, quantity) {
   }
 }
 
-async function generatePerpetualVoucher(clientId, diningRoomId, quantity, employees) {
+async function generatePerpetualVoucher(clientId, diningRoomId, quantity) {
     try {
         const response = await fetch(`/generate_perpetual_voucher`, {
             method: 'POST',
@@ -36,7 +36,6 @@ async function generatePerpetualVoucher(clientId, diningRoomId, quantity, employ
               client_id: clientId,
               dining_room_id: diningRoomId,
               quantity: quantity,
-              employees: employees
             })
         });
   
@@ -103,3 +102,30 @@ async function generatePerpetualVoucherQR(voucherId) {
         throw new Error(error.message || 'Error al generar QR');
     }
 }
+
+async function changeVoucherEmployee(voucherId, employee) {
+    try {
+        const response = await fetch(`/change_voucher_employee`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                voucher_id: voucherId,
+                employee
+            })
+        });
+  
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Error al cambiar empleado');
+        }
+  
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error:', error.message);
+        throw new Error(error.message || 'Error al cambiar empleado');
+    }
+}
+

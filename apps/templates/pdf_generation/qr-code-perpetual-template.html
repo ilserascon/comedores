@@ -13,7 +13,12 @@
                 <img src="file:///{{ logo_path }}" alt="Alcorp logo">
                 <span>{{comedor}}</span>
               </div>
-              <span class="employee">{{employee}}</span>
+              <span class="employee">
+                {% if employee %}
+                  {{employee}}
+                {% endif %}
+
+              </span>
               <img src="file:///{{ qr_path }}" alt="QR Code">
               <div class="footer" >
                 <span class="vale-perpetuo">Vale perpetuo</span>

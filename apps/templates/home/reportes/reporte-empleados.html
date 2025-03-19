@@ -30,25 +30,25 @@
                         <div class="row">
                             <div class="col-md-3 mb-3">
                                 <label for="filterClient" class="form-label">Cliente</label>
-                                <select class="form-control" id="filterClient">
+                                <select class="form-control" id="filterClient" name="filterClient">
                                     <option value="">Todos</option>
                                     <!-- Clientes will be populated here -->
                                 </select>
                             </div>
                             <div class="col-md-3 mb-3">
                                 <label for="filterDiningRoom" class="form-label">Comedor</label>
-                                <select class="form-control" id="filterDiningRoom">
+                                <select class="form-control" id="filterDiningRoom" name="filterDiningRoom">
                                     <option value="">Todos</option>
                                     <!-- Comedores will be populated here -->
                                 </select>
                             </div>
                             <div class="col-md-3 mb-3">
                                 <label for="filterEmployeeNumber" class="form-label">Número de Empleado</label>
-                                <input type="text" class="form-control" id="filterEmployeeNumber">
+                                <input type="text" class="form-control" id="filterEmployeeNumber" name="filterEmployeeNumber">
                             </div>
                             <div class="col-md-3 mb-3">
                                 <label for="filterStatus" class="form-label">Estatus de Empleado</label>
-                                <select class="form-control" id="filterStatus">
+                                <select class="form-control" id="filterStatus" name="filterStatus">
                                     <option value="">Todos</option>
                                     <option value="1">Activo</option>
                                     <option value="0">Inactivo</option>
@@ -58,15 +58,16 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="filterStartDate" class="form-label">Fecha de Inicio</label>
-                                <input type="date" class="form-control" id="filterStartDate">
+                                <input type="date" class="form-control" id="filterStartDate" name="filterStartDate">
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="filterEndDate" class="form-label">Fecha de Fin</label>
-                                <input type="date" class="form-control" id="filterEndDate">
+                                <input type="date" class="form-control" id="filterEndDate" name="filterEndDate">
                             </div>
                         </div>
                         <div class="row">
                             <div class="col-md-12 mb-3 text-right">
+                                <button type="button" class="btn btn-success" id="exportExcelButton">Exportar Reporte</button>
                                 <button type="button" class="btn btn-primary" id="applyFiltersBtn">Aplicar Filtros</button>
                                 <button type="button" class="btn btn-secondary" id="dropFiltersBtn">Borrar Filtros</button>
                             </div>
@@ -226,7 +227,7 @@
     </div>
 
     <!-- Toast container -->
-    <div aria-live="polite" aria-atomic="true" class="position-relative" id="toast-area" aria-hidden="true">
+    <div aria-live="polite" aria-atomic="true" class="position-relative" style="z-index: 1070;" id="toast-area" aria-hidden="true">
       <div class="toast-container position-fixed bottom-0 right-0 p-4 m-1 z-4" id="toastContainer" >
           <!-- Toasts will be dynamically added here -->
       </div>

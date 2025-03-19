@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const paginationGeneral = document.getElementById('pagination-general');
     const paginationResumen = document.getElementById('pagination-resumen');
     const paginationDetalle = document.getElementById('pagination-detalle');
+    const filterForm = document.getElementById('filterForm');
 
     // Function to show toast
     function showToast(message, type = 'success') {
@@ -211,6 +212,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const handlePaginationClick = async function(event) {
             if (event.target.tagName === 'A' && !isFetching) {
                 const pageNumber = event.target.getAttribute('page-number');
+                if (!filters || Object.keys(filters).length === 0) {
+                    filters = Object.fromEntries(new FormData(filterForm))
+                }
                 
                 // Marcar que estamos en una solicitud para evitar duplicados
                 isFetching = true;
@@ -249,6 +253,7 @@ document.addEventListener('DOMContentLoaded', function() {
             filterClient: document.getElementById('filterClient').value,
             filterDiningRoom: document.getElementById('filterDiningRoom').value,
             filterEmployeeName: document.getElementById('filterEmployeeName').value,
+            filterVoucherFolio: document.getElementById('filterVoucherFolio').value,
             filterStatus: document.getElementById('filterStatus').value,
             filterStartDate: document.getElementById('filterStartDate').value,
             filterEndDate: document.getElementById('filterEndDate').value
@@ -256,6 +261,35 @@ document.addEventListener('DOMContentLoaded', function() {
 
         fetchAndDisplayGeneralReports(filters);
         fetchAndDisplaySummaryReports(filters);
+    });
+    
+    document.getElementById('exportExcelButton').addEventListener('click', async function() {
+        const filters = {
+            filterClient: document.getElementById('filterClient').value,
+            filterDiningRoom: document.getElementById('filterDiningRoom').value,
+            filterEmployeeName: document.getElementById('filterEmployeeName').value,
+            filterVoucherFolio: document.getElementById('filterVoucherFolio').value,
+            filterStatus: document.getElementById('filterStatus').value,
+            filterStartDate: document.getElementById('filterStartDate').value,
+            filterEndDate: document.getElementById('filterEndDate').value
+        };
+        try {
+            const response = await fetchExportExcelPerpetuoReport(filters);
+            if(response.status === 200) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'reporte_perpetuo.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+            } else {
+                showToast('Ocurrió un error al exportar el reporte', 'danger');
+            }
+        } catch (error) {
+            showToast(error.message, 'danger');
+        }
     });
 
     // Cerrar modal con esc o picando afuera
@@ -268,6 +302,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('filterClient').value = '';
         document.getElementById('filterDiningRoom').value = '';
         document.getElementById('filterEmployeeName').value = '';
+        document.getElementById('filterVoucherFolio').value = '';
         document.getElementById('filterStatus').value = '';
         document.getElementById('filterStartDate').value = '';
         document.getElementById('filterEndDate').value = '';

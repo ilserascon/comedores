@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', function() {
         toast.role = 'alert';
         toast.ariaLive = 'assertive';
         toast.ariaAtomic = 'true';
-        toast.style.zIndex = '1';
+        toast.style.zIndex = '1070'; // To display over the modal
     
         toast.innerHTML = `
             <div class="toast-header bg-${type} text-white d-flex align-items-center justify-content-between p-1 px-1 rounded-pill shadow-sm">
@@ -103,6 +103,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td>${user.email}</td>
                     <td>${user.role__name}</td>
                     <td>${user.dining_room_in_charge__name ? user.dining_room_in_charge__name : 'Sin asignar'}</td>
+                    <td>${user.dining_room_in_charge__client_diner_dining_room__client__company ? user.dining_room_in_charge__client_diner_dining_room__client__company : 'N/A'}</td>
                     <td>
                         <span class="badge badge-dot mr-4">
                             <i class="${user.status ? 'bg-success' : 'bg-danger'}"></i>
@@ -117,6 +118,8 @@ document.addEventListener('DOMContentLoaded', function() {
         pagination.innerHTML = createPagination(data.page, data.pages);
     }
     
+    let isFetching = false;
+
     // Create pagination links
     function createPagination(currentPage, totalPages) {
         let paginationHTML = '';
@@ -161,11 +164,16 @@ document.addEventListener('DOMContentLoaded', function() {
         pagination.innerHTML = paginationHTML;
     
         pagination.addEventListener('click', async function(event) {
-            if (event.target.tagName === 'A') {
+            if (event.target.tagName === 'A' && !isFetching) {
                 const pageNumber = event.target.getAttribute('page-number');
+
+                isFetching = true;
                 pagination.removeEventListener('click', arguments.callee); // Desactivar evento
+
                 await populateUsers(pageNumber, searchUserInput.value, roleFilter.value);
                 pagination.addEventListener('click', arguments.callee); // Reactivar evento
+
+                isFetching = false;
             }
         });
     
@@ -241,6 +249,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const result = await saveUser(userId, formData);
         if (result.message) {
             editUserModal.hide();
+            enablePasswordEditCheckbox.checked = false;
+            editPasswordInput.disabled = true;
+            editPasswordInput.value = '';
             populateUsers();
             showToast('Usuario actualizado correctamente', 'success');
         } else {
@@ -290,16 +301,19 @@ document.addEventListener('DOMContentLoaded', function() {
         const user = await fetchUserDetails(userId);
         const result = await populateDiningRooms();
 
+        enablePasswordEditCheckbox.checked = false;
+        editPasswordInput.disabled = true;
+        editPasswordInput.value = '';
         editDiningRoomInput.innerHTML = '';
         if (user.dining_room_in_charge__name) {
-            editDiningRoomInput.innerHTML = `<option value="${user.dining_room_in_charge}">${user.dining_room_in_charge__name}</option>`;
+            editDiningRoomInput.innerHTML = `<option value="${user.dining_room_in_charge}">${user.dining_room_in_charge__name}(${user.dining_room_in_charge__client_diner_dining_room__client__company ? user.dining_room_in_charge__client_diner_dining_room__client__company : 'N/A'})</option>`;
         }
         if(result.message === 'No hay comedores disponibles' && user.dining_room_in_charge__name) {
             editDiningRoomInput.innerHTML +=`<option value="no">Sin Asignar</option>`;
         }else if(result.message === 'No hay comedores disponibles') {
             editDiningRoomInput.innerHTML +=`<option value="no">No hay comedores disponibles</option>`;
         }else {
-            editDiningRoomInput.innerHTML +=`<option value="no">Sin Asignar</option>` + result.diners.map(diner => `<option value="${diner.id}">${diner.name}</option>`).join('');
+            editDiningRoomInput.innerHTML +=`<option value="no">Sin Asignar</option>` + result.diners.map(diner => `<option value="${diner.id}">${diner.name}(${diner.client_diner_dining_room__client__company ? diner.client_diner_dining_room__client__company : 'N/A'})</option>`).join('');
         }
         if (user) {
             editUserIdInput.value = user.id;
@@ -342,7 +356,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if(result.message === 'No hay comedores disponibles') {
             createDiningRoomInput.innerHTML = `<option value="no">No hay comedores disponibles</option>`;
         }else {
-            createDiningRoomInput.innerHTML = `<option value="no">Sin Asignar</option>` + result.diners.map(diner => `<option value="${diner.id}">${diner.name}</option>`).join('');
+            createDiningRoomInput.innerHTML = `<option value="no">Sin Asignar</option>` + result.diners.map(diner => `<option value="${diner.id}">${diner.name}(${diner.client_diner_dining_room__client__company ? diner.client_diner_dining_room__client__company : 'N/A'})</option>`).join('');
         }
         handleRoleStatusChange(createRoleInput, createDiningRoomInput, createStatusInput);
     });

@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const applyFiltersBtn = document.getElementById('applyFiltersBtn');
     const uniqueVouchersTableBody = document.getElementById('uniqueVouchersTableBody');
     const paginationUnique = document.getElementById('pagination-unique');
+    const filterForm = document.getElementById('filterForm')
 
     // Function to show toast
     function showToast(message, type = 'success') {
@@ -43,10 +44,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Populate clients and dining rooms
     async function populateFilters() {
         const clients = await fetchClientsUniqueReports({});
-        console.log(clients);
-        const diningRooms = await fetchDinersUniqueReports({});
-        console.log(diningRooms);
-        
+        const diningRooms = await fetchDinersUniqueReports({});        
         const filterClient = document.getElementById('filterClient');
         const filterDiningRoom = document.getElementById('filterDiningRoom');
 
@@ -66,7 +64,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Fetch and display unique reports
     async function fetchAndDisplayUniqueReports(filters) {
         const data = await fetchUniqueReports({ ...filters });
-        console.log(data);
         if (data.unique_reports.length === 0) {
             uniqueVouchersTableBody.innerHTML = `
                 <tr>
@@ -145,7 +142,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const handlePaginationClick = async function(event) {
             if (event.target.tagName === 'A' && !isFetching) {
                 const pageNumber = event.target.getAttribute('page-number');
-                
+                if (!filters || Object.keys(filters).length === 0) {
+                    filters = Object.fromEntries(new FormData(filterForm))
+                }
                 // Marcar que estamos en una solicitud para evitar duplicados
                 isFetching = true;
                 
@@ -179,7 +178,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Apply filters and fetch reports
     applyFiltersBtn.addEventListener('click', function() {
-        const filters = {
+        filters = {
             filterClient: document.getElementById('filterClient').value,
             filterDiningRoom: document.getElementById('filterDiningRoom').value,
             filterVoucherNumber: document.getElementById('filterVoucherNumber').value,
@@ -189,6 +188,34 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         fetchAndDisplayUniqueReports(filters);
+    });
+    
+    document.getElementById('exportExcelButton').addEventListener('click', async function() {
+        const filters = {
+            filterClient: document.getElementById('filterClient').value,
+            filterDiningRoom: document.getElementById('filterDiningRoom').value,
+            filterVoucherNumber: document.getElementById('filterVoucherNumber').value,
+            filterStatus: document.getElementById('filterStatus').value,
+            filterStartDate: document.getElementById('filterStartDate').value,
+            filterEndDate: document.getElementById('filterEndDate').value
+        };
+        try {
+            const response = await fetchExportExcelUniqueReport(filters);
+            if(response.status === 200) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'reporte_unico.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+            } else {
+                showToast('Ocurrió un error al exportar el reporte', 'danger');
+            }
+        } catch (error) {
+            showToast(error.message, 'danger');
+        }
     });
 
     // Clear filters

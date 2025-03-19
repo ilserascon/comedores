@@ -2,7 +2,7 @@
 """
 Copyright (c) 2019 - present AppSeed.us
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 from django import template
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse, HttpResponseForbidden
@@ -27,12 +27,16 @@ from django.shortcuts import get_object_or_404
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from .transactions.clients import change_client_status
 import pandas as pd
+from openpyxl.styles import Font, PatternFill, Border, Side
+import openpyxl
+from openpyxl.utils.dataframe import dataframe_to_rows
+from io import BytesIO
 from .admin import admin_views, user_views
 import os
 from email.message import EmailMessage
 import ssl
 import smtplib
-from apps.pdf_generation import generate_qrs_pdf, prepare_qrs, generate_lot_pdf, clean_pdf_dir, prepare_qr, generate_perpetual_voucher_pdf
+from apps.pdf_generation import generate_qrs_pdf, prepare_qrs, generate_lot_pdf, clean_pdf_dir, prepare_qr, generate_perpetual_voucher_pdf, verify_lot_pdf_exists, verify_voucher_pdf_exists, create_lot_pdf_name, create_voucher_pdf_name
 import re
 
 @login_required(login_url="/login/")
@@ -501,7 +505,7 @@ def user_list(request):
         role_filter = request.GET.get('role', '')
 
         users = CustomUser.objects.all().order_by('id').values(
-            'id', 'username', 'first_name', 'last_name', 'second_last_name', 'email', 'role__name', 'dining_room_in_charge__name', 'status'
+            'id', 'username', 'first_name', 'last_name', 'second_last_name', 'email', 'role__name', 'dining_room_in_charge__name', 'dining_room_in_charge__client_diner_dining_room__client__company', 'status'
         ).distinct()
 
         if search_query:
@@ -602,7 +606,7 @@ def user_detail(request, user_id):
     user = get_object_or_404(CustomUser, id=user_id)
     if request.method == 'GET':
         try:
-            user_data = CustomUser.objects.filter(id=user_id).values('id', 'username', 'first_name', 'last_name', 'second_last_name', 'email', 'role', 'role__name', 'dining_room_in_charge','dining_room_in_charge__name','status', 'created_by', 'updated_by').first()
+            user_data = CustomUser.objects.filter(id=user_id).values('id', 'username', 'first_name', 'last_name', 'second_last_name', 'email', 'role', 'role__name', 'dining_room_in_charge','dining_room_in_charge__client_diner_dining_room__client__company', 'dining_room_in_charge__name','status', 'created_by', 'updated_by').first()
             return JsonResponse(user_data)
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
@@ -679,11 +683,24 @@ def role_list(request):
 @csrf_exempt
 def get_diner_without_in_charge(request):
     try:
-        diners = DiningRoom.objects.filter(in_charge=None).values('id', 'name')
-        return JsonResponse(list(diners), safe=False)
+        diners = ClientDiner.objects.filter(dining_room__in_charge__isnull=True, dining_room__status=1).values(
+            'dining_room', 'dining_room__name', 'client__company'
+        )
+        
+        # Convert QuerySet to a list of dictionaries
+        diners_list = [
+            {
+                'id': diner['dining_room'],
+                'name': diner['dining_room__name'],
+                'client_diner_dining_room__client__company': diner['client__company']
+            }
+            for diner in diners
+        ]
+        
+        return JsonResponse(diners_list, safe=False)
     except Exception as e:
+        print(e)
         return JsonResponse({'error': str(e)}, status=500)
-
 
 # ===================== EMPLEADOS ===================== #
 @csrf_exempt
@@ -992,18 +1009,13 @@ def upload_empleados(request):
                         # y el comedor es diferente se actualiza el comedor asignado
                         if employee_client_diner and employee_client_diner.client_diner.dining_room_id != comedor_id:
 
-                            print(employee_client_diner.client_diner.dining_room_id)
-                            print(comedor_id)
-                            print(employee_client_diner)
                             # Actualizar el comedor asignado
                             employee_client_diner.client_diner = client_diner
                             employee_client_diner.updated_by_id = request.user.id
                             employee_client_diner.save()
                             empleados_modificados += 1
-                            print("El código de empleado existe y el cliente es el mismo, pero el comedor es diferente. Se actualiza el comedor asignado.")
                         else:
                             empleados_no_insertados += 1
-                            print("El código de empleado existe y el cliente es el mismo, y el comedor es el mismo. No se inserta.")                            
                         continue
                     else:
                         # Si el código de empleado existe y el cliente no es el mismo, se inserta
@@ -1019,7 +1031,6 @@ def upload_empleados(request):
                         )
                         empleado.save()
                         empleados_insertados += 1
-                        print("El código de empleado existe y el cliente no es el mismo, se inserta.")
                 else:
                     # Si el código de empleado no existe, se inserta
                     empleado = Employee(
@@ -1034,7 +1045,6 @@ def upload_empleados(request):
                     )
                     empleado.save()
                     empleados_insertados += 1
-                    print("El código de empleado no existe, se inserta.")
 
                 # Crear la relación en EmployeeClientDiner
                 client_diner = ClientDiner.objects.get(client_id=cliente_id, dining_room_id=comedor_id)
@@ -1361,6 +1371,154 @@ def get_employee_report_summary_details(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
+@csrf_exempt
+def export_excel_employee_report(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+    try:
+        filters = {
+            'employee_client_diner__client_diner__client__id': request.GET.get('filterClient'),
+            'employee_client_diner__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
+            'employee_client_diner__employee__employeed_code__icontains': request.GET.get('filterEmployeeNumber'),
+            'employee_client_diner__employee__status': request.GET.get('filterStatus'),
+            'employee_client_diner__isnull': False,
+            'voucher__isnull': True
+        }
+
+        # Convertir las fechas a objetos datetime conscientes de la zona horaria
+        start_date_str = request.GET.get('filterStartDate')
+        end_date_str = request.GET.get('filterEndDate')
+
+        if start_date_str:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+            start_date = timezone.make_aware(start_date)
+        else:
+            start_date = None
+
+        if end_date_str:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+            end_date = timezone.make_aware(end_date)
+        else:
+            end_date = None
+
+        # Filtro de entradas solo cuando se han proporcionado fechas
+        if start_date:
+            filters['created_at__gte'] = start_date
+        if end_date:
+            filters['created_at__lte'] = end_date
+
+        print(filters)
+
+        filters = {k: v for k, v in filters.items() if v}
+
+        entry_employee = Entry.objects.select_related(
+            'employee_client_diner__employee',
+            'employee_client_diner__client_diner__client',
+            'employee_client_diner__client_diner__dining_room'
+        ).filter(**filters).values(
+            client_company=F('employee_client_diner__client_diner__client__company'),
+            client_name=F('employee_client_diner__client_diner__client__name'),
+            client_lastname=F('employee_client_diner__client_diner__client__lastname'),
+            client_second_lastname=F('employee_client_diner__client_diner__client__second_lastname'),
+            dining_room_name=F('employee_client_diner__client_diner__dining_room__name'),
+            employee_code=F('employee_client_diner__employee__employeed_code'),
+            employee_name=F('employee_client_diner__employee__name'),
+            employee_lastname=F('employee_client_diner__employee__lastname'),
+            employee_second_lastname=F('employee_client_diner__employee__second_lastname'),
+            employee_status=F('employee_client_diner__employee__status'),
+            entry_created_at=F('created_at')
+        ).order_by('-created_at')
+
+        # Crear un DataFrame a partir del queryset
+        df = pd.DataFrame(list(entry_employee))
+
+        # Eliminar la información de la zona horaria de los objetos datetime
+        if 'entry_created_at' in df.columns:
+            df['entry_created_at'] = df['entry_created_at'].apply(lambda x: format_date(x) if pd.notnull(x) else "Sin fecha")
+        
+        # Si el estado del empleado es True, cambiar a 'Activo', de lo contrario 'Inactivo'
+        df['employee_status'] = df['employee_status'].apply(lambda x: 'Activo' if x else 'Inactivo')
+
+        # Definir los encabezados personalizados para la hoja de Excel
+        headers = [
+            'Compañía Cliente',
+            'Nombre Cliente',
+            'Apellido Paterno Cliente',
+            'Apellido Materno Cliente',
+            'Nombre Comedor',
+            'Código Empleado',
+            'Nombre Empleado',
+            'Apellido Paterno Empleado',
+            'Apellido Materno Empleado',
+            'Estado Empleado',
+            'Fecha de Creación'
+        ]
+
+        # Crear un nuevo libro de Excel y agregar dos hojas
+        wb = openpyxl.Workbook()
+
+        # Hoja 1: Informe de empleados
+        ws1 = wb.active
+        ws1.title = "Employee Report"
+        ws1.append(headers)
+        add_styles(ws1, headers)
+
+        for row in dataframe_to_rows(df, index=False, header=False):
+            ws1.append(row)
+        
+        # Hoja 2: Informe resumido de empleados
+        ws2 = wb.create_sheet(title="Summary Report")
+        simplified_headers = [
+            'Código Empleado',
+            'Nombre Empleado',
+            'Apellido Paterno Empleado',
+            'Apellido Materno Empleado',
+            'Estado Empleado',
+            'Nombre Comedor',
+            'Total Entradas'
+        ]
+        ws2.append(simplified_headers)
+        add_styles(ws2, simplified_headers)
+
+        # Generar un informe resumido (agregando por empleado)
+        summary_df = df.groupby(['employee_code', 'employee_name', 'employee_lastname', 'employee_second_lastname', 'dining_room_name', 'employee_status']).size().reset_index(name='Total Entradas')
+
+        for row in dataframe_to_rows(summary_df, index=False, header=False):
+            ws2.append(row)
+
+        # Crear un buffer de BytesIO para contener el archivo de Excel
+        buffer = BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+
+        # Establecer el tipo de contenido de la respuesta a Excel
+        response = HttpResponse(buffer, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=employee_report.xlsx'
+
+        return response
+    except Exception as e:
+        return JsonResponse({'error': 'No hay registros'}, status=500)
+
+def add_styles(ws, headers):
+    # Set font and style for headers
+    bold_font = Font(bold=True)
+    fill_color = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
+    border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
+    
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_num)
+        cell.font = bold_font
+        cell.fill = fill_color
+        cell.border = border
+        cell.value = header
+
+    # Apply border to all cells in the sheet
+    for row in ws.iter_rows(min_row=2, min_col=1, max_row=ws.max_row, max_col=ws.max_column):
+        for cell in row:
+            cell.border = border
+
+
 # ===================== REPORTE VALES UNICOS ===================== #
 @csrf_exempt
 def get_unique_reports(request):
@@ -1565,6 +1723,163 @@ def get_diners_unique_reports(request):
         return JsonResponse(context)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+    
+@csrf_exempt
+def export_excel_unique_reports(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+    try:
+        # Filtros de vales
+        filters = {
+            'lots__client_diner__client__id': request.GET.get('filterClient'),
+            'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
+            'folio__icontains': request.GET.get('filterVoucherNumber'),
+            'status': request.GET.get('filterStatus'),
+            'lots__voucher_type_id': 1
+        }
+
+        filters = {k: v for k, v in filters.items() if v}
+
+        # Convertir las fechas a datetime si están presentes
+        start_date = request.GET.get('filterStartDate')
+        end_date = request.GET.get('filterEndDate')
+        
+        if start_date:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+        if end_date:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+
+        # Filtro de entradas solo cuando se han proporcionado fechas
+        entry_filter = {}
+        if start_date:
+            entry_filter['created_at__gte'] = start_date
+        if end_date:
+            entry_filter['created_at__lte'] = end_date
+
+        # Si se especifica alguna fecha, se filtran solo los vales con entradas dentro del rango
+        if entry_filter:
+            vouchers = Voucher.objects.select_related(
+                'lots__client_diner__client',
+                'lots__client_diner__dining_room',
+            ).filter(**filters).filter(
+                Exists(
+                    Entry.objects.filter(voucher_id=OuterRef('id')).filter(**entry_filter)
+                )
+            ).values(
+                'id',
+                client_company=F('lots__client_diner__client__company'),
+                client_name=F('lots__client_diner__client__name'),
+                client_lastname=F('lots__client_diner__client__lastname'),
+                client_second_lastname=F('lots__client_diner__client__second_lastname'),
+                dining_room_name=F('lots__client_diner__dining_room__name'),
+                voucher_folio=F('folio'),
+                voucher_status=F('status')
+            ).order_by('-id')
+        else:
+            # Si no hay fechas, no aplicamos el filtro de entradas
+            vouchers = Voucher.objects.select_related(
+                'lots__client_diner__client',
+                'lots__client_diner__dining_room',
+            ).filter(**filters).values(
+                'id',
+                client_company=F('lots__client_diner__client__company'),
+                client_name=F('lots__client_diner__client__name'),
+                client_lastname=F('lots__client_diner__client__lastname'),
+                client_second_lastname=F('lots__client_diner__client__second_lastname'),
+                dining_room_name=F('lots__client_diner__dining_room__name'),
+                voucher_folio=F('folio'),
+                voucher_status=F('status')
+            ).order_by('-id')
+
+        # Obtener los IDs de los vales para buscar las entradas
+        voucher_ids = [voucher['id'] for voucher in vouchers]
+        
+        # Obtener las entradas dentro del rango de fechas si existen fechas
+        entry_filters = {
+            'voucher_id__in': voucher_ids
+        }
+        if start_date:
+            entry_filters['created_at__gte'] = start_date
+        if end_date:
+            entry_filters['created_at__lte'] = end_date
+
+        entries = Entry.objects.filter(**entry_filters).values(
+            'voucher_id',
+            'created_at'
+        )
+
+        # Crear un diccionario para mapear las entradas a los vales
+        entry_map = {entry['voucher_id']: entry['created_at'] for entry in entries}
+
+        # Añadir la información de las entradas a los vales
+        for voucher in vouchers:
+            voucher['entry_created_at'] = entry_map.get(voucher['id'], None)
+
+        # Create a DataFrame from the queryset
+        df = pd.DataFrame(list(vouchers))
+
+        # Remove the 'id' column
+        df.drop(columns=['id'], inplace=True)
+
+        # Remove timezone information from datetime objects and handle null values
+        if 'entry_created_at' in df.columns:
+            df['entry_created_at'] = df['entry_created_at'].apply(lambda x: format_date(x) if pd.notnull(x) else "Sin usar")
+
+        # Si el estado del vale es True, cambiar a 'Activo', de lo contrario 'Inactivo'
+        df['voucher_status'] = df['voucher_status'].apply(lambda x: 'Activo' if x else 'Inactivo')
+
+        # Define the custom headers for the Excel sheet
+        headers = [
+            'Compañía Cliente',
+            'Nombre Cliente',
+            'Apellido Paterno Cliente',
+            'Apellido Materno Cliente',
+            'Nombre Comedor',
+            'Folio Vale',
+            'Fecha de Uso',
+            'Estado Vale'
+        ]
+
+        # Reorder the DataFrame columns to match the headers
+        df = df[['client_company', 'client_name', 'client_lastname', 'client_second_lastname', 'dining_room_name', 'voucher_folio', 'entry_created_at', 'voucher_status']]
+
+        # Create a new Excel workbook and add two sheets
+        wb = openpyxl.Workbook()
+
+        # Sheet 1: Unique Voucher Report
+        ws1 = wb.active
+        ws1.title = "Unique Voucher Report"
+        ws1.append(headers)
+        add_styles(ws1, headers)
+
+        for row in dataframe_to_rows(df, index=False, header=False):
+            ws1.append(row)
+
+        # Create a BytesIO buffer to hold the Excel file
+        buffer = BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+
+        # Set the response content type to Excel
+        response = HttpResponse(buffer, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=unique_voucher_report.xlsx'
+
+        return response
+    except Exception as e:
+        return JsonResponse({'error': 'No hay registros'}, status=500)
+
+def format_date(date):
+    if not date:
+        return "Sin usar"
+    date_obj = date.replace(tzinfo=None) - timedelta(hours=7)
+    day = date_obj.day
+    month = date_obj.month
+    year = date_obj.year
+    hours = date_obj.hour
+    minutes = date_obj.minute
+    seconds = date_obj.second
+    return f"{day:02d}/{month:02d}/{year} - {hours:02d}:{minutes:02d}:{seconds:02d}"
 
 # ===================== REPORTE VALES PERPETUOS ===================== #
 @csrf_exempt
@@ -1582,7 +1897,8 @@ def get_perpetual_reports(request):
             'voucher__lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
             'employee__icontains': request.GET.get('filterEmployeeName'),
             'voucher__status': request.GET.get('filterStatus'),
-            'voucher__lots__voucher_type_id': 2  # Tipo de vale perpetuo
+            'voucher__lots__voucher_type_id': 2,  # Tipo de vale perpetuo
+            'voucher__folio__icontains': request.GET.get('filterVoucherFolio')
         }
 
         filters = {k: v for k, v in filters.items() if v}
@@ -1643,7 +1959,6 @@ def get_perpetual_reports(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
-    
 @csrf_exempt
 def get_clients_perpetual_reports(request):
     if request.method != 'GET':
@@ -1656,7 +1971,8 @@ def get_clients_perpetual_reports(request):
             'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
             'employee__icontains': request.GET.get('filterEmployeeName'),
             'status': request.GET.get('filterStatus'),
-            'lots__voucher_type_id': 2  # Tipo de vale perpetuo
+            'lots__voucher_type_id': 2,  # Tipo de vale perpetuo
+            'folio__icontains': request.GET.get('filterVoucherFolio')
         }
         filters = {k: v for k, v in filters.items() if v}
 
@@ -1700,7 +2016,8 @@ def get_diners_perpetual_reports(request):
             'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
             'employee__icontains': request.GET.get('filterEmployeeName'),
             'status': request.GET.get('filterStatus'),
-            'lots__voucher_type_id': 2  # Tipo de vale perpetuo
+            'lots__voucher_type_id': 2,  # Tipo de vale perpetuo
+            'folio__icontains': request.GET.get('filterVoucherFolio')
         }
         filters = {k: v for k, v in filters.items() if v}
 
@@ -1745,7 +2062,8 @@ def get_perpetual_report_summary(request):
             'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
             'employee__icontains': request.GET.get('filterEmployeeName'),
             'status': request.GET.get('filterStatus'),
-            'lots__voucher_type_id': 2  # Tipo de vale perpetuo
+            'lots__voucher_type_id': 2,  # Tipo de vale perpetuo
+            'folio__icontains': request.GET.get('filterVoucherFolio')
         }
         filters = {k: v for k, v in filters.items() if v}
 
@@ -1861,7 +2179,164 @@ def get_perpetual_report_summary_details(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
+@csrf_exempt
+def export_excel_perpetuo_report(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        filters = {
+            'voucher__lots__client_diner__client__id': request.GET.get('filterClient'),
+            'voucher__lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
+            'employee__icontains': request.GET.get('filterEmployeeName'),
+            'voucher__status': request.GET.get('filterStatus'),
+            'voucher__lots__voucher_type_id': 2,  # Tipo de vale perpetuo
+            'voucher__folio__icontains': request.GET.get('filterVoucherFolio')
+        }
 
+        # Convertir las fechas a objetos datetime conscientes de la zona horaria
+        start_date_str = request.GET.get('filterStartDate')
+        end_date_str = request.GET.get('filterEndDate')
+
+        if start_date_str:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+            start_date = timezone.make_aware(start_date)
+        else:
+            start_date = None
+
+        if end_date_str:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+            end_date = timezone.make_aware(end_date)
+        else:
+            end_date = None
+
+        # Filtro de entradas solo cuando se han proporcionado fechas
+        if start_date:
+            filters['created_at__gte'] = start_date
+        if end_date:
+            filters['created_at__lte'] = end_date
+
+        filters = {k: v for k, v in filters.items() if v}
+
+        entry_perpetual = Entry.objects.select_related(
+            'voucher__lots__client_diner__client',
+            'voucher__lots__client_diner__dining_room'
+        ).filter(**filters).values(
+            client_company=F('voucher__lots__client_diner__client__company'),
+            client_name=F('voucher__lots__client_diner__client__name'),
+            client_lastname=F('voucher__lots__client_diner__client__lastname'),
+            client_second_lastname=F('voucher__lots__client_diner__client__second_lastname'),
+            dining_room_name=F('voucher__lots__client_diner__dining_room__name'),
+            employee_name=F('voucher__employee'),
+            voucher_folio=F('voucher__folio'),
+            voucher_status=F('voucher__status'),
+            entry_created_at=F('created_at')
+        ).order_by('-created_at')
+
+        # Create a DataFrame from the queryset
+        df = pd.DataFrame(list(entry_perpetual))
+
+        # Remove timezone information from datetime objects
+        if 'entry_created_at' in df.columns:
+            df['entry_created_at'] = df['entry_created_at'].apply(lambda x: format_date(x) if pd.notnull(x) else "Sin fecha")
+
+        # Si el estado del vale es verdadero asignar "Activo" y si es falso asignar "Inactivo"
+        df['voucher_status'] = df['voucher_status'].apply(lambda x: 'Activo' if x else 'Inactivo')
+
+        # Define the custom headers for the Excel sheet
+        headers = [
+            'Compañía Cliente',
+            'Nombre Cliente',
+            'Apellido Paterno Cliente',
+            'Apellido Materno Cliente',
+            'Nombre Comedor',
+            'Nombre Empleado',
+            'Folio Vale',
+            'Estado Vale',
+            'Fecha de Creación'
+        ]
+
+        # Create a new Excel workbook and add two sheets
+        wb = openpyxl.Workbook()
+
+        # Sheet 1: Perpetual Report
+        ws1 = wb.active
+        ws1.title = "Perpetual Report"
+        ws1.append(headers)
+        add_styles(ws1, headers)
+
+        for row in dataframe_to_rows(df, index=False, header=False):
+            ws1.append(row)
+
+        # Sheet 2: Perpetual Report Summary (simplified version)
+        ws2 = wb.create_sheet(title="Summary Report")
+        simplified_headers = [
+            'Compañía Cliente',
+            'Nombre Cliente',
+            'Apellido Paterno Cliente',
+            'Apellido Materno Cliente',
+            'Nombre Comedor',
+            'Folio Vale',
+            'Nombre Empleado',
+            'Estado Vale',
+            'Número de usos'
+        ]
+        ws2.append(simplified_headers)
+        add_styles(ws2, simplified_headers)
+
+        # Generate a summary report (aggregating by employee)
+        filters = {
+            'lots__client_diner__client__id': request.GET.get('filterClient'),
+            'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
+            'employee__icontains': request.GET.get('filterEmployeeName'),
+            'status': request.GET.get('filterStatus'),
+            'lots__voucher_type_id': 2,  # Tipo de vale perpetuo
+            'folio__icontains': request.GET.get('filterVoucherFolio')
+        }
+                # Convert date filters to timezone-aware datetime
+        if filters.get('created_at__gte'):
+            filters['created_at__gte'] = timezone.make_aware(datetime.strptime(filters['created_at__gte'], '%Y-%m-%d'))
+        if filters.get('created_at__lte'):
+            filters['created_at__lte'] = timezone.make_aware(datetime.strptime(filters['created_at__lte'], '%Y-%m-%d'))
+        filters = {k: v for k, v in filters.items() if v}
+
+        # Obtener los vales de tipo 1
+        perpetual_report_summary = Voucher.objects.select_related(
+            'lots__client_diner__client',
+            'lots__client_diner__dining_room'
+        ).filter(**filters).values(
+            client_company=F('lots__client_diner__client__company'),
+            client_name=F('lots__client_diner__client__name'),
+            client_lastname=F('lots__client_diner__client__lastname'),
+            client_second_lastname=F('lots__client_diner__client__second_lastname'),
+            dining_room_name=F('lots__client_diner__dining_room__name'),
+            voucher_folio=F('folio'),
+            employee_name=F('employee'),
+            voucher_status=F('status')
+        ).annotate(
+            entry_count=Count('entry_voucher')
+        ).order_by('voucher_folio')
+
+        summary_df = pd.DataFrame(list(perpetual_report_summary))
+
+        # Si el estado del vale es verdadero asignar "Activo" y si es falso asignar "Inactivo"
+        summary_df['voucher_status'] = summary_df['voucher_status'].apply(lambda x: 'Activo' if x else 'Inactivo')
+
+        for row in dataframe_to_rows(summary_df, index=False, header=False):
+            ws2.append(row)
+
+        # Create a BytesIO buffer to hold the Excel file
+        buffer = BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+
+        # Set the response content type to Excel
+        response = HttpResponse(buffer, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=perpetual_report.xlsx'
+
+        return response
+    except Exception as e:
+        return JsonResponse({'error': 'No hay registros'}, status=500)
 
 # ===================== GENERAR VALES UNICOS ===================== #
 
@@ -1904,9 +2379,6 @@ def generate_unique_voucher(request):
         if not client_dinner.status:
             return JsonResponse({"error": f"El uso del comedor por parte de  {client_dinner.client.company} ha sido desactivado."}, status=400)
         
-
-
-
         diningroom = client_dinner.dining_room
         
         clean_pdf_dir()
@@ -1960,10 +2432,9 @@ def generate_perpetual_voucher(request):
         client_id = data.get('client_id')
         dining_room_id = data.get('dining_room_id')
         quantity = data.get('quantity')
-        employees = data.get('employees')
         
         
-        if not client_id or not dining_room_id or not quantity or not employees:
+        if not client_id or not dining_room_id or not quantity :
             return JsonResponse({'error': 'client_id, dining_room_id, quantity y employees son requeridos'}, status=400)
         
         if type(quantity) != int:
@@ -1975,15 +2446,10 @@ def generate_perpetual_voucher(request):
         if type(dining_room_id) != int:
             return JsonResponse({'error': 'El id del comedor debe ser un número entero'}, status=400)  
         
-        if type(employees) != list:
-            return JsonResponse({'error': 'Se tiene que incluir una lista de empleados'}, status=400)
         
         if quantity > 99:
             return JsonResponse({'error': 'La cantidad no puede ser mayor a 99'}, status=400)
 
-        if quantity != len(employees):
-            return JsonResponse({'error': 'La cantidad de empleados debe ser igual a la cantidad de vales'}, status=400)
-        
         
         perpetual_voucher = VoucherType.objects.filter(description="PERPETUO").first()
         
@@ -2010,28 +2476,20 @@ def generate_perpetual_voucher(request):
                 quantity=quantity,
                 created_by=request.user
             )
+            lots.save()
 
             vouchers = []
             
-            for employee in employees:
-                if type(employee) != str:
-                    return JsonResponse({"error": "Los empleados deben ser cadenas de texto"}, status=400)
-                if len(employee) > 100:
-                    return JsonResponse({"error": "El empleado no puede ser mayor a 100 caracteres"}, status=400)
-                if len(employee) < 3:
-                    return JsonResponse({"error": "El empleado no puede ser menor a 3 caracteres"})
-
-                voucher = Voucher(lots=lots, employee=employee)
-                vouchers.append(voucher)
-            
-            lots.save()
-            
-            for voucher in vouchers:
+            for _ in range(quantity):
+                voucher = Voucher(lots=lots)
                 voucher.save()
+                vouchers.append(voucher)
+    
             
-            vouchers_objects = [{"id": voucher.id, "folio": voucher.folio, "employee": voucher.employee} for voucher in vouchers]
+            
+            vouchers_objects = [{"id": voucher.id, "folio": voucher.folio} for voucher in vouchers]
 
-        return JsonResponse({'message': 'Vales generados con éxito', "vouchers": vouchers_objects})
+        return JsonResponse({'message': 'Vales generados con éxito', "lot": lots.id, "vouchers": vouchers_objects})
     except Exception as err:
         return JsonResponse({"error": str(err)}, status=500)
         
@@ -2084,7 +2542,6 @@ def send_lot_file_email(request):
         try:
             filepath = generate_lot_pdf(lot) 
         except Exception as err:
-            print(err)
             return JsonResponse({"error": "Hubo un error generando el pdf"}, status=500)
 
 
@@ -2158,7 +2615,37 @@ def generate_perpetual_voucher_qr(request):
     except:
         return JsonResponse({'error': 'Error al generar el QR'}, status=500)
         
+@csrf_exempt
+def change_voucher_employee(request):      
+    if request.method != 'PUT':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        voucher_id = data.get('voucher_id')
+        employee = data.get('employee')
         
+        if not voucher_id or not employee:        
+            return JsonResponse({'error': 'voucher_id y employee son requeridos'}, status=400)
+
+        voucher = Voucher.objects.filter(id=voucher_id).first()
+        
+        if not voucher:
+            return JsonResponse({'error': 'El vale no existe'}, status=404)
+        
+        perpetual_voucher_type = VoucherType.objects.filter(description="PERPETUO").first()
+        
+        if voucher.lots.voucher_type.id != perpetual_voucher_type.id:
+            return JsonResponse({'error': 'El vale no es de tipo perpetuo'}, status=400)
+
+        voucher.employee = employee
+        voucher.save()
+
+        
+        return JsonResponse({"message": "Nombre del vale actualizado con éxito" })
+    except Exception as err:
+        return JsonResponse({'error': str(err)}, status=500)
+
         
       
     
@@ -2375,3 +2862,216 @@ def validar_empleado(request):
             return JsonResponse({'error': 'El cuerpo de la solicitud debe ser un JSON válido'}, status=400)
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
+    
+# ===================== ADMINISTRADOR DE VALES ===================== #
+@csrf_exempt
+def get_voucher_lots(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+    try:
+        # Filtros
+        lot_id = request.GET.get('lot_id')
+        voucher_type = request.GET.get('voucher_type')
+        page_number = int(request.GET.get('page', 1))
+        page_size = int(request.GET.get('page_size', 10))
+
+        lots_query = Lots.objects.select_related('voucher_type', 'created_by', 'client_diner__client', 'client_diner__dining_room').values(
+            'id',
+            'voucher_type__description',
+            'quantity',
+            'email',
+            'created_at',
+            'created_by__username',
+            'client_diner__client__company',
+            'client_diner__client__email',
+            'client_diner__dining_room__name'
+        ).order_by('-id')
+
+        if lot_id:
+            lots_query = lots_query.filter(id__icontains=lot_id)
+        if voucher_type:
+            lots_query = lots_query.filter(voucher_type__description__iexact=voucher_type)
+
+        lots = [
+            {
+                'id': lot['id'],
+                'voucher_type': lot['voucher_type__description'] or 'N/A',
+                'quantity': lot['quantity'] or 'N/A',
+                'email': lot['email'] or lot['client_diner__client__email'] or 'N/A',
+                'created_at': lot['created_at'].strftime('%Y-%m-%d %H:%M:%S') if lot['created_at'] else 'N/A',
+                'created_by': lot['created_by__username'] or 'N/A',
+                'client': lot['client_diner__client__company'] or 'N/A',
+                'dining_room': lot['client_diner__dining_room__name'] or 'N/A'
+            }
+            for lot in lots_query
+        ]
+
+        paginator = Paginator(lots, page_size)
+        page_obj = paginator.get_page(page_number)
+
+        return JsonResponse({
+            'lots': list(page_obj),
+            'page': page_obj.number,
+            'pages': paginator.num_pages,
+            'has_next': page_obj.has_next(),
+            'has_previous': page_obj.has_previous()
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def get_vouchers_by_lot(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+    try:
+        lot_id = request.GET.get('lot_id')
+        folio = request.GET.get('folio')
+        page_number = int(request.GET.get('page', 1))
+        page_size = int(request.GET.get('page_size', 10))
+
+        if not lot_id:
+            return JsonResponse({'error': 'El parámetro lot_id es obligatorio'}, status=400)
+        
+        # Filtros dinámicos
+        filters = {'lots_id': lot_id}
+
+        if folio:  # Solo agregar el filtro de folio si se proporciona
+            filters['folio__icontains'] = folio
+
+        vouchers_query = Voucher.objects.filter(**filters).select_related(
+            'lots__voucher_type',
+            'lots__client_diner__client'
+        ).values(
+            'id',
+            'folio',
+            'employee',
+            'status',
+            'lots__voucher_type__description',
+            'lots__email',
+            'lots__client_diner__client__company',
+            'lots__client_diner__client__email',
+            'lots__client_diner__dining_room__name'
+        ).order_by('-id')
+
+        vouchers = [
+            {
+                'id': voucher['id'],
+                'folio': voucher['folio'] or 'N/A',
+                'employee': voucher['employee'] or '',
+                'status': 1 if voucher['status'] else 0,
+                'voucher_type': voucher['lots__voucher_type__description'] or 'N/A',
+                'client': voucher['lots__client_diner__client__company'] or 'N/A',
+                'email': voucher['lots__email'] or voucher['lots__client_diner__client__email'] or 'N/A',
+                'dining_room': voucher['lots__client_diner__dining_room__name'] or 'N/A'
+            }
+            for voucher in vouchers_query
+        ]
+
+        paginator = Paginator(vouchers, page_size)
+        page_obj = paginator.get_page(page_number)
+
+        print(list(page_obj))
+
+        return JsonResponse({
+            'vouchers': list(page_obj),
+            'page': page_obj.number,
+            'pages': paginator.num_pages,
+            'has_next': page_obj.has_next(),
+            'has_previous': page_obj.has_previous()
+        })
+    except Exception as e:
+        print(e)
+        return JsonResponse({'error': str(e)}, status=500)
+    
+@csrf_exempt
+def search_pdf_qr_unique_voucher_and_generate(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        lot_id = data.get('lot_id')
+        print(lot_id)
+        
+        if not lot_id:
+            return JsonResponse({'error': 'lot_id es requerido'}, status=400)
+        
+        lot = Lots.objects.filter(id=lot_id).first()
+        
+        if not lot:
+            return JsonResponse({'error': 'Lote no encontrado'}, status=404)
+        
+        if lot.voucher_type.description != 'UNICO':
+            return JsonResponse({'error': 'El lote no es de tipo único'}, status=400)
+        
+        existing_filepath = verify_lot_pdf_exists(lot.id)
+        if existing_filepath:
+            filename = existing_filepath.split('/')[-1]
+            return JsonResponse({'pdf': f'/static/pdfs/{filename}', 'message': 'PDF ya existente'})
+        
+
+        # Generar los códigos QR y el PDF si no existe
+        vouchers = Voucher.objects.filter(lots=lot)
+        qr_paths = prepare_qrs(vouchers, lot.id, lot.client_diner.dining_room.name)
+
+        filename = create_lot_pdf_name(lot.id)
+        
+        generate_qrs_pdf(qr_paths, filename)
+        
+        # Eliminar los archivos temporales de los códigos QR
+        for qr in qr_paths:
+            os.remove(qr[0])
+        
+
+        
+        return JsonResponse({'pdf': f'/static/pdfs{filename}', 'message': 'PDF generado con éxito'})
+    except Exception as e:
+        print(e)
+        return JsonResponse({'error': str(e)}, status=500)
+    
+@csrf_exempt
+def search_pdf_qr_perpetual_voucher_and_generate(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        voucher_folio = data.get('voucher_folio')
+        
+        print(voucher_folio)
+        if not voucher_folio:
+            return JsonResponse({'error': 'voucher_folio es requerido'}, status=400)
+        
+        voucher = Voucher.objects.filter(folio=voucher_folio).first()
+
+        if not voucher:
+            return JsonResponse({'error': 'Vale no encontrado'}, status=404)
+
+        if voucher.lots.voucher_type.description != 'PERPETUO':
+            return JsonResponse({'error': 'El vale no es de tipo perpetuo'}, status=400)
+        
+        existing_filepath = verify_voucher_pdf_exists(voucher.id)
+        if existing_filepath:
+            filename = existing_filepath.split('/')[-1]
+            return JsonResponse({'pdf': f'/static/pdfs/{filename}', 'message': 'PDF ya existente'})
+        
+        qr_path = prepare_qr(voucher)
+    
+        filepath = None
+        try: 
+            filepath = generate_perpetual_voucher_pdf(voucher, qr_path)
+        except:
+            return JsonResponse({'error': 'Error al generar el PDF'}, status=500)
+
+        match = re.search(r"\\static\\.*", filepath)
+        relative_path = match.group(0)[1:] if match else filepath
+        relative_path = relative_path.replace("\\", "/")  
+
+
+        return JsonResponse({'pdf': relative_path, 'message': 'PDF generado con éxito'})
+    except Exception as e:
+        print(e)
+        return JsonResponse({'error': str(e)}, status=500)
+    

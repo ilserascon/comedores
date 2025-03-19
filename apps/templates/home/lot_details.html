@@ -1,0 +1,70 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %} Detalles del Lote {% endblock title %}
+
+{% block content %}
+<div class="header bg-primary pb-6">
+  <div class="container-fluid">
+    <div class="header-body"></div>
+  </div>
+</div>
+
+<div class="container-fluid mt--6">
+  <div class="row">
+    <div class="col">
+      <div class="card">
+        <div class="card-header border-0 d-flex justify-content-between align-items-center">
+          <h3 class="mb-0" id="titulo">Vales del Lote</h3>
+          <a href="/administrador-vales.html" class="btn btn-secondary btn-sm">Volver al Administrador</a>
+        </div>
+        <!-- Botones para lotes únicos -->
+        <div id="uniqueLotActions" class="mb-3 ml-3" style="display: none;">
+          <div class="d-flex flex-row align-items-center justify-content-start">
+            <button id="downloadVouchersBtn" class="btn btn-primary mb-3 p-custom"> Descargar Vales </button>
+            <button id="resendEmailBtn" class="btn btn-warning mb-3 p-custom"> Volver a Enviar por Correo </button>
+            <input type="email" id="emailResend" class="form-control mb-3 w-auto" placeholder="Correo de Reenvío" aria-label="Correo de Reenvío"/>
+          </div>
+        </div>
+        <!-- Filtro por folio -->
+        <div class="mb-3 mr-4 justify-content-end d-flex">
+          <input type="text" id="filterFolioInput" class="form-control w-25" placeholder="Filtrar por Folio" aria-label="Filtrar por Folio"/>
+        </div>
+        <div class="table-responsive">
+          <table class="table align-items-center table-flush">
+            <thead class="thead-light">
+              <tr>
+                <th>Folio</th>
+                <th>Cliente</th>
+                <th>Comedor</th>
+                <th id="employeeHeader" style="display: none;">Empleado</th>
+                <th>Estado</th>
+                <th id="actionsHeader" style="display: none;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="voucherTableBody"></tbody>
+          </table>
+        </div>
+        <div class="card-footer py-4">
+          <nav aria-label="...">
+            <ul class="pagination justify-content-end mb-0" id="pagination"></ul>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <!-- Toast container -->
+    <div aria-live="polite" aria-atomic="true" class="position-relative" style="z-index: 1070;" id="toast-area" aria-hidden="true">
+      <div class="toast-container position-fixed bottom-0 right-0 p-4 m-1 z-4" id="toastContainer" >
+          <!-- Toasts will be dynamically added here -->
+      </div>
+    </div>
+
+{% include "includes/footer.html" %}
+{% endblock content %}
+
+{% block javascripts %}
+<script src="/static/assets/fetch-js/fetchDataVales.js"></script>
+<script src="/static/assets/html-js/loadDataLotDetails.js"></script>
+{% endblock javascripts %}
