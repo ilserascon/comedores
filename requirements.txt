@@ -15,3 +15,6 @@ mysql-connector-python
 pandas
 pdfkit
 qrcode
+jinja2
+Pillow
+openpyxl

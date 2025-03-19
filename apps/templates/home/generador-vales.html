@@ -53,7 +53,7 @@
                   <div class="col-12 col-md-3">
                     <div class="form-group mb-3">
                       <label for="unique-client-field">Cliente</label>
-                      <select id="unique-client-field" class="form-control">
+                      <select id="unique-client-field" name="unique-client-field" class="form-control">
 
                       </select>                    
                     </div>
@@ -62,7 +62,7 @@
                   <div class="col-12 col-md-3">
                     <div class="form-group mb-3">
                       <label for="unique-dinningroom-field">Comedor</label>
-                      <select id="unique-dinningroom-field" class="form-control">
+                      <select id="unique-dinningroom-field" name="unique-dinningroom-field" class="form-control">
                       </select>
                     </div>
                   </div>
@@ -70,7 +70,7 @@
                   <div class="col-12 col-md-3">
                     <div class="form-group mb-3">
                       <label for="unique-quantity-field">Cantidad</label>
-                      <input type="number" class="form-control" id="unique-quantity-field" placeholder="Escribe la cantidad ">
+                      <input type="number" class="form-control" id="unique-quantity-field" name="unique-quantity-field" placeholder="Escribe la cantidad ">
                     </div>
                   </div>
             
@@ -88,7 +88,7 @@
                     <div class="col-12 col-md-3">
                       <div class="form-group mb-3">
                         <label for="perpetual-client-field">Cliente</label>
-                        <select id="perpetual-client-field" class="form-control">
+                        <select id="perpetual-client-field" name="perpetual-client-field" class="form-control">
   
                         </select>                    
                       </div>
@@ -97,7 +97,7 @@
                     <div class="col-12 col-md-3">
                       <div class="form-group mb-3">
                         <label for="perpetual-dinningroom-field">Comedor</label>
-                        <select id="perpetual-dinningroom-field" class="form-control">
+                        <select id="perpetual-dinningroom-field" name="perpetual-dinningroom-field" class="form-control">
                         </select>
                       </div>
                     </div>
@@ -105,12 +105,12 @@
                     <div class="col-12 col-md-3">
                       <div class="form-group mb-3">
                         <label for="perpetual-quantity-field">Cantidad</label>
-                        <input id="perpetual-quantity-field" type="number" class="form-control"  placeholder="Escribe la cantidad ">
+                        <input id="perpetual-quantity-field" name="perpetual-quantity-field" type="number" class="form-control"  placeholder="Escribe la cantidad ">
                       </div>
                     </div>
               
                     <div class="col-12 col-md-3 d-flex align-items-end">
-                      <button id="generate-btn" class="btn btn-primary rounded-pill mb-3">Preparar vales</button>
+                      <button  id="generate-btn" class="btn btn-primary rounded-pill mb-3">Generar vales</button>
                     </div>
                   </div>
                 </form>
@@ -131,7 +131,7 @@
   <!-- Toast container -->
 
   {% include "includes/footer.html" %}
-  <div aria-live="polite" aria-atomic="true" class="position-relative" id="toast-area" aria-hidden="true">
+  <div aria-live="polite" aria-atomic="true" class="position-relative" style="z-index: 1070;" id="toast-area" aria-hidden="true">
     <div class="toast-container position-fixed bottom-0 right-0 p-4 m-1 z-4" id="toastContainer" >
         <!-- Toasts will be dynamically added here -->
     </div>

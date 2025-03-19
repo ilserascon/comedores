@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     const clientTableBody = document.getElementById('clientTableBody');
+    const createClientBtn = document.getElementById('createClientBtn');
     const editClientModal = new bootstrap.Modal(document.getElementById('editClientModal'));
     const createClientForm = document.getElementById('createClientForm');
     const editClientForm = document.getElementById('editClientForm');
@@ -29,7 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const toast = document.createElement('div');
         const header = type === 'success' ? 'Éxito' : type === 'info' ? 'Aviso' : 'Error';
         // Set the toast classes with Bootstrap
-        toast.className = `toast align-items-center text-white bg-${type} border-0 rounded-pill shadow-sm p-2 px-3 m-1`;
+        toast.className = `toast align-items-center text-white bg-${type} border-0 shadow-sm p-2 px-3 m-1`;
         toast.role = 'alert';
         toast.ariaLive = 'assertive';
         toast.ariaAtomic = 'true';
@@ -97,6 +98,8 @@ document.addEventListener('DOMContentLoaded', function() {
         pagination.innerHTML = createPagination(data.page, data.pages);
     }
 
+    let isFetching = false;
+
     // Create pagination links
     function createPagination(currentPage, totalPages) {
         let paginationHTML = '';
@@ -110,20 +113,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Add a single event listener to the pagination element
         pagination.addEventListener('click', async function(event) {
-            if (event.target.tagName === 'A') {
+            if (event.target.tagName === 'A' && !isFetching) {
                 const pageNumber = event.target.getAttribute('page-number');
+                isFetching = true;
                 await populateClients(pageNumber); // Ensure to await the function call
+                isFetching = false;
             }
         });
         
         return paginationHTML; // This return is optional now
     }
 
-    // Handle page click event
-    async function handlePageClick(event) {
-        const pageNumber = event.target.getAttribute('page-number');
-        populateClients(pageNumber);
-    }
+    createClientBtn.addEventListener('click', async function() {
+        createClientForm.reset();
+    });
 
     // Create client
     createClientForm.addEventListener('submit', async function(event) {

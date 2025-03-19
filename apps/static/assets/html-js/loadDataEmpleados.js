@@ -286,7 +286,7 @@ async function actualizarEmpleado() {
         const data = await updateEmpleado(empleadoId, employeed_code, name, lastname, second_lastname, client_id, payroll_id, dining_room_id, status);
         $('#editarEmpleadoModal').modal('hide');
         loadEmpleados(currentPage);  // Usar la página actual
-        showToast('Empleado actualizado correctamente', 'success');
+        showToast(data.message, data.status);
     } catch (error) {
         console.error('Error al actualizar empleado:', error.message);
         showToast('Error al actualizar empleado', 'danger');
@@ -392,7 +392,7 @@ async function crearEmpleado() {
         const data = await createEmpleado(employeed_code, name, lastname, second_lastname, client_id, payroll_id, dining_room_id, status);        
         $('#crearEmpleadoModal').modal('hide');
         loadEmpleados();
-        showToast('Empleado creado correctamente', 'success');
+        showToast(data.message, data.status);
     } catch (error) {
         console.error('Error al crear empleado:', error.message);
     }
@@ -538,13 +538,16 @@ async function manejarCargaEmpleados(file, selectCliente, selectComedor) {
         const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);        
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);                  
 
         try {
-            const data = await uploadEmpleados(selectCliente.value, selectComedor.value, jsonData);            
+            const data = await uploadEmpleados(selectCliente, selectComedor, jsonData);            
             $('#cargarEmpleadosModal').modal('hide');
-            loadEmpleados();
-            showToast('Empleados cargados correctamente', 'success');
+            loadEmpleados();                         
+            
+            for(let key in data.message) {
+                showToast(data.message[key][0], data.message[key][1]);
+            }
         } catch (error) {
             console.error('Error al cargar empleados:', error.message);
             showToast('Error al cargar empleados', 'danger');
@@ -567,9 +570,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (!validarCampos(selectCliente, selectComedor, file)) {
             return;
-        }
+        }                
 
-        await manejarCargaEmpleados(file, selectCliente, selectComedor);
+        await manejarCargaEmpleados(file, selectCliente.value, selectComedor.value);
         resetCargarEmpleadosModalFields();
     });
 

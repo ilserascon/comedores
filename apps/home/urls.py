@@ -44,6 +44,12 @@ urlpatterns = [
     # ===================== TIPOS DE NOMINA ===================== #
     path('get_tipos_nomina', views.get_tipos_nomina, name='get_tipos_nomina'),
 
+    # ===================== ENTRADAS ===================== #
+    path('entradas_view', views.entradas_view, name='entradas_view'),    
+    path('validar_vale', views.validar_vale, name='validar_vale'),
+    path('validar_empleado', views.validar_empleado, name='validar_empleado'), 
+    path('get_informacion_comedor_entradas', views.get_informacion_comedor_entradas, name='get_informacion_comedor_entradas'),        
+
 
     # ===================== REPORTE EMPLEADOS ===================== #
     path('get_employee_report_general', views.get_employee_report_general, name='get_employee_report_general'),
@@ -51,11 +57,13 @@ urlpatterns = [
     path('get_diner_employee_reports', views.get_diner_employee_reports, name='get_diner_employee_reports'),
     path('get_employee_report_summary', views.get_employee_report_summary, name='get_employee_report_summary'),
     path('get_employee_report_summary_details', views.get_employee_report_summary_details, name='get_employee_report_summary_details'),
+    path('export_excel_employee_report', views.export_excel_employee_report, name='export_excel_employee_report'),
 
     # ===================== REPORTE VALES UNICOS ===================== #
     path('get_unique_reports', views.get_unique_reports, name='get_unique_reports'),
     path('get_clients_unique_reports', views.get_clients_unique_reports, name='get_clients_unique_reports'),
     path('get_diners_unique_reports', views.get_diners_unique_reports, name='get_diners_unique_reports'),
+    path('export_excel_unique_reports', views.export_excel_unique_reports, name='export_excel_unique_reports'),
 
     # ===================== REPORTE VALES PERPETUOS ===================== #
     path('get_perpetual_reports', views.get_perpetual_reports, name='get_perpetual_reports'),
@@ -63,12 +71,21 @@ urlpatterns = [
     path('get_diners_perpetual_reports', views.get_diners_perpetual_reports, name='get_diners_perpetual_reports'),
     path('get_perpetual_report_summary', views.get_perpetual_report_summary, name='get_perpetual_report_summary'),
     path('get_perpetual_report_summary_details', views.get_perpetual_report_summary_details, name='get_perpetual_report_summary_details'),
+    path('export_excel_perpetuo_report', views.export_excel_perpetuo_report, name='export_excel_perpetuo_report'),
 
     # ===================== GENERAR VOUCHERS ===================== #
     path('generate_unique_voucher', views.generate_unique_voucher, name='generate_unique_voucher'),
     path('generate_perpetual_voucher', views.generate_perpetual_voucher, name='generate_perpetual_voucher'),
     path('send_lot_file_email', views.send_lot_file_email, name='send_lot_file_email'),
     path('generate_perpetual_voucher_qr', views.generate_perpetual_voucher_qr, name='generate_perpetual_voucher_qr'),
+    path('change_voucher_employee', views.change_voucher_employee, name='change_voucher_employee'),
+
+    # ===================== ADMINISTRADOR DE VALES ===================== #
+    path('get_voucher_lots/', views.get_voucher_lots, name='get_voucher_lots'),
+    path('get_vouchers_by_lot/', views.get_vouchers_by_lot, name='get_vouchers_by_lot'),
+    path('search_pdf_qr_unique_voucher_and_generate/', views.search_pdf_qr_unique_voucher_and_generate, name='search_pdf_qr_unique_voucher_and_generate'),
+    path('search_pdf_qr_perpetual_voucher_and_generate/', views.search_pdf_qr_perpetual_voucher_and_generate, name='search_pdf_qr_perpetual_voucher_and_generate'),
+
 
     # Matches any html file
     re_path(r'^.*\.*', views.pages, name='pages'),
