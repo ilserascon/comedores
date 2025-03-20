@@ -327,29 +327,49 @@ def update_comedor(request):
             if not encargado:
                 return JsonResponse({'message': 'El encargado proporcionado no existe o está inactivo', 'status': 'danger'}, status=400)
 
-        # Actualizar los campos del comedor
-        dining_room.name = name
-        dining_room.description = description
-        dining_room.status = status
+        with transaction.atomic():
+            # Actualizar los campos del comedor
+            dining_room.name = name
+            dining_room.description = description
+            dining_room.status = status
 
-        # Si el comedor se actualiza a inactivo, eliminar el encargado
-        if not status:  # status es False
-            dining_room.in_charge = None
-        else:
-            # Permitir que in_charge sea nulo si no está inactivo
-            dining_room.in_charge_id = in_charge if in_charge else None
+            # Si el comedor se actualiza a inactivo, eliminar el encargado
+            if not status:  # status es False
+                dining_room.in_charge = None
+            else:
+                # Permitir que in_charge sea nulo si no está inactivo
+                dining_room.in_charge_id = in_charge if in_charge else None
 
-        dining_room.updated_by_id = user_id
-        dining_room.save()
+            dining_room.updated_by_id = user_id
+            dining_room.save()
 
-        # Actualizar o crear la entrada en el modelo ClientDiner
-        ClientDiner.objects.update_or_create(
-            dining_room_id=dining_room_id,
-            defaults={
-                'client_id': client_id,
-                'updated_by_id': user_id
-            }
-        )
+            # Actualizar o crear la entrada en el modelo ClientDiner
+            ClientDiner.objects.update_or_create(
+                dining_room_id=dining_room_id,
+                defaults={
+                    'client_id': client_id,
+                    'updated_by_id': user_id
+                }
+            )
+
+            # Si el comedor se desactiva, desactivar también a los empleados asignados
+            if not status:
+                client_diners = ClientDiner.objects.filter(dining_room=dining_room).all()
+                for client_diner in client_diners:
+                    client_diner.status = False
+                    client_diner.updated_by_id = user_id
+                    client_diner.save()
+
+                    employee_client_diners = EmployeeClientDiner.objects.filter(client_diner=client_diner).all()
+                    for employee_client_diner in employee_client_diners:
+                        employee_client_diner.status = False
+                        employee_client_diner.updated_by_id = user_id
+                        employee_client_diner.save()
+
+                        employee = employee_client_diner.employee
+                        employee.status = False
+                        employee.updated_by_id = user_id
+                        employee.save()
 
         return JsonResponse({'message': 'Comedor actualizado correctamente', 'status': 'success'})
     except Exception as e:
@@ -1026,55 +1046,89 @@ def upload_empleados(request):
             if not comedor_id:
                 return JsonResponse({'error': 'El campo comedor_id es obligatorio'}, status=400)
 
-            # Contador de empleados insertados y no insertados (repetidos)
+            # Contador de empleados insertados, no insertados y modificados
             empleados_insertados = 0
             empleados_no_insertados = 0
             empleados_modificados = 0
 
-            # Procesar los empleados
-            for empleado_data in empleados:
-                # Validar los datos del empleado
-                if not empleado_data.get('NOMBRES'):
-                    return JsonResponse({'error': 'El campo NOMBRES es obligatorio'}, status=400)
-                if not empleado_data.get('NO. EMPLEADO'):
-                    return JsonResponse({'error': 'El campo NO. EMPLEADO es obligatorio'}, status=400)
-                if not empleado_data.get('APELLIDO PATERNO'):
-                    return JsonResponse({'error': 'El campo APELLIDO PATERNO es obligatorio'}, status=400)
-                if not empleado_data.get('NOMINA'):
-                    return JsonResponse({'error': 'El campo NOMINA es obligatorio'}, status=400)
+            with transaction.atomic():  # Iniciar transacción atómica
+                # Procesar los empleados
+                for empleado_data in empleados:
+                    # Validar los datos del empleado
+                    if not empleado_data.get('NOMBRES'):
+                        return JsonResponse({'error': 'El campo NOMBRES es obligatorio'}, status=400)
+                    if not empleado_data.get('NO. EMPLEADO'):
+                        return JsonResponse({'error': 'El campo NO. EMPLEADO es obligatorio'}, status=400)
+                    if not empleado_data.get('APELLIDO PATERNO'):
+                        return JsonResponse({'error': 'El campo APELLIDO PATERNO es obligatorio'}, status=400)
+                    if not empleado_data.get('NOMINA'):
+                        return JsonResponse({'error': 'El campo NOMINA es obligatorio'}, status=400)
 
-                # Obtener la instancia de PayrollType
-                payroll = PayrollType.objects.get(description=empleado_data.get('NOMINA'))
+                    # Obtener la instancia de PayrollType
+                    payroll = PayrollType.objects.get(description=empleado_data.get('NOMINA'))
 
-                # Asignar valores predeterminados si los campos son None
-                nombre = empleado_data.get('NOMBRES', '').upper()
-                apellido_paterno = empleado_data.get('APELLIDO PATERNO', '').upper()
-                apellido_materno = empleado_data.get('APELLIDO MATERNO', '').upper()
+                    # Asignar valores predeterminados si los campos son None
+                    nombre = empleado_data.get('NOMBRES', '').upper()
+                    apellido_paterno = empleado_data.get('APELLIDO PATERNO', '').upper()
+                    apellido_materno = empleado_data.get('APELLIDO MATERNO', '').upper()
 
-                # Verificar si el empleado ya existe
-                empleado_existente = Employee.objects.filter(employeed_code=empleado_data.get('NO. EMPLEADO')).first()                
+                    # Verificar si el empleado ya existe
+                    empleado_existente = Employee.objects.filter(employeed_code=empleado_data.get('NO. EMPLEADO')).first()
 
-                # Si el empleado existe
-                if empleado_existente:
-                    # y es del mismo cliente
-                    if empleado_existente.client.id == cliente_id:
-                        
-                        client_diner = ClientDiner.objects.get(client_id=cliente_id, dining_room_id=comedor_id)
-                        employee_client_diner = EmployeeClientDiner.objects.filter(employee=empleado_existente, client_diner__client_id=cliente_id).first()
-                        
-                        # y el comedor es diferente se actualiza el comedor asignado
-                        if employee_client_diner and employee_client_diner.client_diner.dining_room_id != comedor_id:
+                    # Si el empleado existe
+                    if empleado_existente:
+                        # y es del mismo cliente
+                        if empleado_existente.client.id == cliente_id:
+                            # Verificar y actualizar campos si son diferentes
+                            campos_actualizados = False
+                            if empleado_existente.name != nombre:
+                                empleado_existente.name = nombre
+                                campos_actualizados = True
+                            if empleado_existente.lastname != apellido_paterno:
+                                empleado_existente.lastname = apellido_paterno
+                                campos_actualizados = True
+                            if empleado_existente.second_lastname != apellido_materno:
+                                empleado_existente.second_lastname = apellido_materno
+                                campos_actualizados = True
+                            if empleado_existente.payroll != payroll:
+                                empleado_existente.payroll = payroll
+                                campos_actualizados = True
+                            if not empleado_existente.status:  # Activar si está inactivo
+                                empleado_existente.status = True
+                                campos_actualizados = True
 
-                            # Actualizar el comedor asignado
-                            employee_client_diner.client_diner = client_diner
-                            employee_client_diner.updated_by_id = request.user.id
-                            employee_client_diner.save()
-                            empleados_modificados += 1
+                            if campos_actualizados:
+                                empleado_existente.updated_by_id = request.user.id
+                                empleado_existente.save()
+                                empleados_modificados += 1
+
+                            # Verificar y actualizar la relación con el comedor
+                            client_diner = ClientDiner.objects.get(client_id=cliente_id, dining_room_id=comedor_id)
+                            employee_client_diner = EmployeeClientDiner.objects.filter(employee=empleado_existente, client_diner__client_id=cliente_id).first()
+                            if employee_client_diner and employee_client_diner.client_diner.dining_room_id != comedor_id:
+                                employee_client_diner.client_diner = client_diner
+                                employee_client_diner.updated_by_id = request.user.id
+                                employee_client_diner.save()
+                                empleados_modificados += 1
+                            else:
+                                empleados_no_insertados += 1
+                            continue
                         else:
-                            empleados_no_insertados += 1
-                        continue
+                            # Si el código de empleado existe y el cliente no es el mismo, se inserta
+                            empleado = Employee(
+                                employeed_code=empleado_data.get('NO. EMPLEADO'),
+                                name=nombre,
+                                lastname=apellido_paterno,
+                                second_lastname=apellido_materno,
+                                client_id=cliente_id,
+                                payroll=payroll,
+                                status=empleado_data.get('ESTADO', True),
+                                created_by_id=request.user.id
+                            )
+                            empleado.save()
+                            empleados_insertados += 1
                     else:
-                        # Si el código de empleado existe y el cliente no es el mismo, se inserta
+                        # Si el código de empleado no existe, se inserta
                         empleado = Employee(
                             employeed_code=empleado_data.get('NO. EMPLEADO'),
                             name=nombre,
@@ -1087,31 +1141,17 @@ def upload_empleados(request):
                         )
                         empleado.save()
                         empleados_insertados += 1
-                else:
-                    # Si el código de empleado no existe, se inserta
-                    empleado = Employee(
-                        employeed_code=empleado_data.get('NO. EMPLEADO'),
-                        name=nombre,
-                        lastname=apellido_paterno,
-                        second_lastname=apellido_materno,
-                        client_id=cliente_id,
-                        payroll=payroll,
-                        status=empleado_data.get('ESTADO', True),
-                        created_by_id=request.user.id
+
+                    # Crear la relación en EmployeeClientDiner
+                    client_diner = ClientDiner.objects.get(client_id=cliente_id, dining_room_id=comedor_id)
+                    EmployeeClientDiner.objects.create(
+                        employee=empleado,
+                        client_diner=client_diner,
+                        created_by_id=request.user.id,
+                        updated_by_id=request.user.id
                     )
-                    empleado.save()
-                    empleados_insertados += 1
 
-                # Crear la relación en EmployeeClientDiner
-                client_diner = ClientDiner.objects.get(client_id=cliente_id, dining_room_id=comedor_id)
-                EmployeeClientDiner.objects.create(
-                    employee=empleado,
-                    client_diner=client_diner,
-                    created_by_id=request.user.id,
-                    updated_by_id=request.user.id
-                )
-
-            message = {};
+            message = {}
 
             if empleados_insertados > 0:
                 message['message1'] = [f'Empleados insertados: {empleados_insertados}', 'success']
