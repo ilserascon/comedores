@@ -214,7 +214,7 @@ function showToast(message, type = 'success') {
   const toast = document.createElement('div');
   const header = type === 'success' ? 'Éxito' : type === 'info' ? 'Aviso' : 'Error';
   // Set the toast classes with Bootstrap
-  toast.className = `toast align-items-center text-white bg-${type} border-0 rounded-pill shadow-sm p-2 px-3 m-1`;
+  toast.className = `toast align-items-center text-white bg-${type} border-0 shadow-sm p-2 px-3 m-1`;
   toast.role = 'alert';
   toast.ariaLive = 'assertive';
   toast.ariaAtomic = 'true';
@@ -222,7 +222,7 @@ function showToast(message, type = 'success') {
 
   // Set the toast content (including a header, body, and close button)
   toast.innerHTML = `
-      <div class="toast-header bg-${type} text-white d-flex align-items-center justify-content-between p-1 px-1 rounded-pill shadow-sm">
+      <div class="toast-header bg-${type} text-white d-flex align-items-center justify-content-between p-1 px-1 shadow-sm">
           <strong class="me-auto">${header}</strong>
           <button type="button" class="btn-close btn-close-white bg-transparent border border-0 right-1" data-bs-dismiss="toast" aria-label="Close">
           <i class="fas fa-times"></i>

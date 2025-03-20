@@ -3069,3 +3069,36 @@ def search_pdf_qr_perpetual_voucher_and_generate(request):
         print(e)
         return JsonResponse({'error': str(e)}, status=500)
     
+@csrf_exempt
+def change_voucher_status(request):      
+    if request.method != 'PUT':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        voucher_id = data.get('voucher_id')
+        status = data.get('status')
+
+        print(data)
+        print(status)
+        
+        if not voucher_id or not isinstance(status, bool):
+            return JsonResponse({'error': 'voucher_id y status booleano son requeridos'}, status=400)
+
+        voucher = Voucher.objects.filter(id=voucher_id).first()
+        
+        if not voucher:
+            return JsonResponse({'error': 'El vale no existe'}, status=404)
+        
+        perpetual_voucher_type = VoucherType.objects.filter(description="PERPETUO").first()
+        
+        if voucher.lots.voucher_type.id != perpetual_voucher_type.id:
+            return JsonResponse({'error': 'El vale no es de tipo perpetuo'}, status=400)
+
+        voucher.status = status 
+        voucher.save()
+
+        
+        return JsonResponse({"message": "Nombre del vale actualizado con éxito" })
+    except Exception as err:
+        return JsonResponse({'error': str(err)}, status=500)

@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function() {
         toast.style.zIndex = '1';
     
         toast.innerHTML = `
-            <div class="toast-header bg-${type} text-white d-flex align-items-center justify-content-between p-1 px-1 rounded-pill shadow-sm">
+            <div class="toast-header bg-${type} text-white d-flex align-items-center justify-content-between p-1 px-1 shadow-sm">
                 <strong class="me-auto">${header}</strong>
                 <button type="button" class="btn-close btn-close-white right-1" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
