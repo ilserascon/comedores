@@ -787,8 +787,10 @@ def get_empleados(request):
     search_query = request.GET.get('search', '')
     filter_value = request.GET.get('filter', 'all')
 
+    # Filtrar empleados cuyo cliente esté activo
     empleados = Employee.objects.filter(
-        employee_client_diner_employee__isnull=False
+        employee_client_diner_employee__isnull=False,
+        client__status=True  # Solo clientes activos
     ).select_related(
         'client', 'payroll'
     ).prefetch_related(
@@ -824,7 +826,7 @@ def get_empleados(request):
         'current_page': page_obj.number,
         'has_previous': page_obj.has_previous(),
         'has_next': page_obj.has_next(),
-    }    
+    }
 
     return JsonResponse(response)
     
