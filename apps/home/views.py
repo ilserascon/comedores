@@ -1524,7 +1524,9 @@ def get_unique_reports(request):
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     
     page_number = request.GET.get('page', 1)
-    page_size = request.GET.get('page_size', 10)    
+    page_size = request.GET.get('page_size', 10)
+    lot = request.GET.get('filterLotNumber')
+
 
     try:
         # Filtros de vales
@@ -1533,7 +1535,8 @@ def get_unique_reports(request):
             'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
             'folio__icontains': request.GET.get('filterVoucherNumber'),
             'status': request.GET.get('filterStatus'),
-            'lots__voucher_type_id': 1
+            'lots__voucher_type_id': 1,
+            'lots__id': lot
         }
 
         filters = {k: v for k, v in filters.items() if v}
@@ -1639,6 +1642,8 @@ def get_clients_unique_reports(request):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
 
+    lot = request.GET.get('filterLotNumber')
+
     try:
         # Filtros para los vales
         filters = {
@@ -1646,7 +1651,8 @@ def get_clients_unique_reports(request):
             'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
             'folio__icontains': request.GET.get('filterVoucherNumber'),
             'status': request.GET.get('filterStatus'),
-            'lots__voucher_type_id': 1
+            'lots__voucher_type_id': 1,
+            'lots__id': lot
         }
         filters = {k: v for k, v in filters.items() if v}
 
@@ -1683,6 +1689,9 @@ def get_diners_unique_reports(request):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     
+    lot = request.GET.get('filterLotNumber')
+
+    
     try:
         # Filtros para los vales
         filters = {
@@ -1690,7 +1699,8 @@ def get_diners_unique_reports(request):
             'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
             'folio__icontains': request.GET.get('filterVoucherNumber'),
             'status': request.GET.get('filterStatus'),
-            'lots__voucher_type_id': 1
+            'lots__voucher_type_id': 1,
+            'lots__id': lot
         }
         filters = {k: v for k, v in filters.items() if v}
 
@@ -1726,6 +1736,8 @@ def get_diners_unique_reports(request):
 def export_excel_unique_reports(request):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    lot = request.GET.get('filterLotNumber')
 
     try:
         # Filtros de vales
@@ -1734,7 +1746,8 @@ def export_excel_unique_reports(request):
             'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
             'folio__icontains': request.GET.get('filterVoucherNumber'),
             'status': request.GET.get('filterStatus'),
-            'lots__voucher_type_id': 1
+            'lots__voucher_type_id': 1,
+            'lots__id': lot
         }
 
         filters = {k: v for k, v in filters.items() if v}
@@ -1887,6 +1900,8 @@ def get_perpetual_reports(request):
     
     page_number = request.GET.get('page', 1)
     page_size = request.GET.get('page_size', 10)
+    lot = request.GET.get('filterLotNumber')
+
 
     try:
         # Filtros de vales
@@ -1896,7 +1911,8 @@ def get_perpetual_reports(request):
             'employee__icontains': request.GET.get('filterEmployeeName'),
             'voucher__status': request.GET.get('filterStatus'),
             'voucher__lots__voucher_type_id': 2,  # Tipo de vale perpetuo
-            'voucher__folio__icontains': request.GET.get('filterVoucherFolio')
+            'voucher__folio__icontains': request.GET.get('filterVoucherFolio'),
+            'voucher__lots__id': lot
         }
 
         filters = {k: v for k, v in filters.items() if v}
@@ -1955,12 +1971,16 @@ def get_perpetual_reports(request):
         }
         return JsonResponse(context)
     except Exception as e:
+        print(e)
         return JsonResponse({'error': str(e)}, status=500)
 
 @csrf_exempt
 def get_clients_perpetual_reports(request):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    lot = request.GET.get('filterLotNumber')
+
 
     try:
         # Filtros para los vales
@@ -1970,7 +1990,8 @@ def get_clients_perpetual_reports(request):
             'employee__icontains': request.GET.get('filterEmployeeName'),
             'status': request.GET.get('filterStatus'),
             'lots__voucher_type_id': 2,  # Tipo de vale perpetuo
-            'folio__icontains': request.GET.get('filterVoucherFolio')
+            'folio__icontains': request.GET.get('filterVoucherFolio'),
+            'lots__id': lot
         }
         filters = {k: v for k, v in filters.items() if v}
 
@@ -2007,6 +2028,9 @@ def get_diners_perpetual_reports(request):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     
+    lot = request.GET.get('filterLotNumber')
+
+
     try:
         # Filtros para los vales
         filters = {
@@ -2015,7 +2039,8 @@ def get_diners_perpetual_reports(request):
             'employee__icontains': request.GET.get('filterEmployeeName'),
             'status': request.GET.get('filterStatus'),
             'lots__voucher_type_id': 2,  # Tipo de vale perpetuo
-            'folio__icontains': request.GET.get('filterVoucherFolio')
+            'folio__icontains': request.GET.get('filterVoucherFolio'),
+            'lots__id': lot
         }
         filters = {k: v for k, v in filters.items() if v}
 
@@ -2054,6 +2079,9 @@ def get_perpetual_report_summary(request):
     
     page_number = request.GET.get('page', 1)
     page_size = request.GET.get('page_size', 10)
+    lot = request.GET.get('filterLotNumber')
+
+    
     try:
         filters = {
             'lots__client_diner__client__id': request.GET.get('filterClient'),
@@ -2061,7 +2089,8 @@ def get_perpetual_report_summary(request):
             'employee__icontains': request.GET.get('filterEmployeeName'),
             'status': request.GET.get('filterStatus'),
             'lots__voucher_type_id': 2,  # Tipo de vale perpetuo
-            'folio__icontains': request.GET.get('filterVoucherFolio')
+            'folio__icontains': request.GET.get('filterVoucherFolio'),
+            'lots__id': lot
         }
         filters = {k: v for k, v in filters.items() if v}
 
@@ -2111,13 +2140,15 @@ def get_perpetual_report_summary_details(request):
     voucher_id = request.GET.get('voucherId')
     page_number = request.GET.get('page', 1)
     page_size = request.GET.get('page_size', 5)
+    lot = request.GET.get('filterLotNumber')
 
     if not voucher_id:
         return JsonResponse({'error': 'voucher_id es requerido'}, status=400)
     
     try:
         filters = {
-            'id': voucher_id
+            'id': voucher_id,
+            'lots__id': lot,
         }
 
         voucher_detail = Voucher.objects.select_related(
@@ -2182,6 +2213,9 @@ def export_excel_perpetuo_report(request):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     
+    lot = request.GET.get('filterLotNumber')
+
+    
     try:
         filters = {
             'voucher__lots__client_diner__client__id': request.GET.get('filterClient'),
@@ -2189,7 +2223,8 @@ def export_excel_perpetuo_report(request):
             'employee__icontains': request.GET.get('filterEmployeeName'),
             'voucher__status': request.GET.get('filterStatus'),
             'voucher__lots__voucher_type_id': 2,  # Tipo de vale perpetuo
-            'voucher__folio__icontains': request.GET.get('filterVoucherFolio')
+            'voucher__folio__icontains': request.GET.get('filterVoucherFolio'),
+            'voucher__lots__id': lot
         }
 
         # Convertir las fechas a objetos datetime conscientes de la zona horaria
@@ -2289,7 +2324,8 @@ def export_excel_perpetuo_report(request):
             'employee__icontains': request.GET.get('filterEmployeeName'),
             'status': request.GET.get('filterStatus'),
             'lots__voucher_type_id': 2,  # Tipo de vale perpetuo
-            'folio__icontains': request.GET.get('filterVoucherFolio')
+            'folio__icontains': request.GET.get('filterVoucherFolio'),
+            'lots__id': lot
         }
                 # Convert date filters to timezone-aware datetime
         if filters.get('created_at__gte'):

@@ -254,6 +254,7 @@ document.addEventListener('DOMContentLoaded', function() {
             filterDiningRoom: document.getElementById('filterDiningRoom').value,
             filterEmployeeName: document.getElementById('filterEmployeeName').value,
             filterVoucherFolio: document.getElementById('filterVoucherFolio').value,
+            filterLotNumber : document.getElementById('filterLotNumber').value,
             filterStatus: document.getElementById('filterStatus').value,
             filterStartDate: document.getElementById('filterStartDate').value,
             filterEndDate: document.getElementById('filterEndDate').value
@@ -269,6 +270,7 @@ document.addEventListener('DOMContentLoaded', function() {
             filterDiningRoom: document.getElementById('filterDiningRoom').value,
             filterEmployeeName: document.getElementById('filterEmployeeName').value,
             filterVoucherFolio: document.getElementById('filterVoucherFolio').value,
+            filterLotNumber : document.getElementById('filterLotNumber').value,
             filterStatus: document.getElementById('filterStatus').value,
             filterStartDate: document.getElementById('filterStartDate').value,
             filterEndDate: document.getElementById('filterEndDate').value
@@ -303,6 +305,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('filterDiningRoom').value = '';
         document.getElementById('filterEmployeeName').value = '';
         document.getElementById('filterVoucherFolio').value = '';
+        document.getElementById('filterLotNumber').value = '';
         document.getElementById('filterStatus').value = '';
         document.getElementById('filterStartDate').value = '';
         document.getElementById('filterEndDate').value = '';
