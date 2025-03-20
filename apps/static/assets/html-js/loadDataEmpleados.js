@@ -532,25 +532,39 @@ function manejarSelectComedor(selectCliente, selectComedor) {
 }
 
 async function manejarCargaEmpleados(file, selectCliente, selectComedor) {
+    const loader = document.getElementById('modalLoader');
+    const modalBody = document.querySelector('#cargarEmpleadosModal .modal-body');
+    const cargarBtn = document.getElementById('cargarEmpleadosBtn');
+
+    // Mostrar el loader y deshabilitar el botón
+    loader.style.display = 'block';
+    modalBody.style.opacity = '0.5';
+    cargarBtn.disabled = true;
+
     const reader = new FileReader();
     reader.onload = async function(e) {
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);                  
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
         try {
-            const data = await uploadEmpleados(selectCliente, selectComedor, jsonData);            
+            const data = await uploadEmpleados(selectCliente, selectComedor, jsonData);
             $('#cargarEmpleadosModal').modal('hide');
-            loadEmpleados();                         
-            
-            for(let key in data.message) {
+            loadEmpleados();
+
+            for (let key in data.message) {
                 showToast(data.message[key][0], data.message[key][1]);
             }
         } catch (error) {
             console.error('Error al cargar empleados:', error.message);
             showToast('Error al cargar empleados', 'danger');
+        } finally {
+            // Ocultar el loader y habilitar el botón
+            loader.style.display = 'none';
+            modalBody.style.opacity = '1';
+            cargarBtn.disabled = false;
         }
     };
 
@@ -567,11 +581,11 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('cargarEmpleadosBtn').addEventListener('click', async function() {
         const fileInput = document.getElementById('archivoExcel');
         const file = fileInput.files[0];
-
+    
         if (!validarCampos(selectCliente, selectComedor, file)) {
             return;
-        }                
-
+        }
+    
         await manejarCargaEmpleados(file, selectCliente.value, selectComedor.value);
         resetCargarEmpleadosModalFields();
     });
