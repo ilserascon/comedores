@@ -26,6 +26,7 @@ from django.contrib.auth.hashers import make_password
 from django.shortcuts import get_object_or_404
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from .transactions.clients import change_client_status
+from .transactions.comedores import change_dining_room_status
 import pandas as pd
 from openpyxl.styles import Font, PatternFill, Border, Side
 import openpyxl
@@ -1151,6 +1152,11 @@ def upload_empleados(request):
                         updated_by_id=request.user.id
                     )
 
+                # Llamar a la función para cambiar el estado del comedor si es necesario
+                dining_room = DiningRoom.objects.get(id=comedor_id)
+                if not dining_room.status:  # Si el comedor está inactivo
+                    change_dining_room_status(request.user, dining_room, False)
+
             message = {}
 
             if empleados_insertados > 0:
@@ -1165,6 +1171,8 @@ def upload_empleados(request):
             return JsonResponse({'error': 'Tipo de nómina no encontrado'}, status=404)
         except ClientDiner.DoesNotExist:
             return JsonResponse({'error': 'Cliente-Comedor no encontrado'}, status=404)
+        except DiningRoom.DoesNotExist:
+            return JsonResponse({'error': 'Comedor no encontrado'}, status=404)
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
     else:
