@@ -121,6 +121,9 @@ async function openEditModal(id) {
         document.getElementById('editarComedorId').value = comedor.dining_room_id;
         document.getElementById('editarComedorClient').value = comedor.client.id;        
 
+        // Llamar a toggleEncargadoSelect para habilitar/deshabilitar el select de encargados
+        toggleEncargadoSelect('editarComedorStatus', 'editarComedorInCharge');
+
         $('#editarComedorModal').modal('show');
     } catch (error) {
         console.error('Error:', error.message);
@@ -154,33 +157,29 @@ async function crearComedor() {
 
     try {
         const result = await createComedor(data);
-        console.log("Comedor insertado exitosamente", result);
+
+        if (!result.success) {
+            // Mostrar mensaje de error del backend
+            showToast(result.message, 'danger');
+            return;
+        }
 
         // Mostrar mensaje de éxito
-        showToast('Comedor creado exitosamente', 'success');        
+        showToast('Comedor creado exitosamente', 'success');
 
-        // Llenar el select de clientes con comedores para actualizarlo dinámicamente
-        await llenarSelectClientesComedores('filterComedorSelect');        
-
-        // Mantener el valor actual del filtro seleccionado
+        await llenarSelectClientesComedores('filterComedorSelect');
         document.getElementById('filterComedorSelect').value = currentFilter;
-
-        // Llenar los selects de encargados con la nueva información
         await llenarSelectEncargados('comedorInCharge');
         await llenarSelectEncargados('editarComedorInCharge');
-
-        // Cerrar el modal de creación
         $('#crearComedorModal').modal('hide');
-
-        // Actualizar la tabla con el nuevo comedor y mantener la página actual y el filtro aplicado
-        await actualizarTablaComedores(currentPage, currentFilter);                
-        console.log('Tabla de comedores actualizada');
+        await actualizarTablaComedores(currentPage, currentFilter);
     } catch (error) {
         console.error('Error:', error.message);
         showToast('Error al crear comedor', 'danger');
     }
 
-    resetCrearComedorForm(); // Resetear el formulario al cerrar el modal
+    resetCrearComedorForm();
+    toggleEncargadoSelect('comedorStatus', 'comedorInCharge'); // Asegurar que el select de encargado esté en el estado correcto
 }
 
 
@@ -211,27 +210,19 @@ async function actualizarComedor() {
     };
 
     try {
-        const originalComedor = await getComedor(data.dining_room_id);
+        const result = await updateComedor(data);
 
-        const hasChanged = (
-            data.name !== originalComedor.name ||
-            data.description !== originalComedor.description ||
-            data.client !== (originalComedor.client ? originalComedor.client.id.toString() : '') ||
-            (data.inCharge || '') !== (originalComedor.in_charge && originalComedor.in_charge.id ? originalComedor.in_charge.id.toString() : '') ||
-            data.status !== originalComedor.status
-        );
-
-        if (!hasChanged) {
-            showToast('No se han realizado cambios', 'info');
+        if (!result.success) {
+            // Mostrar mensaje de error del backend
+            showToast(result.message, 'danger');
             return;
         }
 
-        await updateComedor(data);
+        // Mostrar mensaje de éxito
         showToast('Comedor actualizado exitosamente', 'success');
 
         await llenarSelectEncargados('comedorInCharge');
         await llenarSelectEncargados('editarComedorInCharge');
-
         await llenarSelectClientesComedores('filterComedorSelect');
         document.getElementById('filterComedorSelect').value = currentFilter;
         await actualizarTablaComedores(currentPage, currentFilter);
@@ -344,6 +335,23 @@ async function llenarSelectClientesComedores(selectId) {
     }
 }
 
+/**
+ * Habilita o deshabilita el select de encargados dependiendo del estado del comedor.
+ * 
+ * @param {string} statusId - ID del select de estado.
+ * @param {string} inChargeId - ID del select de encargados.
+ */
+function toggleEncargadoSelect(statusId, inChargeId) {
+    const statusSelect = document.getElementById(statusId);
+    const encargadoSelect = document.getElementById(inChargeId);
+
+    if (statusSelect.value === '0') { // Inactivo
+        encargadoSelect.value = ''; // Seleccionar "Sin asignar"
+        encargadoSelect.disabled = true; // Deshabilitar el select
+    } else { // Activo
+        encargadoSelect.disabled = false; // Habilitar el select
+    }
+}
 
 
 /**
@@ -463,6 +471,12 @@ function resetCrearComedorForm() {
     // Resetear los selects
     document.getElementById('selectCliente').selectedIndex = 0;
     document.getElementById('comedorInCharge').selectedIndex = 0;
+
+    // Asegurar que el estado inicial del select de estado sea "Activo"
+    document.getElementById('comedorStatus').value = '1';
+
+    // Llamar a toggleEncargadoSelect para sincronizar el estado del select de encargado
+    toggleEncargadoSelect('comedorStatus', 'comedorInCharge');
 }
 
 
@@ -470,6 +484,15 @@ function resetCrearComedorForm() {
 // =========================== EVENTOS =========================== //
 document.getElementById('guardarComedorBtn').addEventListener('click', crearComedor);
 document.getElementById('actualizarComedorBtn').addEventListener('click', actualizarComedor);
+
+// Agregar eventos para los formularios de creación y edición
+document.getElementById('comedorStatus').addEventListener('change', function () {
+    toggleEncargadoSelect('comedorStatus', 'comedorInCharge');
+});
+
+document.getElementById('editarComedorStatus').addEventListener('change', function () {
+    toggleEncargadoSelect('editarComedorStatus', 'editarComedorInCharge');
+});
 
 // ACTUALIZA LA TABLA DE COMEDORES CUANDO SE CAMBIA EL FILTRO EN EL SELECT
 document.getElementById('filterComedorSelect').addEventListener('change', async function() {

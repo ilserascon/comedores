@@ -249,12 +249,24 @@ def create_comedor(request):
         client_id = data.get('client')  # Obtener el client_id del request
         created_by_id = request.user.id
 
-        if not client_id:
-            return JsonResponse({'error': 'El campo client es obligatorio'}, status=400)
+        # Validar que el nombre no esté vacío y tenga una longitud válida
+        if not name or len(name) < 3 or len(name) > 50:
+            return JsonResponse({'message': 'El nombre debe tener entre 3 y 50 caracteres', 'status': 'danger'}, status=400)
 
-        # Validar longitud de la descripción
-        if len(description) > 100:
-            return JsonResponse({'error': 'La descripción no puede tener más de 100 caracteres'}, status=400)
+        # Validar que la descripción no esté vacía y tenga una longitud válida
+        if not description or len(description) > 100:
+            return JsonResponse({'message': 'La descripción no puede tener más de 100 caracteres', 'status': 'danger'}, status=400)
+
+        # Validar que el cliente exista y esté activo
+        client = Client.objects.filter(id=client_id, status=True).first()
+        if not client:
+            return JsonResponse({'message': 'El cliente proporcionado no existe o está inactivo', 'status': 'danger'}, status=400)
+
+        # Validar que el encargado exista y esté activo (si se proporciona)
+        if in_charge:
+            encargado = CustomUser.objects.filter(id=in_charge, status=True).first()
+            if not encargado:
+                return JsonResponse({'message': 'El encargado proporcionado no existe o está inactivo', 'status': 'danger'}, status=400)
 
         # Crear el comedor en el modelo DiningRoom
         dining_room = DiningRoom.objects.create(
@@ -274,25 +286,10 @@ def create_comedor(request):
             updated_by_id=created_by_id
         )
 
-        # Formatear la respuesta
-        response = {
-            'id': dining_room.id,
-            'name': dining_room.name,
-            'description': dining_room.description,
-            'status': dining_room.status,
-            'in_charge': {
-                'id': dining_room.in_charge.id if dining_room.in_charge else None,
-                'first_name': dining_room.in_charge.first_name if dining_room.in_charge else None,
-                'last_name': dining_room.in_charge.last_name if dining_room.in_charge else None
-            },
-            'client': {
-                'id': client_id
-            }
-        }
-
-        return JsonResponse({'message': 'Comedor creado correctamente', 'dining_room': response}, status=201)
+        return JsonResponse({'message': 'Comedor creado exitosamente', 'status': 'success'}, status=201)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'message': str(e), 'status': 'danger'}, status=500)
+
 
 @csrf_exempt
 def update_comedor(request):
@@ -307,11 +304,28 @@ def update_comedor(request):
         client_id = data.get('client')  # Obtener el client_id del request
 
         # Validar que el comedor exista
-        dining_room = DiningRoom.objects.get(id=dining_room_id)
+        dining_room = DiningRoom.objects.filter(id=dining_room_id).first()
+        if not dining_room:
+            return JsonResponse({'message': 'Comedor no encontrado', 'status': 'danger'}, status=404)
 
-        # Validar longitud de la descripción
-        if len(description) > 100:
-            return JsonResponse({'error': 'La descripción no puede tener más de 100 caracteres'}, status=400)
+        # Validar que el nombre no esté vacío y tenga una longitud válida
+        if not name or len(name) < 3 or len(name) > 50:
+            return JsonResponse({'message': 'El nombre debe tener entre 3 y 50 caracteres', 'status': 'danger'}, status=400)
+
+        # Validar que la descripción no esté vacía y tenga una longitud válida
+        if not description or len(description) > 100:
+            return JsonResponse({'message': 'La descripción no puede tener más de 100 caracteres', 'status': 'danger'}, status=400)
+
+        # Validar que el cliente exista y esté activo
+        client = Client.objects.filter(id=client_id, status=True).first()
+        if not client:
+            return JsonResponse({'message': 'El cliente proporcionado no existe o está inactivo', 'status': 'danger'}, status=400)
+
+        # Validar que el encargado exista y esté activo (si se proporciona)
+        if in_charge:
+            encargado = CustomUser.objects.filter(id=in_charge, status=True).first()
+            if not encargado:
+                return JsonResponse({'message': 'El encargado proporcionado no existe o está inactivo', 'status': 'danger'}, status=400)
 
         # Actualizar los campos del comedor
         dining_room.name = name
@@ -329,7 +343,7 @@ def update_comedor(request):
         dining_room.save()
 
         # Actualizar o crear la entrada en el modelo ClientDiner
-        client_diner, created = ClientDiner.objects.update_or_create(
+        ClientDiner.objects.update_or_create(
             dining_room_id=dining_room_id,
             defaults={
                 'client_id': client_id,
@@ -337,28 +351,9 @@ def update_comedor(request):
             }
         )
 
-        # Formatear la respuesta
-        response = {
-            'id': dining_room.id,
-            'name': dining_room.name,
-            'description': dining_room.description,
-            'status': dining_room.status,
-            'in_charge': {
-                'id': dining_room.in_charge.id if dining_room.in_charge else None,
-                'first_name': dining_room.in_charge.first_name if dining_room.in_charge else None,
-                'last_name': dining_room.in_charge.last_name if dining_room.in_charge else None
-            },
-            'client': {
-                'id': client_diner.client_id,
-                'company': client_diner.client.company
-            }
-        }
-
-        return JsonResponse({'message': 'Comedor actualizado correctamente', 'dining_room': response})
-    except DiningRoom.DoesNotExist:
-        return JsonResponse({'error': 'Comedor no encontrado'}, status=404)
+        return JsonResponse({'message': 'Comedor actualizado correctamente', 'status': 'success'})
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'message': str(e), 'status': 'danger'}, status=500)
 
 @csrf_exempt
 def get_encargados(request):
