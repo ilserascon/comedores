@@ -1,4 +1,4 @@
-async function generateUniqueVoucher(clientId, diningRoomId, quantity) {
+async function generateUniqueVoucher(clientId, diningRoomId, quantity, type) {
   try {
       const response = await fetch(`/generate_unique_voucher`, {
           method: 'POST',
@@ -8,7 +8,8 @@ async function generateUniqueVoucher(clientId, diningRoomId, quantity) {
           body: JSON.stringify({
             client_id: clientId,
             dining_room_id: diningRoomId,
-            quantity: quantity
+            quantity: quantity,
+            voucher_type: type
           })
       });
 
@@ -126,6 +127,28 @@ async function changeVoucherEmployee(voucherId, employee) {
     } catch (error) {
         console.error('Error:', error.message);
         throw new Error(error.message || 'Error al cambiar empleado');
+    }
+}
+
+async function getLotPdf(lotId){
+    try {
+        const response = await fetch(`/get_lot_pdf?lot_id=${lotId}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+        });
+  
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Error al obtener el PDF');
+        }
+  
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error:', error.message);
+        throw new Error(error.message || 'Error al obtener el PDF');
     }
 }
 

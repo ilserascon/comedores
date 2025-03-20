@@ -4,6 +4,7 @@ import pdfkit
 import qrcode
 from apps.home.models import Voucher, Lots
 import datetime
+import re
 
 
 
@@ -45,9 +46,9 @@ QR_CODE_PERPETUAL_TEMPLATE = 'qr-code-perpetual-template.html'
 QR_CODES_STYLESHEET = CSS_DIR+'/generated-qr-styles.css'
 LOGO_PATH = os.path.abspath('./apps/static/assets/img/brand/logo_alcorp.png')
 
-def generate_qrs_pdf(qrs: list[str], filename: str):
+def generate_qrs_pdf(qrs: list[str], filename: str, voucher_type: str):
   filename = OUTPUT_DIR+filename
-  rendered_template = jinja_env.get_template(QR_CODES_TEMPLATE).render({"qrcodes":qrs, "logo_path":LOGO_PATH})
+  rendered_template = jinja_env.get_template(QR_CODES_TEMPLATE).render({"qrcodes":qrs, "logo_path":LOGO_PATH,  "voucher_type": voucher_type})
   pdfkit.from_string(
     rendered_template,
     filename,
@@ -107,7 +108,7 @@ def prepare_qrs(vouchers:list[Voucher], lots_id:int, diningroom):
       filename = f'qr_{voucher.folio}.png'
       path = os.path.join(QRS_PATH, filename)
       qrcode.make(voucher.folio).save(path)
-      qr_paths.append((path, voucher.folio, diningroom))
+      qr_paths.append((path, voucher.folio, diningroom, voucher.employee))
   
   return qr_paths
 
@@ -121,13 +122,13 @@ def get_lot_pdf_path(lotId: int):
   filename = create_lot_pdf_name(lotId)
   return OUTPUT_DIR+filename
   
-def unique_vouchers_pdf_exists(lotId: int):
+def pdf_exists(lotId: int):
   filename = create_lot_pdf_name(lotId)
-  return os.path.exists(OUTPUT_DIR+filename)
+  return filename if os.path.exists(OUTPUT_DIR+filename) else None
 
-def generate_lot_pdf(lot_id: int):
+def generate_lot_pdf(lot_id: int, check_exists: bool):
   clean_temp_dir()
-  if unique_vouchers_pdf_exists(lot_id):
+  if pdf_exists(lot_id) and check_exists:
     return get_lot_pdf_path(lot_id)
   
   lot = Lots.objects.filter(id=lot_id).first()
@@ -136,7 +137,7 @@ def generate_lot_pdf(lot_id: int):
   vouchers = list(Voucher.objects.filter(id=lot_id))
   qr_paths = prepare_qrs(vouchers, lot_id, dining_room)
   filename = create_lot_pdf_name(lot_id)
-  generate_qrs_pdf(qr_paths, filename)
+  generate_qrs_pdf(qr_paths, filename, lot.voucher_type.description)
 
   for qr_path in qr_paths:
     os.remove(qr_path[0])
@@ -169,9 +170,9 @@ def clean_temp_dir():
       if time_difference.days  > LIMIT_DAYS:
         os.remove(file_path)
 
-def prepare_url_pdf(complete_url: str):
+def prepare_url_pdf(filepath: str):
   #conseguir la url hasta el penultimo /
-  url = complete_url.split('/')
-  url = url[-3:]
-  url = '/'.join(url)
-  return url
+  match = re.search(r"\\static\\.*", filepath)
+  relative_path = match.group(0)[1:] if match else filepath
+  relative_path = relative_path.replace("\\", "/")  
+  return relative_path

@@ -36,7 +36,7 @@ import os
 from email.message import EmailMessage
 import ssl
 import smtplib
-from apps.pdf_generation import generate_qrs_pdf, prepare_qrs, generate_lot_pdf, clean_pdf_dir, prepare_qr, generate_perpetual_voucher_pdf, verify_lot_pdf_exists, verify_voucher_pdf_exists, create_lot_pdf_name, create_voucher_pdf_name
+from apps.pdf_generation import generate_qrs_pdf, prepare_qrs, generate_lot_pdf, prepare_url_pdf, clean_pdf_dir, prepare_qr, generate_perpetual_voucher_pdf, verify_lot_pdf_exists, verify_voucher_pdf_exists, create_lot_pdf_name, create_voucher_pdf_name
 import re
 
 @login_required(login_url="/login/")
@@ -2384,10 +2384,11 @@ def generate_unique_voucher(request):
         client_id = data.get("client_id")
         dining_room_id = data.get("dining_room_id")
         quantity = data.get("quantity")
+        voucher_type = data.get("voucher_type")
         
 
-        if not client_id or not dining_room_id or not quantity:
-            return JsonResponse({"error": "client_id, dining_room_id y quantity son requeridos"}, status=400)
+        if not client_id or not dining_room_id or not quantity or not voucher_type:
+            return JsonResponse({"error": "client_id, type, dining_room_id y quantity son requeridos"}, status=400)
         
         if type(quantity) != int:
             return JsonResponse({"error": "quantity debe ser un número entero"}, status=400)
@@ -2398,7 +2399,11 @@ def generate_unique_voucher(request):
         if type(dining_room_id) != int:
             return JsonResponse({"error": "dining_room_id debe ser un número entero"}, status=400)
         
-        unique_voucher = VoucherType.objects.filter(description="UNICO").first()     
+        if voucher_type not in ["UNICO", "PERPETUO"]:
+            return JsonResponse({"error": "El tipo de vale debe ser 'UNICO' o 'PERPETUO'"}, status=400)
+    
+        
+        voucher_type_obj = VoucherType.objects.filter(description=voucher_type).first()     
         client_dinner = ClientDiner.objects.filter(client_id=client_id, dining_room_id=dining_room_id).first()
 
         if not client_dinner:
@@ -2420,7 +2425,7 @@ def generate_unique_voucher(request):
         with transaction.atomic():
             lots = Lots(
                 client_diner=client_dinner,
-                voucher_type=unique_voucher,
+                voucher_type=voucher_type_obj,
                 quantity=quantity,
                 created_by=request.user
             )
@@ -2437,7 +2442,7 @@ def generate_unique_voucher(request):
             
             
             filename = f'/LOT-{lots.id}.pdf'
-            generate_qrs_pdf(qr_paths, filename)
+            generate_qrs_pdf(qr_paths, filename, lots.voucher_type.description)
             
             context = {
                 "lot_id": lots.id,
@@ -2455,7 +2460,44 @@ def generate_unique_voucher(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
+#Funcion para devolver la ruta al pdf del lote
+@csrf_exempt
+def get_lot_pdf(request):
+    lot_id = request.GET.get('lot_id')
+    
+    if not lot_id:
+        return JsonResponse({"error": "El id del lote es requerido"}, status=400)
+    
+    lot = Lots.objects.filter(id=lot_id).first()
 
+    if not lot:
+        return JsonResponse({"error": "El lote especificado no existe"}, status=404)
+    
+    #Verifica si el pdf de dicho lote existe
+    filepath = verify_lot_pdf_exists(lot.id)
+    if filepath and lot.voucher_type.description == "UNICO":
+        url = prepare_url_pdf(filepath)
+        email = lot.email if lot.email else lot.client_diner.client.email
+    
+        return JsonResponse({"pdf": url, "email": email})
+    
+    vouchers = Voucher.objects.filter(lots=lot)
+    
+    if not vouchers:
+        return JsonResponse({"error": "No se encontraron vales para el lote especificado"}, status=404)
+    
+    qr_paths = prepare_qrs(vouchers, lot.id, lot.client_diner.dining_room.name)
+    
+    filename = create_lot_pdf_name(lot.id)
+    filepath = generate_qrs_pdf(qr_paths, filename, lot.voucher_type.description)
+    
+    url = prepare_url_pdf(filepath)
+
+    email = lot.email if lot.email else lot.client_diner.client.email
+    
+    return JsonResponse({"pdf": url, "email": email})
+    
+    
 @csrf_exempt
 def generate_perpetual_voucher(request):
     if request.method != 'POST':
@@ -2504,26 +2546,29 @@ def generate_perpetual_voucher(request):
 
 
         with transaction.atomic():
-            lots = Lots(
+            lot = Lots(
                 client_diner=client_dinner,
                 voucher_type=perpetual_voucher,
                 quantity=quantity,
                 created_by=request.user
             )
-            lots.save()
+            lot.save()
 
             vouchers = []
             
             for _ in range(quantity):
-                voucher = Voucher(lots=lots)
+                voucher = Voucher(lots=lot)
                 voucher.save()
                 vouchers.append(voucher)
-    
+
+            
+
+            email = lot.email if lot.email else lot.client_diner.client.email
             
             
             vouchers_objects = [{"id": voucher.id, "folio": voucher.folio} for voucher in vouchers]
 
-        return JsonResponse({'message': 'Vales generados con éxito', "lot": lots.id, "vouchers": vouchers_objects})
+        return JsonResponse({'message': 'Vales generados con éxito', "lot": lot.id, "vouchers": vouchers_objects, "email": email})
     except Exception as err:
         return JsonResponse({"error": str(err)}, status=500)
         
@@ -2574,7 +2619,7 @@ def send_lot_file_email(request):
 
         filepath = None
         try:
-            filepath = generate_lot_pdf(lot) 
+            filepath = generate_lot_pdf(lot, lot_object.voucher_type.description == "UNICO") 
         except Exception as err:
             return JsonResponse({"error": "Hubo un error generando el pdf"}, status=500)
 

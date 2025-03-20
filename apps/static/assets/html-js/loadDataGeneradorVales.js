@@ -26,7 +26,7 @@ function getLoader(content, loaderId){
   `
 }
 
-function loadPerpetualVouchersTable(vouchers){
+function loadPerpetualVouchersTable(vouchers, email, lotId){
   const secondCard = document.getElementById('second-card')
   secondCard.innerHTML = `
         <div class="table-responsive">
@@ -44,9 +44,57 @@ function loadPerpetualVouchersTable(vouchers){
             </tbody>
           </table>
         </div>
+        <div class="d-flex p-2 justify-content-end mt-3">
+          <div class="input-group mr-3" style="max-width: 400px;">
+            <input id="email-input-perpetual" class="form-control mr-3" type="email" placeholder="example@email.com" />
+            <button class="btn btn-primary" id="send-email-button">
+              <i class="fas fa-envelope"></i> Enviar por email
+            </button>
+          </div>
+          <button class="btn btn-secondary " id="download-pdf-button">
+            <i class="fas fa-download"></i> Descargar PDF
+          </button>
+        </div>
   `
 
   const tableBody = document.getElementById('perpetual-vouchers-table-body')
+  const emailInput = document.getElementById('email-input-perpetual')
+  const sendEmailButton = document.getElementById('send-email-button')
+  const downloadPdfButton = document.getElementById('download-pdf-button')
+  
+
+  emailInput.value = email
+
+  sendEmailButton.addEventListener('click', (e) => {
+    e.preventDefault()
+    const email = emailInput.value
+
+    sendLotFileToEmail(lotId, email)
+    .then(data => {
+      showToast(data.message, 'success')
+    })
+    .catch(err => {
+      showToast(err.message, 'danger')
+    })
+      
+  })
+
+  downloadPdfButton.addEventListener('click', (e) => {
+    e.preventDefault()
+    getLotPdf(lotId)
+      .then(data => {
+        const a = document.createElement('a')
+        a.download = `LOT-${lotId}.pdf`
+        a.href = data.pdf
+        a.click()
+        showToast(data.message || 'PDF descargado', 'success')
+      })
+      .catch(err => {
+        showToast(err.message, 'danger')
+      })
+  })
+
+    
 
   vouchers.forEach((voucher) => {
     const row = document.createElement('tr')
@@ -351,7 +399,7 @@ generateUniqueVouchersForm.addEventListener('submit', (e) => {
   generateUniqueVouchersForm.innerHTML += loader
 
   
-  generateUniqueVoucher(Number(uniqueClientField.value), Number(uniqueDiningRoomField.value), Number(quantity))
+  generateUniqueVoucher(Number(uniqueClientField.value), Number(uniqueDiningRoomField.value), Number(quantity), "UNICO")
   .then(data => {
 
     loadSendEmailCard(data.lot_id)
@@ -399,7 +447,7 @@ generatePerpetualVouchersForm.addEventListener('submit', (e) => {
   generatePerpetualVoucher(perpetualClient, perpetualDiningRoom, quantity)
     .then(data => {
       showToast(data.message, 'success')
-      loadPerpetualVouchersTable(data.vouchers)
+      loadPerpetualVouchersTable(data.vouchers, data.email, data.lot)
     })
     .catch(err => {
       showToast(err.message, 'danger')

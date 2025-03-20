@@ -86,6 +86,7 @@ urlpatterns = [
     path('search_pdf_qr_unique_voucher_and_generate/', views.search_pdf_qr_unique_voucher_and_generate, name='search_pdf_qr_unique_voucher_and_generate'),
     path('search_pdf_qr_perpetual_voucher_and_generate/', views.search_pdf_qr_perpetual_voucher_and_generate, name='search_pdf_qr_perpetual_voucher_and_generate'),
     path('change_voucher_status', views.change_voucher_status, name='change_voucher_status'),
+    path('get_lot_pdf', views.get_lot_pdf, name='get_lot_pdf'),
 
     # Matches any html file
     re_path(r'^.*\.*', views.pages, name='pages'),
