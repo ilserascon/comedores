@@ -1450,7 +1450,7 @@ def export_excel_employee_report(request):
             'Apellido Paterno Empleado',
             'Apellido Materno Empleado',
             'Estado Empleado',
-            'Fecha de Creación'
+            'Fecha de Ingreso'
         ]
 
         # Crear un nuevo libro de Excel y agregar dos hojas
@@ -1825,7 +1825,7 @@ def export_excel_unique_reports(request):
             df['entry_created_at'] = df['entry_created_at'].apply(lambda x: format_date(x) if pd.notnull(x) else "Sin usar")
 
         # Si el estado del vale es True, cambiar a 'Activo', de lo contrario 'Inactivo'
-        df['voucher_status'] = df['voucher_status'].apply(lambda x: 'Activo' if x else 'Inactivo')
+        df['voucher_status'] = df['voucher_status'].apply(lambda x: 'Sin usar' if x else 'Usado')
 
         # Define the custom headers for the Excel sheet
         headers = [
@@ -2251,7 +2251,7 @@ def export_excel_perpetuo_report(request):
             'Nombre Empleado',
             'Folio Vale',
             'Estado Vale',
-            'Fecha de Creación'
+            'Fecha de Ingreso'
         ]
 
         # Create a new Excel workbook and add two sheets
@@ -2277,7 +2277,7 @@ def export_excel_perpetuo_report(request):
             'Folio Vale',
             'Nombre Empleado',
             'Estado Vale',
-            'Número de usos'
+            'Número de Usos'
         ]
         ws2.append(simplified_headers)
         add_styles(ws2, simplified_headers)
@@ -2318,7 +2318,7 @@ def export_excel_perpetuo_report(request):
         summary_df = pd.DataFrame(list(perpetual_report_summary))
 
         # Si el estado del vale es verdadero asignar "Activo" y si es falso asignar "Inactivo"
-        summary_df['voucher_status'] = summary_df['voucher_status'].apply(lambda x: 'Activo' if x else 'Inactivo')
+        summary_df['voucher_status'] = summary_df['voucher_status'].apply(lambda x: 'Habilitado' if x else 'Deshabilitado')
 
         for row in dataframe_to_rows(summary_df, index=False, header=False):
             ws2.append(row)

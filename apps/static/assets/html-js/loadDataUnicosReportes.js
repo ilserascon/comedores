@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td>
                         <span class="badge badge-dot mr-4">
                             <i class="${entry.voucher_status ? 'bg-success' : 'bg-danger'}"></i>
-                            <span class="status">${entry.voucher_status ? 'Activo' : 'Inactivo'}</span>
+                            <span class="status">${entry.voucher_status ? 'Sin usar' : 'Usado'}</span>
                         </span>
                     </td>
                 </tr>

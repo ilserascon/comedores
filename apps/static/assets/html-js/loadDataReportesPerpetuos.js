@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td>
                         <span class="badge badge-dot mr-4">
                             <i class="${entry.voucher_status ? 'bg-success' : 'bg-danger'}"></i>
-                            <span class="status">${entry.voucher_status ? 'Activo' : 'Inactivo'}</span>
+                            <span class="status">${entry.voucher_status ? 'Habilitado' : 'Deshabilitado'}</span>
                         </span>
                     </td>
                     <td>${entry.entry_created_at ? formateDate(entry.entry_created_at) : 'Sin entradas'}</td>
