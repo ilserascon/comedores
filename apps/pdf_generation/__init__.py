@@ -43,7 +43,7 @@ jinja_env = jinja2.Environment(
 QR_CODES_TEMPLATE = 'qr-codes-template.html'
 QR_CODE_PERPETUAL_TEMPLATE = 'qr-code-perpetual-template.html'
 QR_CODES_STYLESHEET = CSS_DIR+'/generated-qr-styles.css'
-LOGO_PATH = os.path.abspath('./apps/static/assets/img/brand/logo_alcorp.jpg')
+LOGO_PATH = os.path.abspath('./apps/static/assets/img/brand/logo_alcorp.png')
 
 def generate_qrs_pdf(qrs: list[str], filename: str):
   filename = OUTPUT_DIR+filename
