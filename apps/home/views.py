@@ -1038,26 +1038,28 @@ def get_comedores_clientes(request):
 def upload_empleados(request):
     if request.method == 'POST':
         try:
+            # Obtenemos los datos
             data = json.loads(request.body)
-            cliente_id = int(data.get('cliente_id'))  # Convertir cliente_id a entero
-            comedor_id = int(data.get('comedor_id'))  # Convertir comedor_id a entero
+            cliente_id = int(data.get('cliente_id'))
+            comedor_id = int(data.get('comedor_id'))
             empleados = data.get('empleados')
             
-            # Validar cliente_id y comedor_id
+            # Validamos que los campos del modal no esten vacios
             if not cliente_id:
                 return JsonResponse({'error': 'El campo cliente_id es obligatorio'}, status=400)
             if not comedor_id:
                 return JsonResponse({'error': 'El campo comedor_id es obligatorio'}, status=400)
 
-            # Contador de empleados insertados, no insertados y modificados
+            # Contador de empleados insertados, no repetidos y modificados
             empleados_insertados = 0
             empleados_repetidos = 0
             empleados_modificados = 0
 
-            with transaction.atomic():  # Iniciar transacción atómica
-                # Procesar los empleados
+            # Iniciamos una transacción al momento de leer el archivo
+            with transaction.atomic():
+                # Procesamos cada registro en el archivo
                 for empleado_data in empleados:
-                    # Validar los datos del empleado
+                    # Validamos que los campos obligatorios no estén vacíos
                     if not empleado_data.get('NOMBRES'):
                         return JsonResponse({'error': 'El campo NOMBRES es obligatorio'}, status=400)
                     if not empleado_data.get('NO. EMPLEADO'):
@@ -1067,22 +1069,22 @@ def upload_empleados(request):
                     if not empleado_data.get('NOMINA'):
                         return JsonResponse({'error': 'El campo NOMINA es obligatorio'}, status=400)
 
-                    # Obtener la instancia de PayrollType
+                    # Obtenemos la instancia del modelo PayrollType
                     payroll = PayrollType.objects.get(description=empleado_data.get('NOMINA'))
 
-                    # Asignar valores predeterminados si los campos son None
+                    # Asignamos valores predeterminados si los campos son None
                     nombre = empleado_data.get('NOMBRES', '').upper()
                     apellido_paterno = empleado_data.get('APELLIDO PATERNO', '').upper()
                     apellido_materno = empleado_data.get('APELLIDO MATERNO', '').upper()
 
-                    # Verificar si el empleado ya existe
+                    # Obtenemos el empleado por su numero de empleado en la base de datos
                     empleado_existente = Employee.objects.filter(employeed_code=empleado_data.get('NO. EMPLEADO')).first()
 
                     # Si el empleado existe
                     if empleado_existente:
                         # y es del mismo cliente
                         if empleado_existente.client.id == cliente_id:
-                            # Verificar y actualizar campos si son diferentes
+                            # Verificamos y actualizamos campos si son diferentes
                             campos_actualizados = False
                             if empleado_existente.name != nombre:
                                 empleado_existente.name = nombre
@@ -1096,11 +1098,11 @@ def upload_empleados(request):
                             if empleado_existente.payroll != payroll:
                                 empleado_existente.payroll = payroll
                                 campos_actualizados = True
-                            if not empleado_existente.status:  # Activar si está inactivo
+                            if not empleado_existente.status:  # Activamos el registro si esta inactivo
                                 empleado_existente.status = True
                                 campos_actualizados = True
 
-                            # Verificar y actualizar la relación con el comedor
+                            # Verificamos y actualizamos la relación con el comedor
                             client_diner = ClientDiner.objects.get(client_id=cliente_id, dining_room_id=comedor_id)
                             employee_client_diner = EmployeeClientDiner.objects.filter(employee=empleado_existente, client_diner__client_id=cliente_id).first()
                             if employee_client_diner:
@@ -1114,12 +1116,12 @@ def upload_empleados(request):
                                 empleado_existente.updated_by_id = request.user.id
                                 empleado_existente.save()
                                 empleados_modificados += 1  # Incrementar solo una vez si hubo cambios
-                            else:
-                                # Si no hubo cambios, se considera repetido
-                                empleados_repetidos += 1
+                            else:                                
+                                empleados_repetidos += 1 # Si no hubo cambios, se considera repetido
                             continue
-                        else:
-                            # Si el código de empleado existe y el cliente no es el mismo, se inserta
+
+                        # Si el código del empleado existe y el cliente no es el mismo, entonces se inserta
+                        else:                            
                             empleado = Employee(
                                 employeed_code=empleado_data.get('NO. EMPLEADO'),
                                 name=nombre,
@@ -1132,8 +1134,9 @@ def upload_empleados(request):
                             )
                             empleado.save()
                             empleados_insertados += 1
-                    else:
-                        # Si el código de empleado no existe, se inserta
+                    
+                    # Si el código del empleado no existe, entonces se inserta
+                    else:                        
                         empleado = Employee(
                             employeed_code=empleado_data.get('NO. EMPLEADO'),
                             name=nombre,
@@ -1147,7 +1150,7 @@ def upload_empleados(request):
                         empleado.save()
                         empleados_insertados += 1
 
-                    # Crear la relación en EmployeeClientDiner
+                    # Creamos la relación en el modelo EmployeeClientDiner
                     client_diner = ClientDiner.objects.get(client_id=cliente_id, dining_room_id=comedor_id)
                     EmployeeClientDiner.objects.create(
                         employee=empleado,
@@ -1156,11 +1159,7 @@ def upload_empleados(request):
                         updated_by_id=request.user.id
                     )
 
-                # Llamar a la función para cambiar el estado del comedor si es necesario
-                dining_room = DiningRoom.objects.get(id=comedor_id)
-                if not dining_room.status:  # Si el comedor está inactivo
-                    change_dining_room_status(request.user, dining_room, False)
-
+            # Mensajes de respuesta
             message = {}
 
             if empleados_insertados > 0:
