@@ -17,8 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async function validarEmpleadoEntrada(codigoEmpleado) {
-        const empleadoData = await validarEmpleado(codigoEmpleado);
-        console.log(empleadoData)
+        const empleadoData = await validarEmpleado(codigoEmpleado);        
         if (empleadoData) {
             showModal(empleadoData.message, empleadoData.status, 3);
             if (empleadoData.status === 'success') {
@@ -29,8 +28,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     async function validarValeEntrada(folio) {
-        const data = await validarVale(folio);
-        console.log(data)
+        const data = await validarVale(folio);        
         if (data) {
             showModal(data.message, data.status, 3);
             if (data.status === 'success') {
@@ -156,9 +154,7 @@ const modalElement = document.getElementById('entry-message')
  * @param {string} [type='success'] - El tipo de modal ('success', 'info', 'danger', 'loading').
  * @param {number} [duration=0] - La duración en milisegundos para que el modal se cierre automáticamente. Si es 0, no se cierra automáticamente.
  */
-function showModal(message, type = 'success', duration = 0) {
-
-    console.log(message, type, duration)
+function showModal(message, type = 'success', duration = 0) {    
 
     switch (type) {
         case 'loading':

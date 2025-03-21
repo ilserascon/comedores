@@ -108,9 +108,7 @@ async function actualizarTablaComedores(page = 1, filter = 'all') {
  */
 async function openEditModal(id) {
     try {
-        const comedor = await getComedor(id);
-
-        console.log(comedor);
+        const comedor = await getComedor(id);        
 
         // Llenar los selects antes de asignar los valores
         await llenarSelectEncargados('editarComedorInCharge', comedor.in_charge);
