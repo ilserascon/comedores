@@ -3063,51 +3063,6 @@ def get_vouchers_by_lot(request):
         return JsonResponse({'error': str(e)}, status=500)
     
 @csrf_exempt
-def search_pdf_qr_unique_voucher_and_generate(request):
-    if request.method != 'POST':
-        return JsonResponse({'error': 'Método no permitido'}, status=405)
-    
-    try:
-        data = json.loads(request.body)
-        lot_id = data.get('lot_id')
-        
-        if not lot_id:
-            return JsonResponse({'error': 'lot_id es requerido'}, status=400)
-        
-        lot = Lots.objects.filter(id=lot_id).first()
-        
-        if not lot:
-            return JsonResponse({'error': 'Lote no encontrado'}, status=404)
-        
-        if lot.voucher_type.description != 'UNICO':
-            return JsonResponse({'error': 'El lote no es de tipo único'}, status=400)
-        
-        existing_filepath = verify_lot_pdf_exists(lot.id)
-        if existing_filepath:
-            filename = existing_filepath.split('/')[-1]
-            return JsonResponse({'pdf': f'/static/pdfs/{filename}', 'message': 'PDF ya existente'})
-        
-
-        # Generar los códigos QR y el PDF si no existe
-        vouchers = Voucher.objects.filter(lots=lot)
-        qr_paths = prepare_qrs(vouchers, lot.id, lot.client_diner.dining_room.name)
-
-        filename = create_lot_pdf_name(lot.id)
-        
-        generate_qrs_pdf(qr_paths, filename)
-        
-        # Eliminar los archivos temporales de los códigos QR
-        for qr in qr_paths:
-            os.remove(qr[0])
-        
-
-        
-        return JsonResponse({'pdf': f'/static/pdfs{filename}', 'message': 'PDF generado con éxito'})
-    except Exception as e:
-        print(e)
-        return JsonResponse({'error': str(e)}, status=500)
-    
-@csrf_exempt
 def search_pdf_qr_perpetual_voucher_and_generate(request):
     if request.method != 'POST':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
@@ -3159,9 +3114,6 @@ def change_voucher_status(request):
         data = json.loads(request.body)
         voucher_id = data.get('voucher_id')
         status = data.get('status')
-
-        print(data)
-        print(status)
         
         if not voucher_id or not isinstance(status, bool):
             return JsonResponse({'error': 'voucher_id y status booleano son requeridos'}, status=400)
