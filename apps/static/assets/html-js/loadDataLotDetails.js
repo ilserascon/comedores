@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const employeeHeader = document.getElementById('employeeHeader');
   const actionsHeader = document.getElementById('actionsHeader');
-  const uniqueLotActions = document.getElementById('uniqueLotActions');
+  const lotActions = document.getElementById('lotActions');
   const downloadVouchersBtn = document.getElementById('downloadVouchersBtn');
   const resendEmailBtn = document.getElementById('resendEmailBtn');
   const emailInput = document.getElementById('emailResend');
@@ -30,7 +30,6 @@ document.addEventListener('DOMContentLoaded', () => {
       pagination.innerHTML = '';
 
       const isUnique = data.vouchers.every(voucher => voucher.voucher_type === 'UNICO');
-      uniqueLotActions.style.display = isUnique ? 'block' : 'none';
 
       const hasPerpetual = data.vouchers.some(voucher => voucher.voucher_type === 'PERPETUO');
 
@@ -147,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   downloadVouchersBtn.addEventListener('click', async () => {
     try {
-      const data = await fetchDownloadVouchers(lotId);
+      const data = await getLotPdf(lotId);
       const a = document.createElement('a');
       a.href = data.pdf;
       a.download = `LOT-${lotId}.pdf`;
@@ -155,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (error) {
       showToast('Error al descargar los vales', 'danger');
     }
-  });
+  }); 
 
   window.handlePerpetualVoucher = async function (voucherFolio) {
     try {
