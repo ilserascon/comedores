@@ -101,12 +101,14 @@ async function createComedor(data) {
         body: JSON.stringify(data)
     });
 
+    const result = await response.json();
+
     if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Error al crear comedor');
+        // Devuelve el mensaje de error del backend
+        return { success: false, message: result.message || 'Error al crear comedor' };
     }
 
-    return await response.json();
+    return { success: true, data: result };
 }
 
 /**
@@ -124,10 +126,14 @@ async function updateComedor(data) {
         body: JSON.stringify(data)
     });
 
+    const result = await response.json();
+
     if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Error al actualizar comedor');
+        // Devuelve el mensaje de error del backend
+        return { success: false, message: result.message || 'Error al actualizar comedor' };
     }
+
+    return { success: true, data: result };
 }
 
 

@@ -304,7 +304,7 @@ function showToast(message, type = 'success') {
 
 function populateDinningRoomField(clientId){
   
-  getAllComedores(clientId).then(
+  getComedoresClientes(clientId).then(
     data => {
       data.comedores.forEach(comedor => {
         const option = document.createElement('option')
