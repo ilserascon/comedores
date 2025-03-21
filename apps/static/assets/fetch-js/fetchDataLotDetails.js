@@ -34,6 +34,5 @@
 
   async function sendLotEmail(lotId, email) {
     const response = await sendLotFileToEmail(lotId, email);
-    if (!response.ok) throw new Error('Error al enviar el correo');
     return response;
   }

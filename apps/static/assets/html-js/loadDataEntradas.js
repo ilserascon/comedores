@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 `;
             }
         } catch (error) {
-            console.error('Error al mostrar la información del comedor:', error.message);
+            showToast('Error al cargar la información del comedor', 'danger');
         }
     }
     

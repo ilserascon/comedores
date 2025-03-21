@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Create pagination
       createPagination(page, data.pages);
     } catch (error) {
-      console.error('Error al cargar los lotes:', error);
+      showToast('Error al cargar los lotes', 'danger');
     } finally {
       isFetching = false;
     }
