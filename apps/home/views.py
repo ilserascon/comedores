@@ -1051,7 +1051,7 @@ def upload_empleados(request):
 
             # Contador de empleados insertados, no insertados y modificados
             empleados_insertados = 0
-            empleados_no_insertados = 0
+            empleados_repetidos = 0
             empleados_modificados = 0
 
             with transaction.atomic():  # Iniciar transacción atómica
@@ -1100,21 +1100,23 @@ def upload_empleados(request):
                                 empleado_existente.status = True
                                 campos_actualizados = True
 
-                            if campos_actualizados:
-                                empleado_existente.updated_by_id = request.user.id
-                                empleado_existente.save()
-                                empleados_modificados += 1
-
                             # Verificar y actualizar la relación con el comedor
                             client_diner = ClientDiner.objects.get(client_id=cliente_id, dining_room_id=comedor_id)
                             employee_client_diner = EmployeeClientDiner.objects.filter(employee=empleado_existente, client_diner__client_id=cliente_id).first()
-                            if employee_client_diner and employee_client_diner.client_diner.dining_room_id != comedor_id:
-                                employee_client_diner.client_diner = client_diner
-                                employee_client_diner.updated_by_id = request.user.id
-                                employee_client_diner.save()
-                                empleados_modificados += 1
+                            if employee_client_diner:
+                                if employee_client_diner.client_diner.dining_room_id != comedor_id:
+                                    employee_client_diner.client_diner = client_diner
+                                    employee_client_diner.updated_by_id = request.user.id
+                                    employee_client_diner.save()
+                                    campos_actualizados = True
+
+                            if campos_actualizados:
+                                empleado_existente.updated_by_id = request.user.id
+                                empleado_existente.save()
+                                empleados_modificados += 1  # Incrementar solo una vez si hubo cambios
                             else:
-                                empleados_no_insertados += 1
+                                # Si no hubo cambios, se considera repetido
+                                empleados_repetidos += 1
                             continue
                         else:
                             # Si el código de empleado existe y el cliente no es el mismo, se inserta
@@ -1163,8 +1165,8 @@ def upload_empleados(request):
 
             if empleados_insertados > 0:
                 message['message1'] = [f'Empleados insertados: {empleados_insertados}', 'success']
-            if empleados_no_insertados > 0:
-                message['message2'] = [f'Empleados repetidos: {empleados_no_insertados}', 'info']
+            if empleados_repetidos > 0:
+                message['message2'] = [f'Empleados ya existentes: {empleados_repetidos}', 'info']
             if empleados_modificados > 0:
                 message['message3'] = [f'Empleados modificados: {empleados_modificados}', 'info']
 
