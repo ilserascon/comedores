@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function() {
         toast.style.zIndex = '1';
     
         toast.innerHTML = `
-            <div class="toast-header bg-${type} text-white d-flex align-items-center justify-content-between p-1 px-1 rounded-pill shadow-sm">
+            <div class="toast-header bg-${type} text-white d-flex align-items-center justify-content-between p-1 px-1 shadow-sm">
                 <strong class="me-auto">${header}</strong>
                 <button type="button" class="btn-close btn-close-white right-1" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td>
                         <span class="badge badge-dot mr-4">
                             <i class="${entry.voucher_status ? 'bg-success' : 'bg-danger'}"></i>
-                            <span class="status">${entry.voucher_status ? 'Activo' : 'Inactivo'}</span>
+                            <span class="status">${entry.voucher_status ? 'Habilitado' : 'Deshabilitado'}</span>
                         </span>
                     </td>
                     <td>${entry.entry_created_at ? formateDate(entry.entry_created_at) : 'Sin entradas'}</td>
@@ -254,6 +254,7 @@ document.addEventListener('DOMContentLoaded', function() {
             filterDiningRoom: document.getElementById('filterDiningRoom').value,
             filterEmployeeName: document.getElementById('filterEmployeeName').value,
             filterVoucherFolio: document.getElementById('filterVoucherFolio').value,
+            filterLotNumber : document.getElementById('filterLotNumber').value,
             filterStatus: document.getElementById('filterStatus').value,
             filterStartDate: document.getElementById('filterStartDate').value,
             filterEndDate: document.getElementById('filterEndDate').value
@@ -269,6 +270,7 @@ document.addEventListener('DOMContentLoaded', function() {
             filterDiningRoom: document.getElementById('filterDiningRoom').value,
             filterEmployeeName: document.getElementById('filterEmployeeName').value,
             filterVoucherFolio: document.getElementById('filterVoucherFolio').value,
+            filterLotNumber : document.getElementById('filterLotNumber').value,
             filterStatus: document.getElementById('filterStatus').value,
             filterStartDate: document.getElementById('filterStartDate').value,
             filterEndDate: document.getElementById('filterEndDate').value
@@ -303,6 +305,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('filterDiningRoom').value = '';
         document.getElementById('filterEmployeeName').value = '';
         document.getElementById('filterVoucherFolio').value = '';
+        document.getElementById('filterLotNumber').value = '';
         document.getElementById('filterStatus').value = '';
         document.getElementById('filterStartDate').value = '';
         document.getElementById('filterEndDate').value = '';

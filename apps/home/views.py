@@ -37,7 +37,7 @@ import os
 from email.message import EmailMessage
 import ssl
 import smtplib
-from apps.pdf_generation import generate_qrs_pdf, prepare_qrs, generate_lot_pdf, clean_pdf_dir, prepare_qr, generate_perpetual_voucher_pdf, verify_lot_pdf_exists, verify_voucher_pdf_exists, create_lot_pdf_name, create_voucher_pdf_name
+from apps.pdf_generation import generate_qrs_pdf, prepare_qrs, generate_lot_pdf, prepare_url_pdf, clean_pdf_dir, prepare_qr, generate_perpetual_voucher_pdf, verify_lot_pdf_exists, verify_voucher_pdf_exists, create_lot_pdf_name, create_voucher_pdf_name
 import re
 
 @login_required(login_url="/login/")
@@ -1546,7 +1546,7 @@ def export_excel_employee_report(request):
             'Apellido Paterno Empleado',
             'Apellido Materno Empleado',
             'Estado Empleado',
-            'Fecha de Creación'
+            'Fecha de Ingreso'
         ]
 
         # Crear un nuevo libro de Excel y agregar dos hojas
@@ -1620,7 +1620,9 @@ def get_unique_reports(request):
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     
     page_number = request.GET.get('page', 1)
-    page_size = request.GET.get('page_size', 10)    
+    page_size = request.GET.get('page_size', 10)
+    lot = request.GET.get('filterLotNumber')
+
 
     try:
         # Filtros de vales
@@ -1629,7 +1631,8 @@ def get_unique_reports(request):
             'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
             'folio__icontains': request.GET.get('filterVoucherNumber'),
             'status': request.GET.get('filterStatus'),
-            'lots__voucher_type_id': 1
+            'lots__voucher_type_id': 1,
+            'lots__id': lot
         }
 
         filters = {k: v for k, v in filters.items() if v}
@@ -1735,6 +1738,8 @@ def get_clients_unique_reports(request):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
 
+    lot = request.GET.get('filterLotNumber')
+
     try:
         # Filtros para los vales
         filters = {
@@ -1742,7 +1747,8 @@ def get_clients_unique_reports(request):
             'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
             'folio__icontains': request.GET.get('filterVoucherNumber'),
             'status': request.GET.get('filterStatus'),
-            'lots__voucher_type_id': 1
+            'lots__voucher_type_id': 1,
+            'lots__id': lot
         }
         filters = {k: v for k, v in filters.items() if v}
 
@@ -1779,6 +1785,9 @@ def get_diners_unique_reports(request):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     
+    lot = request.GET.get('filterLotNumber')
+
+    
     try:
         # Filtros para los vales
         filters = {
@@ -1786,7 +1795,8 @@ def get_diners_unique_reports(request):
             'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
             'folio__icontains': request.GET.get('filterVoucherNumber'),
             'status': request.GET.get('filterStatus'),
-            'lots__voucher_type_id': 1
+            'lots__voucher_type_id': 1,
+            'lots__id': lot
         }
         filters = {k: v for k, v in filters.items() if v}
 
@@ -1822,6 +1832,8 @@ def get_diners_unique_reports(request):
 def export_excel_unique_reports(request):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    lot = request.GET.get('filterLotNumber')
 
     try:
         # Filtros de vales
@@ -1830,7 +1842,8 @@ def export_excel_unique_reports(request):
             'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
             'folio__icontains': request.GET.get('filterVoucherNumber'),
             'status': request.GET.get('filterStatus'),
-            'lots__voucher_type_id': 1
+            'lots__voucher_type_id': 1,
+            'lots__id': lot
         }
 
         filters = {k: v for k, v in filters.items() if v}
@@ -1921,7 +1934,7 @@ def export_excel_unique_reports(request):
             df['entry_created_at'] = df['entry_created_at'].apply(lambda x: format_date(x) if pd.notnull(x) else "Sin usar")
 
         # Si el estado del vale es True, cambiar a 'Activo', de lo contrario 'Inactivo'
-        df['voucher_status'] = df['voucher_status'].apply(lambda x: 'Activo' if x else 'Inactivo')
+        df['voucher_status'] = df['voucher_status'].apply(lambda x: 'Sin usar' if x else 'Usado')
 
         # Define the custom headers for the Excel sheet
         headers = [
@@ -1983,6 +1996,8 @@ def get_perpetual_reports(request):
     
     page_number = request.GET.get('page', 1)
     page_size = request.GET.get('page_size', 10)
+    lot = request.GET.get('filterLotNumber')
+
 
     try:
         # Filtros de vales
@@ -1992,7 +2007,8 @@ def get_perpetual_reports(request):
             'employee__icontains': request.GET.get('filterEmployeeName'),
             'voucher__status': request.GET.get('filterStatus'),
             'voucher__lots__voucher_type_id': 2,  # Tipo de vale perpetuo
-            'voucher__folio__icontains': request.GET.get('filterVoucherFolio')
+            'voucher__folio__icontains': request.GET.get('filterVoucherFolio'),
+            'voucher__lots__id': lot
         }
 
         filters = {k: v for k, v in filters.items() if v}
@@ -2051,12 +2067,16 @@ def get_perpetual_reports(request):
         }
         return JsonResponse(context)
     except Exception as e:
+        print(e)
         return JsonResponse({'error': str(e)}, status=500)
 
 @csrf_exempt
 def get_clients_perpetual_reports(request):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    lot = request.GET.get('filterLotNumber')
+
 
     try:
         # Filtros para los vales
@@ -2066,7 +2086,8 @@ def get_clients_perpetual_reports(request):
             'employee__icontains': request.GET.get('filterEmployeeName'),
             'status': request.GET.get('filterStatus'),
             'lots__voucher_type_id': 2,  # Tipo de vale perpetuo
-            'folio__icontains': request.GET.get('filterVoucherFolio')
+            'folio__icontains': request.GET.get('filterVoucherFolio'),
+            'lots__id': lot
         }
         filters = {k: v for k, v in filters.items() if v}
 
@@ -2103,6 +2124,9 @@ def get_diners_perpetual_reports(request):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     
+    lot = request.GET.get('filterLotNumber')
+
+
     try:
         # Filtros para los vales
         filters = {
@@ -2111,7 +2135,8 @@ def get_diners_perpetual_reports(request):
             'employee__icontains': request.GET.get('filterEmployeeName'),
             'status': request.GET.get('filterStatus'),
             'lots__voucher_type_id': 2,  # Tipo de vale perpetuo
-            'folio__icontains': request.GET.get('filterVoucherFolio')
+            'folio__icontains': request.GET.get('filterVoucherFolio'),
+            'lots__id': lot
         }
         filters = {k: v for k, v in filters.items() if v}
 
@@ -2150,6 +2175,9 @@ def get_perpetual_report_summary(request):
     
     page_number = request.GET.get('page', 1)
     page_size = request.GET.get('page_size', 10)
+    lot = request.GET.get('filterLotNumber')
+
+    
     try:
         filters = {
             'lots__client_diner__client__id': request.GET.get('filterClient'),
@@ -2157,7 +2185,8 @@ def get_perpetual_report_summary(request):
             'employee__icontains': request.GET.get('filterEmployeeName'),
             'status': request.GET.get('filterStatus'),
             'lots__voucher_type_id': 2,  # Tipo de vale perpetuo
-            'folio__icontains': request.GET.get('filterVoucherFolio')
+            'folio__icontains': request.GET.get('filterVoucherFolio'),
+            'lots__id': lot
         }
         filters = {k: v for k, v in filters.items() if v}
 
@@ -2207,13 +2236,15 @@ def get_perpetual_report_summary_details(request):
     voucher_id = request.GET.get('voucherId')
     page_number = request.GET.get('page', 1)
     page_size = request.GET.get('page_size', 5)
+    lot = request.GET.get('filterLotNumber')
 
     if not voucher_id:
         return JsonResponse({'error': 'voucher_id es requerido'}, status=400)
     
     try:
         filters = {
-            'id': voucher_id
+            'id': voucher_id,
+            'lots__id': lot,
         }
 
         voucher_detail = Voucher.objects.select_related(
@@ -2278,6 +2309,9 @@ def export_excel_perpetuo_report(request):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     
+    lot = request.GET.get('filterLotNumber')
+
+    
     try:
         filters = {
             'voucher__lots__client_diner__client__id': request.GET.get('filterClient'),
@@ -2285,7 +2319,8 @@ def export_excel_perpetuo_report(request):
             'employee__icontains': request.GET.get('filterEmployeeName'),
             'voucher__status': request.GET.get('filterStatus'),
             'voucher__lots__voucher_type_id': 2,  # Tipo de vale perpetuo
-            'voucher__folio__icontains': request.GET.get('filterVoucherFolio')
+            'voucher__folio__icontains': request.GET.get('filterVoucherFolio'),
+            'voucher__lots__id': lot
         }
 
         # Convertir las fechas a objetos datetime conscientes de la zona horaria
@@ -2347,7 +2382,7 @@ def export_excel_perpetuo_report(request):
             'Nombre Empleado',
             'Folio Vale',
             'Estado Vale',
-            'Fecha de Creación'
+            'Fecha de Ingreso'
         ]
 
         # Create a new Excel workbook and add two sheets
@@ -2373,7 +2408,7 @@ def export_excel_perpetuo_report(request):
             'Folio Vale',
             'Nombre Empleado',
             'Estado Vale',
-            'Número de usos'
+            'Número de Usos'
         ]
         ws2.append(simplified_headers)
         add_styles(ws2, simplified_headers)
@@ -2385,7 +2420,8 @@ def export_excel_perpetuo_report(request):
             'employee__icontains': request.GET.get('filterEmployeeName'),
             'status': request.GET.get('filterStatus'),
             'lots__voucher_type_id': 2,  # Tipo de vale perpetuo
-            'folio__icontains': request.GET.get('filterVoucherFolio')
+            'folio__icontains': request.GET.get('filterVoucherFolio'),
+            'lots__id': lot
         }
                 # Convert date filters to timezone-aware datetime
         if filters.get('created_at__gte'):
@@ -2414,7 +2450,7 @@ def export_excel_perpetuo_report(request):
         summary_df = pd.DataFrame(list(perpetual_report_summary))
 
         # Si el estado del vale es verdadero asignar "Activo" y si es falso asignar "Inactivo"
-        summary_df['voucher_status'] = summary_df['voucher_status'].apply(lambda x: 'Activo' if x else 'Inactivo')
+        summary_df['voucher_status'] = summary_df['voucher_status'].apply(lambda x: 'Habilitado' if x else 'Deshabilitado')
 
         for row in dataframe_to_rows(summary_df, index=False, header=False):
             ws2.append(row)
@@ -2444,10 +2480,11 @@ def generate_unique_voucher(request):
         client_id = data.get("client_id")
         dining_room_id = data.get("dining_room_id")
         quantity = data.get("quantity")
+        voucher_type = data.get("voucher_type")
         
 
-        if not client_id or not dining_room_id or not quantity:
-            return JsonResponse({"error": "client_id, dining_room_id y quantity son requeridos"}, status=400)
+        if not client_id or not dining_room_id or not quantity or not voucher_type:
+            return JsonResponse({"error": "client_id, type, dining_room_id y quantity son requeridos"}, status=400)
         
         if type(quantity) != int:
             return JsonResponse({"error": "quantity debe ser un número entero"}, status=400)
@@ -2458,7 +2495,11 @@ def generate_unique_voucher(request):
         if type(dining_room_id) != int:
             return JsonResponse({"error": "dining_room_id debe ser un número entero"}, status=400)
         
-        unique_voucher = VoucherType.objects.filter(description="UNICO").first()     
+        if voucher_type not in ["UNICO", "PERPETUO"]:
+            return JsonResponse({"error": "El tipo de vale debe ser 'UNICO' o 'PERPETUO'"}, status=400)
+    
+        
+        voucher_type_obj = VoucherType.objects.filter(description=voucher_type).first()     
         client_dinner = ClientDiner.objects.filter(client_id=client_id, dining_room_id=dining_room_id).first()
 
         if not client_dinner:
@@ -2480,7 +2521,7 @@ def generate_unique_voucher(request):
         with transaction.atomic():
             lots = Lots(
                 client_diner=client_dinner,
-                voucher_type=unique_voucher,
+                voucher_type=voucher_type_obj,
                 quantity=quantity,
                 created_by=request.user
             )
@@ -2497,7 +2538,7 @@ def generate_unique_voucher(request):
             
             
             filename = f'/LOT-{lots.id}.pdf'
-            generate_qrs_pdf(qr_paths, filename)
+            generate_qrs_pdf(qr_paths, filename, lots.voucher_type.description)
             
             context = {
                 "lot_id": lots.id,
@@ -2515,7 +2556,44 @@ def generate_unique_voucher(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
+#Funcion para devolver la ruta al pdf del lote
+@csrf_exempt
+def get_lot_pdf(request):
+    lot_id = request.GET.get('lot_id')
+    
+    if not lot_id:
+        return JsonResponse({"error": "El id del lote es requerido"}, status=400)
+    
+    lot = Lots.objects.filter(id=lot_id).first()
 
+    if not lot:
+        return JsonResponse({"error": "El lote especificado no existe"}, status=404)
+    
+    #Verifica si el pdf de dicho lote existe
+    filepath = verify_lot_pdf_exists(lot.id)
+    if filepath and lot.voucher_type.description == "UNICO":
+        url = prepare_url_pdf(filepath)
+        email = lot.email if lot.email else lot.client_diner.client.email
+    
+        return JsonResponse({"pdf": url, "email": email})
+    
+    vouchers = Voucher.objects.filter(lots=lot)
+    
+    if not vouchers:
+        return JsonResponse({"error": "No se encontraron vales para el lote especificado"}, status=404)
+    
+    qr_paths = prepare_qrs(vouchers, lot.id, lot.client_diner.dining_room.name)
+    
+    filename = create_lot_pdf_name(lot.id)
+    filepath = generate_qrs_pdf(qr_paths, filename, lot.voucher_type.description)
+    
+    url = prepare_url_pdf(filepath)
+
+    email = lot.email if lot.email else lot.client_diner.client.email
+    
+    return JsonResponse({"pdf": url, "email": email})
+    
+    
 @csrf_exempt
 def generate_perpetual_voucher(request):
     if request.method != 'POST':
@@ -2564,26 +2642,29 @@ def generate_perpetual_voucher(request):
 
 
         with transaction.atomic():
-            lots = Lots(
+            lot = Lots(
                 client_diner=client_dinner,
                 voucher_type=perpetual_voucher,
                 quantity=quantity,
                 created_by=request.user
             )
-            lots.save()
+            lot.save()
 
             vouchers = []
             
             for _ in range(quantity):
-                voucher = Voucher(lots=lots)
+                voucher = Voucher(lots=lot)
                 voucher.save()
                 vouchers.append(voucher)
-    
+
+            
+
+            email = lot.email if lot.email else lot.client_diner.client.email
             
             
             vouchers_objects = [{"id": voucher.id, "folio": voucher.folio} for voucher in vouchers]
 
-        return JsonResponse({'message': 'Vales generados con éxito', "lot": lots.id, "vouchers": vouchers_objects})
+        return JsonResponse({'message': 'Vales generados con éxito', "lot": lot.id, "vouchers": vouchers_objects, "email": email})
     except Exception as err:
         return JsonResponse({"error": str(err)}, status=500)
         
@@ -2634,7 +2715,7 @@ def send_lot_file_email(request):
 
         filepath = None
         try:
-            filepath = generate_lot_pdf(lot) 
+            filepath = generate_lot_pdf(lot, lot_object.voucher_type.description == "UNICO") 
         except Exception as err:
             return JsonResponse({"error": "Hubo un error generando el pdf"}, status=500)
 
@@ -3078,51 +3159,6 @@ def get_vouchers_by_lot(request):
         return JsonResponse({'error': str(e)}, status=500)
     
 @csrf_exempt
-def search_pdf_qr_unique_voucher_and_generate(request):
-    if request.method != 'POST':
-        return JsonResponse({'error': 'Método no permitido'}, status=405)
-    
-    try:
-        data = json.loads(request.body)
-        lot_id = data.get('lot_id')
-        
-        if not lot_id:
-            return JsonResponse({'error': 'lot_id es requerido'}, status=400)
-        
-        lot = Lots.objects.filter(id=lot_id).first()
-        
-        if not lot:
-            return JsonResponse({'error': 'Lote no encontrado'}, status=404)
-        
-        if lot.voucher_type.description != 'UNICO':
-            return JsonResponse({'error': 'El lote no es de tipo único'}, status=400)
-        
-        existing_filepath = verify_lot_pdf_exists(lot.id)
-        if existing_filepath:
-            filename = existing_filepath.split('/')[-1]
-            return JsonResponse({'pdf': f'/static/pdfs/{filename}', 'message': 'PDF ya existente'})
-        
-
-        # Generar los códigos QR y el PDF si no existe
-        vouchers = Voucher.objects.filter(lots=lot)
-        qr_paths = prepare_qrs(vouchers, lot.id, lot.client_diner.dining_room.name)
-
-        filename = create_lot_pdf_name(lot.id)
-        
-        generate_qrs_pdf(qr_paths, filename)
-        
-        # Eliminar los archivos temporales de los códigos QR
-        for qr in qr_paths:
-            os.remove(qr[0])
-        
-
-        
-        return JsonResponse({'pdf': f'/static/pdfs{filename}', 'message': 'PDF generado con éxito'})
-    except Exception as e:
-        print(e)
-        return JsonResponse({'error': str(e)}, status=500)
-    
-@csrf_exempt
 def search_pdf_qr_perpetual_voucher_and_generate(request):
     if request.method != 'POST':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
@@ -3165,3 +3201,33 @@ def search_pdf_qr_perpetual_voucher_and_generate(request):
         print(e)
         return JsonResponse({'error': str(e)}, status=500)
     
+@csrf_exempt
+def change_voucher_status(request):      
+    if request.method != 'PUT':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        voucher_id = data.get('voucher_id')
+        status = data.get('status')
+        
+        if not voucher_id or not isinstance(status, bool):
+            return JsonResponse({'error': 'voucher_id y status booleano son requeridos'}, status=400)
+
+        voucher = Voucher.objects.filter(id=voucher_id).first()
+        
+        if not voucher:
+            return JsonResponse({'error': 'El vale no existe'}, status=404)
+        
+        perpetual_voucher_type = VoucherType.objects.filter(description="PERPETUO").first()
+        
+        if voucher.lots.voucher_type.id != perpetual_voucher_type.id:
+            return JsonResponse({'error': 'El vale no es de tipo perpetuo'}, status=400)
+
+        voucher.status = status 
+        voucher.save()
+
+        
+        return JsonResponse({"message": "Nombre del vale actualizado con éxito" })
+    except Exception as err:
+        return JsonResponse({'error': str(err)}, status=500)
