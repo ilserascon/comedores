@@ -1044,7 +1044,7 @@ def upload_empleados(request):
             comedor_id = int(data.get('comedor_id'))
             empleados = data.get('empleados')
             
-            # Validamos que los campos del modal no esten vacios
+            # Validamos que los campos del modal no estén vacíos
             if not cliente_id:
                 return JsonResponse({'error': 'El campo cliente_id es obligatorio'}, status=400)
             if not comedor_id:
@@ -1077,14 +1077,15 @@ def upload_empleados(request):
                     apellido_paterno = empleado_data.get('APELLIDO PATERNO', '').upper()
                     apellido_materno = empleado_data.get('APELLIDO MATERNO', '').upper()
 
-                    # Obtenemos el empleado por su numero de empleado en la base de datos
-                    empleado_existente = Employee.objects.filter(employeed_code=empleado_data.get('NO. EMPLEADO')).first()
+                    # Obtenemos todos los empleados con el mismo código de empleado
+                    empleados_existentes = Employee.objects.filter(employeed_code=empleado_data.get('NO. EMPLEADO'))
 
-                    # Si el empleado existe
-                    if empleado_existente:
-                        # y es del mismo cliente
+                    # Bandera para determinar si el empleado ya existe con los mismos datos
+                    empleado_duplicado = False
+
+                    for empleado_existente in empleados_existentes:
+                        # Si el cliente es el mismo, verificamos si hay cambios
                         if empleado_existente.client.id == cliente_id:
-                            # Verificamos y actualizamos campos si son diferentes
                             campos_actualizados = False
                             if empleado_existente.name != nombre:
                                 empleado_existente.name = nombre
@@ -1098,7 +1099,7 @@ def upload_empleados(request):
                             if empleado_existente.payroll != payroll:
                                 empleado_existente.payroll = payroll
                                 campos_actualizados = True
-                            if not empleado_existente.status:  # Activamos el registro si esta inactivo
+                            if not empleado_existente.status:  # Activamos el registro si está inactivo
                                 empleado_existente.status = True
                                 campos_actualizados = True
 
@@ -1116,27 +1117,13 @@ def upload_empleados(request):
                                 empleado_existente.updated_by_id = request.user.id
                                 empleado_existente.save()
                                 empleados_modificados += 1  # Incrementar solo una vez si hubo cambios
-                            else:                                
-                                empleados_repetidos += 1 # Si no hubo cambios, se considera repetido
-                            continue
+                            else:
+                                empleados_repetidos += 1  # Si no hubo cambios, se considera repetido
+                            empleado_duplicado = True
+                            break
 
-                        # Si el código del empleado existe y el cliente no es el mismo, entonces se inserta
-                        else:                            
-                            empleado = Employee(
-                                employeed_code=empleado_data.get('NO. EMPLEADO'),
-                                name=nombre,
-                                lastname=apellido_paterno,
-                                second_lastname=apellido_materno,
-                                client_id=cliente_id,
-                                payroll=payroll,
-                                status=empleado_data.get('ESTADO', True),
-                                created_by_id=request.user.id
-                            )
-                            empleado.save()
-                            empleados_insertados += 1
-                    
-                    # Si el código del empleado no existe, entonces se inserta
-                    else:                        
+                    # Si no se encontró un duplicado exacto, se inserta un nuevo empleado
+                    if not empleado_duplicado:
                         empleado = Employee(
                             employeed_code=empleado_data.get('NO. EMPLEADO'),
                             name=nombre,
@@ -1150,14 +1137,14 @@ def upload_empleados(request):
                         empleado.save()
                         empleados_insertados += 1
 
-                    # Creamos la relación en el modelo EmployeeClientDiner
-                    client_diner = ClientDiner.objects.get(client_id=cliente_id, dining_room_id=comedor_id)
-                    EmployeeClientDiner.objects.create(
-                        employee=empleado,
-                        client_diner=client_diner,
-                        created_by_id=request.user.id,
-                        updated_by_id=request.user.id
-                    )
+                        # Creamos la relación en el modelo EmployeeClientDiner
+                        client_diner = ClientDiner.objects.get(client_id=cliente_id, dining_room_id=comedor_id)
+                        EmployeeClientDiner.objects.create(
+                            employee=empleado,
+                            client_diner=client_diner,
+                            created_by_id=request.user.id,
+                            updated_by_id=request.user.id
+                        )
 
             # Mensajes de respuesta
             message = {}
