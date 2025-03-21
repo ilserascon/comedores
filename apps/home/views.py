@@ -26,6 +26,7 @@ from django.contrib.auth.hashers import make_password
 from django.shortcuts import get_object_or_404
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from .transactions.clients import change_client_status
+from .transactions.comedores import change_dining_room_status
 import pandas as pd
 from openpyxl.styles import Font, PatternFill, Border, Side
 import openpyxl
@@ -36,7 +37,7 @@ import os
 from email.message import EmailMessage
 import ssl
 import smtplib
-from apps.pdf_generation import generate_qrs_pdf, prepare_qrs, generate_lot_pdf, clean_pdf_dir, prepare_qr, generate_perpetual_voucher_pdf, verify_lot_pdf_exists, verify_voucher_pdf_exists, create_lot_pdf_name, create_voucher_pdf_name
+from apps.pdf_generation import generate_qrs_pdf, prepare_qrs, generate_lot_pdf, prepare_url_pdf, clean_pdf_dir, prepare_qr, generate_perpetual_voucher_pdf, verify_lot_pdf_exists, verify_voucher_pdf_exists, create_lot_pdf_name, create_voucher_pdf_name
 import re
 
 @login_required(login_url="/login/")
@@ -129,30 +130,34 @@ def get_comedores(request):
         filter_value = request.GET.get('filter', 'all')
 
         # Obtener todos los comedores con la información del cliente y del encargado
-        dining_rooms_query = ClientDiner.objects.select_related('client', 'dining_room', 'dining_room__in_charge').values(
-            'client__company',
-            'dining_room__id',
-            'dining_room__name',
-            'dining_room__description',
-            'dining_room__in_charge__first_name',
-            'dining_room__in_charge__last_name',
-            'dining_room__status'
+        dining_rooms_query = DiningRoom.objects.select_related('in_charge').prefetch_related(
+            'client_diner_dining_room__client'
+        ).values(
+            'id',
+            'name',
+            'description',
+            'status',
+            'in_charge__id',
+            'in_charge__first_name',
+            'in_charge__last_name',
+            'client_diner_dining_room__client__company'
         ).distinct()
 
         # Aplicar el filtro si no es 'all'
         if filter_value != 'all':
-            dining_rooms_query = dining_rooms_query.filter(client__id=filter_value)
+            dining_rooms_query = dining_rooms_query.filter(client_diner_dining_room__client__id=filter_value)
 
         # Renombrar campos para evitar confusión
         dining_rooms_list = [
             {
-                'company': dr['client__company'],
-                'id': dr['dining_room__id'],
-                'name': dr['dining_room__name'],
-                'description': dr['dining_room__description'],
-                'in_charge_first_name': dr['dining_room__in_charge__first_name'],
-                'in_charge_last_name': dr['dining_room__in_charge__last_name'],
-                'status': dr['dining_room__status']
+                'id': dr['id'],
+                'name': dr['name'],
+                'description': dr['description'],
+                'status': dr['status'],
+                'in_charge_id': dr['in_charge__id'],
+                'in_charge_first_name': dr['in_charge__first_name'],
+                'in_charge_last_name': dr['in_charge__last_name'],
+                'company': dr['client_diner_dining_room__client__company']
             }
             for dr in dining_rooms_query
         ]
@@ -183,26 +188,45 @@ def get_comedor(request):
     try:
         dining_room_id = request.GET.get('dining_room_id')
 
+        # Validar que se proporcione el ID del comedor
+        if not dining_room_id:
+            return JsonResponse({'error': 'El ID del comedor es obligatorio'}, status=400)
+
         # Realizar la consulta con las uniones necesarias
-        dining_room = DiningRoom.objects.filter(id=dining_room_id).select_related('in_charge').prefetch_related('client_diner_dining_room__client').values(
-            'id', 'name', 'description', 'status', 'in_charge__first_name', 'in_charge__last_name', 'in_charge_id',
-            'client_diner_dining_room__client__id', 'client_diner_dining_room__client__company'
+        dining_room = DiningRoom.objects.filter(id=dining_room_id).select_related('in_charge').prefetch_related(
+            'client_diner_dining_room__client'
+        ).values(
+            'id',
+            'name',
+            'description',
+            'status',
+            'in_charge__id',
+            'in_charge__first_name',
+            'in_charge__last_name',
+            'client_diner_dining_room__client__id',
+            'client_diner_dining_room__client__company',
+            'client_diner_dining_room__client__status'
         ).first()
 
+        # Verificar si el comedor existe
         if not dining_room:
             return JsonResponse({'error': 'Comedor no encontrado'}, status=404)
 
+        # Formatear los datos del encargado
         in_charge = {
-            'id': dining_room['in_charge_id'],
+            'id': dining_room['in_charge__id'],
             'first_name': dining_room['in_charge__first_name'],
             'last_name': dining_room['in_charge__last_name']
-        }
+        } if dining_room['in_charge__id'] else None
 
+        # Formatear los datos del cliente
         client = {
             'id': dining_room['client_diner_dining_room__client__id'],
-            'company': dining_room['client_diner_dining_room__client__company']
+            'company': dining_room['client_diner_dining_room__client__company'],
+            'status': dining_room['client_diner_dining_room__client__status']
         }
 
+        # Construir el contexto de respuesta
         context = {
             'dining_room_id': dining_room['id'],
             'name': dining_room['name'],
@@ -213,8 +237,6 @@ def get_comedor(request):
         }
 
         return JsonResponse(context)
-    except DiningRoom.DoesNotExist:
-        return JsonResponse({'error': 'Comedor no encontrado'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
@@ -230,11 +252,27 @@ def create_comedor(request):
         client_id = data.get('client')  # Obtener el client_id del request
         created_by_id = request.user.id
 
-        if not client_id:
-            return JsonResponse({'error': 'El campo client es obligatorio'}, status=400)
+        # Validar que el nombre no esté vacío y tenga una longitud válida
+        if not name or len(name) < 3 or len(name) > 50:
+            return JsonResponse({'message': 'El nombre debe tener entre 3 y 50 caracteres', 'status': 'danger'}, status=400)
+
+        # Validar que la descripción no esté vacía y tenga una longitud válida
+        if not description or len(description) > 100:
+            return JsonResponse({'message': 'La descripción no puede tener más de 100 caracteres', 'status': 'danger'}, status=400)
+
+        # Validar que el cliente exista y esté activo
+        client = Client.objects.filter(id=client_id, status=True).first()
+        if not client:
+            return JsonResponse({'message': 'El cliente proporcionado no existe o está inactivo', 'status': 'danger'}, status=400)
+
+        # Validar que el encargado exista y esté activo (si se proporciona)
+        if in_charge:
+            encargado = CustomUser.objects.filter(id=in_charge, status=True).first()
+            if not encargado:
+                return JsonResponse({'message': 'El encargado proporcionado no existe o está inactivo', 'status': 'danger'}, status=400)
 
         # Crear el comedor en el modelo DiningRoom
-        dining_room = DiningRoom(
+        dining_room = DiningRoom.objects.create(
             name=name,
             description=description,
             status=status,
@@ -243,23 +281,18 @@ def create_comedor(request):
             updated_by_id=created_by_id
         )
 
-        if len(dining_room.description) > 100:
-            return JsonResponse({'error': 'La descripción no puede tener más de 100 caracteres'}, status=400)
-
-        dining_room.save()
-
         # Crear la entrada en el modelo ClientDiner
-        client_diner = ClientDiner(
+        ClientDiner.objects.create(
             dining_room_id=dining_room.id,
             client_id=client_id,
             created_by_id=created_by_id,
-            updated_by_id=request.user.id
+            updated_by_id=created_by_id
         )
-        client_diner.save()
 
-        return JsonResponse({'message': 'Comedor creado correctamente'}, status=201)
+        return JsonResponse({'message': 'Comedor creado exitosamente', 'status': 'success'}, status=201)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'message': str(e), 'status': 'danger'}, status=500)
+
 
 @csrf_exempt
 def update_comedor(request):
@@ -273,31 +306,77 @@ def update_comedor(request):
         in_charge = data.get('inCharge')
         client_id = data.get('client')  # Obtener el client_id del request
 
-        dining_room = DiningRoom.objects.get(id=dining_room_id)
-        dining_room.name = name
-        dining_room.description = description
-        dining_room.status = status
+        # Validar que el comedor exista
+        dining_room = DiningRoom.objects.filter(id=dining_room_id).first()
+        if not dining_room:
+            return JsonResponse({'message': 'Comedor no encontrado', 'status': 'danger'}, status=404)
 
-        if len(dining_room.description) > 100:
-            return JsonResponse({'error': 'La descripción no puede tener más de 100 caracteres'}, status=400)
+        # Validar que el nombre no esté vacío y tenga una longitud válida
+        if not name or len(name) < 3 or len(name) > 50:
+            return JsonResponse({'message': 'El nombre debe tener entre 3 y 50 caracteres', 'status': 'danger'}, status=400)
 
-        # Permitir que in_charge sea nulo
-        dining_room.in_charge_id = in_charge if in_charge else None        
+        # Validar que la descripción no esté vacía y tenga una longitud válida
+        if not description or len(description) > 100:
+            return JsonResponse({'message': 'La descripción no puede tener más de 100 caracteres', 'status': 'danger'}, status=400)
 
-        dining_room.save()
+        # Validar que el cliente exista y esté activo
+        client = Client.objects.filter(id=client_id, status=True).first()
+        if not client:
+            return JsonResponse({'message': 'El cliente proporcionado no existe o está inactivo', 'status': 'danger'}, status=400)
 
-        # Actualizar la entrada en el modelo ClientDiner
-        client_diner, created = ClientDiner.objects.update_or_create(
-            dining_room_id=dining_room_id,
-            defaults={'client_id': client_id},
-            updated_by_id=user_id
-        )
+        # Validar que el encargado exista y esté activo (si se proporciona)
+        if in_charge:
+            encargado = CustomUser.objects.filter(id=in_charge, status=True).first()
+            if not encargado:
+                return JsonResponse({'message': 'El encargado proporcionado no existe o está inactivo', 'status': 'danger'}, status=400)
 
-        return JsonResponse({'message': 'Comedor actualizado correctamente'})
-    except DiningRoom.DoesNotExist:
-        return JsonResponse({'error': 'Comedor no encontrado'}, status=404)
+        with transaction.atomic():
+            # Actualizar los campos del comedor
+            dining_room.name = name
+            dining_room.description = description
+            dining_room.status = status
+
+            # Si el comedor se actualiza a inactivo, eliminar el encargado
+            if not status:  # status es False
+                dining_room.in_charge = None
+            else:
+                # Permitir que in_charge sea nulo si no está inactivo
+                dining_room.in_charge_id = in_charge if in_charge else None
+
+            dining_room.updated_by_id = user_id
+            dining_room.save()
+
+            # Actualizar o crear la entrada en el modelo ClientDiner
+            ClientDiner.objects.update_or_create(
+                dining_room_id=dining_room_id,
+                defaults={
+                    'client_id': client_id,
+                    'updated_by_id': user_id
+                }
+            )
+
+            # Si el comedor se desactiva, desactivar también a los empleados asignados
+            if not status:
+                client_diners = ClientDiner.objects.filter(dining_room=dining_room).all()
+                for client_diner in client_diners:
+                    client_diner.status = False
+                    client_diner.updated_by_id = user_id
+                    client_diner.save()
+
+                    employee_client_diners = EmployeeClientDiner.objects.filter(client_diner=client_diner).all()
+                    for employee_client_diner in employee_client_diners:
+                        employee_client_diner.status = False
+                        employee_client_diner.updated_by_id = user_id
+                        employee_client_diner.save()
+
+                        employee = employee_client_diner.employee
+                        employee.status = False
+                        employee.updated_by_id = user_id
+                        employee.save()
+
+        return JsonResponse({'message': 'Comedor actualizado correctamente', 'status': 'success'})
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'message': str(e), 'status': 'danger'}, status=500)
 
 @csrf_exempt
 def get_encargados(request):
@@ -710,8 +789,10 @@ def get_empleados(request):
     search_query = request.GET.get('search', '')
     filter_value = request.GET.get('filter', 'all')
 
+    # Filtrar empleados cuyo cliente esté activo
     empleados = Employee.objects.filter(
-        employee_client_diner_employee__isnull=False
+        employee_client_diner_employee__isnull=False,
+        client__status=True  # Solo clientes activos
     ).select_related(
         'client', 'payroll'
     ).prefetch_related(
@@ -747,7 +828,7 @@ def get_empleados(request):
         'current_page': page_obj.number,
         'has_previous': page_obj.has_previous(),
         'has_next': page_obj.has_next(),
-    }    
+    }
 
     return JsonResponse(response)
     
@@ -959,66 +1040,92 @@ def get_comedores_clientes(request):
 def upload_empleados(request):
     if request.method == 'POST':
         try:
+            # Obtenemos los datos
             data = json.loads(request.body)
-            cliente_id = int(data.get('cliente_id'))  # Convertir cliente_id a entero
-            comedor_id = int(data.get('comedor_id'))  # Convertir comedor_id a entero
+            cliente_id = int(data.get('cliente_id'))
+            comedor_id = int(data.get('comedor_id'))
             empleados = data.get('empleados')
             
-            # Validar cliente_id y comedor_id
+            # Validamos que los campos del modal no estén vacíos
             if not cliente_id:
                 return JsonResponse({'error': 'El campo cliente_id es obligatorio'}, status=400)
             if not comedor_id:
                 return JsonResponse({'error': 'El campo comedor_id es obligatorio'}, status=400)
 
-            # Contador de empleados insertados y no insertados (repetidos)
+            # Contador de empleados insertados, no repetidos y modificados
             empleados_insertados = 0
-            empleados_no_insertados = 0
+            empleados_repetidos = 0
             empleados_modificados = 0
 
-            # Procesar los empleados
-            for empleado_data in empleados:
-                # Validar los datos del empleado
-                if not empleado_data.get('NOMBRES'):
-                    return JsonResponse({'error': 'El campo NOMBRES es obligatorio'}, status=400)
-                if not empleado_data.get('NO. EMPLEADO'):
-                    return JsonResponse({'error': 'El campo NO. EMPLEADO es obligatorio'}, status=400)
-                if not empleado_data.get('APELLIDO PATERNO'):
-                    return JsonResponse({'error': 'El campo APELLIDO PATERNO es obligatorio'}, status=400)
-                if not empleado_data.get('NOMINA'):
-                    return JsonResponse({'error': 'El campo NOMINA es obligatorio'}, status=400)
+            # Iniciamos una transacción al momento de leer el archivo
+            with transaction.atomic():
+                # Procesamos cada registro en el archivo
+                for empleado_data in empleados:
+                    # Validamos que los campos obligatorios no estén vacíos
+                    if not empleado_data.get('NOMBRES'):
+                        return JsonResponse({'error': 'El campo NOMBRES es obligatorio'}, status=400)
+                    if not empleado_data.get('NO. EMPLEADO'):
+                        return JsonResponse({'error': 'El campo NO. EMPLEADO es obligatorio'}, status=400)
+                    if not empleado_data.get('APELLIDO PATERNO'):
+                        return JsonResponse({'error': 'El campo APELLIDO PATERNO es obligatorio'}, status=400)
+                    if not empleado_data.get('NOMINA'):
+                        return JsonResponse({'error': 'El campo NOMINA es obligatorio'}, status=400)
 
-                # Obtener la instancia de PayrollType
-                payroll = PayrollType.objects.get(description=empleado_data.get('NOMINA'))
+                    # Obtenemos la instancia del modelo PayrollType
+                    payroll = PayrollType.objects.get(description=empleado_data.get('NOMINA'))
 
-                # Asignar valores predeterminados si los campos son None
-                nombre = empleado_data.get('NOMBRES', '').upper()
-                apellido_paterno = empleado_data.get('APELLIDO PATERNO', '').upper()
-                apellido_materno = empleado_data.get('APELLIDO MATERNO', '').upper()
+                    # Asignamos valores predeterminados si los campos son None
+                    nombre = empleado_data.get('NOMBRES', '').upper()
+                    apellido_paterno = empleado_data.get('APELLIDO PATERNO', '').upper()
+                    apellido_materno = empleado_data.get('APELLIDO MATERNO', '').upper()
 
-                # Verificar si el empleado ya existe
-                empleado_existente = Employee.objects.filter(employeed_code=empleado_data.get('NO. EMPLEADO')).first()                
+                    # Obtenemos todos los empleados con el mismo código de empleado
+                    empleados_existentes = Employee.objects.filter(employeed_code=empleado_data.get('NO. EMPLEADO'))
 
-                # Si el empleado existe
-                if empleado_existente:
-                    # y es del mismo cliente
-                    if empleado_existente.client.id == cliente_id:
-                        
-                        client_diner = ClientDiner.objects.get(client_id=cliente_id, dining_room_id=comedor_id)
-                        employee_client_diner = EmployeeClientDiner.objects.filter(employee=empleado_existente, client_diner__client_id=cliente_id).first()
-                        
-                        # y el comedor es diferente se actualiza el comedor asignado
-                        if employee_client_diner and employee_client_diner.client_diner.dining_room_id != comedor_id:
+                    # Bandera para determinar si el empleado ya existe con los mismos datos
+                    empleado_duplicado = False
 
-                            # Actualizar el comedor asignado
-                            employee_client_diner.client_diner = client_diner
-                            employee_client_diner.updated_by_id = request.user.id
-                            employee_client_diner.save()
-                            empleados_modificados += 1
-                        else:
-                            empleados_no_insertados += 1
-                        continue
-                    else:
-                        # Si el código de empleado existe y el cliente no es el mismo, se inserta
+                    for empleado_existente in empleados_existentes:
+                        # Si el cliente es el mismo, verificamos si hay cambios
+                        if empleado_existente.client.id == cliente_id:
+                            campos_actualizados = False
+                            if empleado_existente.name != nombre:
+                                empleado_existente.name = nombre
+                                campos_actualizados = True
+                            if empleado_existente.lastname != apellido_paterno:
+                                empleado_existente.lastname = apellido_paterno
+                                campos_actualizados = True
+                            if empleado_existente.second_lastname != apellido_materno:
+                                empleado_existente.second_lastname = apellido_materno
+                                campos_actualizados = True
+                            if empleado_existente.payroll != payroll:
+                                empleado_existente.payroll = payroll
+                                campos_actualizados = True
+                            if not empleado_existente.status:  # Activamos el registro si está inactivo
+                                empleado_existente.status = True
+                                campos_actualizados = True
+
+                            # Verificamos y actualizamos la relación con el comedor
+                            client_diner = ClientDiner.objects.get(client_id=cliente_id, dining_room_id=comedor_id)
+                            employee_client_diner = EmployeeClientDiner.objects.filter(employee=empleado_existente, client_diner__client_id=cliente_id).first()
+                            if employee_client_diner:
+                                if employee_client_diner.client_diner.dining_room_id != comedor_id:
+                                    employee_client_diner.client_diner = client_diner
+                                    employee_client_diner.updated_by_id = request.user.id
+                                    employee_client_diner.save()
+                                    campos_actualizados = True
+
+                            if campos_actualizados:
+                                empleado_existente.updated_by_id = request.user.id
+                                empleado_existente.save()
+                                empleados_modificados += 1  # Incrementar solo una vez si hubo cambios
+                            else:
+                                empleados_repetidos += 1  # Si no hubo cambios, se considera repetido
+                            empleado_duplicado = True
+                            break
+
+                    # Si no se encontró un duplicado exacto, se inserta un nuevo empleado
+                    if not empleado_duplicado:
                         empleado = Employee(
                             employeed_code=empleado_data.get('NO. EMPLEADO'),
                             name=nombre,
@@ -1031,36 +1138,23 @@ def upload_empleados(request):
                         )
                         empleado.save()
                         empleados_insertados += 1
-                else:
-                    # Si el código de empleado no existe, se inserta
-                    empleado = Employee(
-                        employeed_code=empleado_data.get('NO. EMPLEADO'),
-                        name=nombre,
-                        lastname=apellido_paterno,
-                        second_lastname=apellido_materno,
-                        client_id=cliente_id,
-                        payroll=payroll,
-                        status=empleado_data.get('ESTADO', True),
-                        created_by_id=request.user.id
-                    )
-                    empleado.save()
-                    empleados_insertados += 1
 
-                # Crear la relación en EmployeeClientDiner
-                client_diner = ClientDiner.objects.get(client_id=cliente_id, dining_room_id=comedor_id)
-                EmployeeClientDiner.objects.create(
-                    employee=empleado,
-                    client_diner=client_diner,
-                    created_by_id=request.user.id,
-                    updated_by_id=request.user.id
-                )
+                        # Creamos la relación en el modelo EmployeeClientDiner
+                        client_diner = ClientDiner.objects.get(client_id=cliente_id, dining_room_id=comedor_id)
+                        EmployeeClientDiner.objects.create(
+                            employee=empleado,
+                            client_diner=client_diner,
+                            created_by_id=request.user.id,
+                            updated_by_id=request.user.id
+                        )
 
-            message = {};
+            # Mensajes de respuesta
+            message = {}
 
             if empleados_insertados > 0:
                 message['message1'] = [f'Empleados insertados: {empleados_insertados}', 'success']
-            if empleados_no_insertados > 0:
-                message['message2'] = [f'Empleados repetidos: {empleados_no_insertados}', 'info']
+            if empleados_repetidos > 0:
+                message['message2'] = [f'Empleados ya existentes: {empleados_repetidos}', 'info']
             if empleados_modificados > 0:
                 message['message3'] = [f'Empleados modificados: {empleados_modificados}', 'info']
 
@@ -1069,6 +1163,8 @@ def upload_empleados(request):
             return JsonResponse({'error': 'Tipo de nómina no encontrado'}, status=404)
         except ClientDiner.DoesNotExist:
             return JsonResponse({'error': 'Cliente-Comedor no encontrado'}, status=404)
+        except DiningRoom.DoesNotExist:
+            return JsonResponse({'error': 'Comedor no encontrado'}, status=404)
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
     else:
@@ -1450,7 +1546,7 @@ def export_excel_employee_report(request):
             'Apellido Paterno Empleado',
             'Apellido Materno Empleado',
             'Estado Empleado',
-            'Fecha de Creación'
+            'Fecha de Ingreso'
         ]
 
         # Crear un nuevo libro de Excel y agregar dos hojas
@@ -1524,7 +1620,9 @@ def get_unique_reports(request):
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     
     page_number = request.GET.get('page', 1)
-    page_size = request.GET.get('page_size', 10)    
+    page_size = request.GET.get('page_size', 10)
+    lot = request.GET.get('filterLotNumber')
+
 
     try:
         # Filtros de vales
@@ -1533,7 +1631,8 @@ def get_unique_reports(request):
             'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
             'folio__icontains': request.GET.get('filterVoucherNumber'),
             'status': request.GET.get('filterStatus'),
-            'lots__voucher_type_id': 1
+            'lots__voucher_type_id': 1,
+            'lots__id': lot
         }
 
         filters = {k: v for k, v in filters.items() if v}
@@ -1639,6 +1738,8 @@ def get_clients_unique_reports(request):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
 
+    lot = request.GET.get('filterLotNumber')
+
     try:
         # Filtros para los vales
         filters = {
@@ -1646,7 +1747,8 @@ def get_clients_unique_reports(request):
             'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
             'folio__icontains': request.GET.get('filterVoucherNumber'),
             'status': request.GET.get('filterStatus'),
-            'lots__voucher_type_id': 1
+            'lots__voucher_type_id': 1,
+            'lots__id': lot
         }
         filters = {k: v for k, v in filters.items() if v}
 
@@ -1683,6 +1785,9 @@ def get_diners_unique_reports(request):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     
+    lot = request.GET.get('filterLotNumber')
+
+    
     try:
         # Filtros para los vales
         filters = {
@@ -1690,7 +1795,8 @@ def get_diners_unique_reports(request):
             'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
             'folio__icontains': request.GET.get('filterVoucherNumber'),
             'status': request.GET.get('filterStatus'),
-            'lots__voucher_type_id': 1
+            'lots__voucher_type_id': 1,
+            'lots__id': lot
         }
         filters = {k: v for k, v in filters.items() if v}
 
@@ -1726,6 +1832,8 @@ def get_diners_unique_reports(request):
 def export_excel_unique_reports(request):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    lot = request.GET.get('filterLotNumber')
 
     try:
         # Filtros de vales
@@ -1734,7 +1842,8 @@ def export_excel_unique_reports(request):
             'lots__client_diner__dining_room__id': request.GET.get('filterDiningRoom'),
             'folio__icontains': request.GET.get('filterVoucherNumber'),
             'status': request.GET.get('filterStatus'),
-            'lots__voucher_type_id': 1
+            'lots__voucher_type_id': 1,
+            'lots__id': lot
         }
 
         filters = {k: v for k, v in filters.items() if v}
@@ -1825,7 +1934,7 @@ def export_excel_unique_reports(request):
             df['entry_created_at'] = df['entry_created_at'].apply(lambda x: format_date(x) if pd.notnull(x) else "Sin usar")
 
         # Si el estado del vale es True, cambiar a 'Activo', de lo contrario 'Inactivo'
-        df['voucher_status'] = df['voucher_status'].apply(lambda x: 'Activo' if x else 'Inactivo')
+        df['voucher_status'] = df['voucher_status'].apply(lambda x: 'Sin usar' if x else 'Usado')
 
         # Define the custom headers for the Excel sheet
         headers = [
@@ -1887,6 +1996,8 @@ def get_perpetual_reports(request):
     
     page_number = request.GET.get('page', 1)
     page_size = request.GET.get('page_size', 10)
+    lot = request.GET.get('filterLotNumber')
+
 
     try:
         # Filtros de vales
@@ -1896,7 +2007,8 @@ def get_perpetual_reports(request):
             'employee__icontains': request.GET.get('filterEmployeeName'),
             'voucher__status': request.GET.get('filterStatus'),
             'voucher__lots__voucher_type_id': 2,  # Tipo de vale perpetuo
-            'voucher__folio__icontains': request.GET.get('filterVoucherFolio')
+            'voucher__folio__icontains': request.GET.get('filterVoucherFolio'),
+            'voucher__lots__id': lot
         }
 
         filters = {k: v for k, v in filters.items() if v}
@@ -1955,12 +2067,16 @@ def get_perpetual_reports(request):
         }
         return JsonResponse(context)
     except Exception as e:
+        print(e)
         return JsonResponse({'error': str(e)}, status=500)
 
 @csrf_exempt
 def get_clients_perpetual_reports(request):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    lot = request.GET.get('filterLotNumber')
+
 
     try:
         # Filtros para los vales
@@ -1970,7 +2086,8 @@ def get_clients_perpetual_reports(request):
             'employee__icontains': request.GET.get('filterEmployeeName'),
             'status': request.GET.get('filterStatus'),
             'lots__voucher_type_id': 2,  # Tipo de vale perpetuo
-            'folio__icontains': request.GET.get('filterVoucherFolio')
+            'folio__icontains': request.GET.get('filterVoucherFolio'),
+            'lots__id': lot
         }
         filters = {k: v for k, v in filters.items() if v}
 
@@ -2007,6 +2124,9 @@ def get_diners_perpetual_reports(request):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     
+    lot = request.GET.get('filterLotNumber')
+
+
     try:
         # Filtros para los vales
         filters = {
@@ -2015,7 +2135,8 @@ def get_diners_perpetual_reports(request):
             'employee__icontains': request.GET.get('filterEmployeeName'),
             'status': request.GET.get('filterStatus'),
             'lots__voucher_type_id': 2,  # Tipo de vale perpetuo
-            'folio__icontains': request.GET.get('filterVoucherFolio')
+            'folio__icontains': request.GET.get('filterVoucherFolio'),
+            'lots__id': lot
         }
         filters = {k: v for k, v in filters.items() if v}
 
@@ -2054,6 +2175,9 @@ def get_perpetual_report_summary(request):
     
     page_number = request.GET.get('page', 1)
     page_size = request.GET.get('page_size', 10)
+    lot = request.GET.get('filterLotNumber')
+
+    
     try:
         filters = {
             'lots__client_diner__client__id': request.GET.get('filterClient'),
@@ -2061,7 +2185,8 @@ def get_perpetual_report_summary(request):
             'employee__icontains': request.GET.get('filterEmployeeName'),
             'status': request.GET.get('filterStatus'),
             'lots__voucher_type_id': 2,  # Tipo de vale perpetuo
-            'folio__icontains': request.GET.get('filterVoucherFolio')
+            'folio__icontains': request.GET.get('filterVoucherFolio'),
+            'lots__id': lot
         }
         filters = {k: v for k, v in filters.items() if v}
 
@@ -2111,13 +2236,15 @@ def get_perpetual_report_summary_details(request):
     voucher_id = request.GET.get('voucherId')
     page_number = request.GET.get('page', 1)
     page_size = request.GET.get('page_size', 5)
+    lot = request.GET.get('filterLotNumber')
 
     if not voucher_id:
         return JsonResponse({'error': 'voucher_id es requerido'}, status=400)
     
     try:
         filters = {
-            'id': voucher_id
+            'id': voucher_id,
+            'lots__id': lot,
         }
 
         voucher_detail = Voucher.objects.select_related(
@@ -2182,6 +2309,9 @@ def export_excel_perpetuo_report(request):
     if request.method != 'GET':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     
+    lot = request.GET.get('filterLotNumber')
+
+    
     try:
         filters = {
             'voucher__lots__client_diner__client__id': request.GET.get('filterClient'),
@@ -2189,7 +2319,8 @@ def export_excel_perpetuo_report(request):
             'employee__icontains': request.GET.get('filterEmployeeName'),
             'voucher__status': request.GET.get('filterStatus'),
             'voucher__lots__voucher_type_id': 2,  # Tipo de vale perpetuo
-            'voucher__folio__icontains': request.GET.get('filterVoucherFolio')
+            'voucher__folio__icontains': request.GET.get('filterVoucherFolio'),
+            'voucher__lots__id': lot
         }
 
         # Convertir las fechas a objetos datetime conscientes de la zona horaria
@@ -2251,7 +2382,7 @@ def export_excel_perpetuo_report(request):
             'Nombre Empleado',
             'Folio Vale',
             'Estado Vale',
-            'Fecha de Creación'
+            'Fecha de Ingreso'
         ]
 
         # Create a new Excel workbook and add two sheets
@@ -2277,7 +2408,7 @@ def export_excel_perpetuo_report(request):
             'Folio Vale',
             'Nombre Empleado',
             'Estado Vale',
-            'Número de usos'
+            'Número de Usos'
         ]
         ws2.append(simplified_headers)
         add_styles(ws2, simplified_headers)
@@ -2289,7 +2420,8 @@ def export_excel_perpetuo_report(request):
             'employee__icontains': request.GET.get('filterEmployeeName'),
             'status': request.GET.get('filterStatus'),
             'lots__voucher_type_id': 2,  # Tipo de vale perpetuo
-            'folio__icontains': request.GET.get('filterVoucherFolio')
+            'folio__icontains': request.GET.get('filterVoucherFolio'),
+            'lots__id': lot
         }
                 # Convert date filters to timezone-aware datetime
         if filters.get('created_at__gte'):
@@ -2318,7 +2450,7 @@ def export_excel_perpetuo_report(request):
         summary_df = pd.DataFrame(list(perpetual_report_summary))
 
         # Si el estado del vale es verdadero asignar "Activo" y si es falso asignar "Inactivo"
-        summary_df['voucher_status'] = summary_df['voucher_status'].apply(lambda x: 'Activo' if x else 'Inactivo')
+        summary_df['voucher_status'] = summary_df['voucher_status'].apply(lambda x: 'Habilitado' if x else 'Deshabilitado')
 
         for row in dataframe_to_rows(summary_df, index=False, header=False):
             ws2.append(row)
@@ -2348,10 +2480,11 @@ def generate_unique_voucher(request):
         client_id = data.get("client_id")
         dining_room_id = data.get("dining_room_id")
         quantity = data.get("quantity")
+        voucher_type = data.get("voucher_type")
         
 
-        if not client_id or not dining_room_id or not quantity:
-            return JsonResponse({"error": "client_id, dining_room_id y quantity son requeridos"}, status=400)
+        if not client_id or not dining_room_id or not quantity or not voucher_type:
+            return JsonResponse({"error": "client_id, type, dining_room_id y quantity son requeridos"}, status=400)
         
         if type(quantity) != int:
             return JsonResponse({"error": "quantity debe ser un número entero"}, status=400)
@@ -2362,7 +2495,11 @@ def generate_unique_voucher(request):
         if type(dining_room_id) != int:
             return JsonResponse({"error": "dining_room_id debe ser un número entero"}, status=400)
         
-        unique_voucher = VoucherType.objects.filter(description="UNICO").first()     
+        if voucher_type not in ["UNICO", "PERPETUO"]:
+            return JsonResponse({"error": "El tipo de vale debe ser 'UNICO' o 'PERPETUO'"}, status=400)
+    
+        
+        voucher_type_obj = VoucherType.objects.filter(description=voucher_type).first()     
         client_dinner = ClientDiner.objects.filter(client_id=client_id, dining_room_id=dining_room_id).first()
 
         if not client_dinner:
@@ -2384,7 +2521,7 @@ def generate_unique_voucher(request):
         with transaction.atomic():
             lots = Lots(
                 client_diner=client_dinner,
-                voucher_type=unique_voucher,
+                voucher_type=voucher_type_obj,
                 quantity=quantity,
                 created_by=request.user
             )
@@ -2401,7 +2538,7 @@ def generate_unique_voucher(request):
             
             
             filename = f'/LOT-{lots.id}.pdf'
-            generate_qrs_pdf(qr_paths, filename)
+            generate_qrs_pdf(qr_paths, filename, lots.voucher_type.description)
             
             context = {
                 "lot_id": lots.id,
@@ -2419,7 +2556,44 @@ def generate_unique_voucher(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
+#Funcion para devolver la ruta al pdf del lote
+@csrf_exempt
+def get_lot_pdf(request):
+    lot_id = request.GET.get('lot_id')
+    
+    if not lot_id:
+        return JsonResponse({"error": "El id del lote es requerido"}, status=400)
+    
+    lot = Lots.objects.filter(id=lot_id).first()
 
+    if not lot:
+        return JsonResponse({"error": "El lote especificado no existe"}, status=404)
+    
+    #Verifica si el pdf de dicho lote existe
+    filepath = verify_lot_pdf_exists(lot.id)
+    if filepath and lot.voucher_type.description == "UNICO":
+        url = prepare_url_pdf(filepath)
+        email = lot.email if lot.email else lot.client_diner.client.email
+    
+        return JsonResponse({"pdf": url, "email": email})
+    
+    vouchers = Voucher.objects.filter(lots=lot)
+    
+    if not vouchers:
+        return JsonResponse({"error": "No se encontraron vales para el lote especificado"}, status=404)
+    
+    qr_paths = prepare_qrs(vouchers, lot.id, lot.client_diner.dining_room.name)
+    
+    filename = create_lot_pdf_name(lot.id)
+    filepath = generate_qrs_pdf(qr_paths, filename, lot.voucher_type.description)
+    
+    url = prepare_url_pdf(filepath)
+
+    email = lot.email if lot.email else lot.client_diner.client.email
+    
+    return JsonResponse({"pdf": url, "email": email})
+    
+    
 @csrf_exempt
 def generate_perpetual_voucher(request):
     if request.method != 'POST':
@@ -2468,26 +2642,29 @@ def generate_perpetual_voucher(request):
 
 
         with transaction.atomic():
-            lots = Lots(
+            lot = Lots(
                 client_diner=client_dinner,
                 voucher_type=perpetual_voucher,
                 quantity=quantity,
                 created_by=request.user
             )
-            lots.save()
+            lot.save()
 
             vouchers = []
             
             for _ in range(quantity):
-                voucher = Voucher(lots=lots)
+                voucher = Voucher(lots=lot)
                 voucher.save()
                 vouchers.append(voucher)
-    
+
+            
+
+            email = lot.email if lot.email else lot.client_diner.client.email
             
             
             vouchers_objects = [{"id": voucher.id, "folio": voucher.folio} for voucher in vouchers]
 
-        return JsonResponse({'message': 'Vales generados con éxito', "lot": lots.id, "vouchers": vouchers_objects})
+        return JsonResponse({'message': 'Vales generados con éxito', "lot": lot.id, "vouchers": vouchers_objects, "email": email})
     except Exception as err:
         return JsonResponse({"error": str(err)}, status=500)
         
@@ -2538,7 +2715,7 @@ def send_lot_file_email(request):
 
         filepath = None
         try:
-            filepath = generate_lot_pdf(lot) 
+            filepath = generate_lot_pdf(lot, lot_object.voucher_type.description == "UNICO") 
         except Exception as err:
             return JsonResponse({"error": "Hubo un error generando el pdf"}, status=500)
 
@@ -2982,51 +3159,6 @@ def get_vouchers_by_lot(request):
         return JsonResponse({'error': str(e)}, status=500)
     
 @csrf_exempt
-def search_pdf_qr_unique_voucher_and_generate(request):
-    if request.method != 'POST':
-        return JsonResponse({'error': 'Método no permitido'}, status=405)
-    
-    try:
-        data = json.loads(request.body)
-        lot_id = data.get('lot_id')
-        
-        if not lot_id:
-            return JsonResponse({'error': 'lot_id es requerido'}, status=400)
-        
-        lot = Lots.objects.filter(id=lot_id).first()
-        
-        if not lot:
-            return JsonResponse({'error': 'Lote no encontrado'}, status=404)
-        
-        if lot.voucher_type.description != 'UNICO':
-            return JsonResponse({'error': 'El lote no es de tipo único'}, status=400)
-        
-        existing_filepath = verify_lot_pdf_exists(lot.id)
-        if existing_filepath:
-            filename = existing_filepath.split('/')[-1]
-            return JsonResponse({'pdf': f'/static/pdfs/{filename}', 'message': 'PDF ya existente'})
-        
-
-        # Generar los códigos QR y el PDF si no existe
-        vouchers = Voucher.objects.filter(lots=lot)
-        qr_paths = prepare_qrs(vouchers, lot.id, lot.client_diner.dining_room.name)
-
-        filename = create_lot_pdf_name(lot.id)
-        
-        generate_qrs_pdf(qr_paths, filename)
-        
-        # Eliminar los archivos temporales de los códigos QR
-        for qr in qr_paths:
-            os.remove(qr[0])
-        
-
-        
-        return JsonResponse({'pdf': f'/static/pdfs{filename}', 'message': 'PDF generado con éxito'})
-    except Exception as e:
-        print(e)
-        return JsonResponse({'error': str(e)}, status=500)
-    
-@csrf_exempt
 def search_pdf_qr_perpetual_voucher_and_generate(request):
     if request.method != 'POST':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
@@ -3069,3 +3201,33 @@ def search_pdf_qr_perpetual_voucher_and_generate(request):
         print(e)
         return JsonResponse({'error': str(e)}, status=500)
     
+@csrf_exempt
+def change_voucher_status(request):      
+    if request.method != 'PUT':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        voucher_id = data.get('voucher_id')
+        status = data.get('status')
+        
+        if not voucher_id or not isinstance(status, bool):
+            return JsonResponse({'error': 'voucher_id y status booleano son requeridos'}, status=400)
+
+        voucher = Voucher.objects.filter(id=voucher_id).first()
+        
+        if not voucher:
+            return JsonResponse({'error': 'El vale no existe'}, status=404)
+        
+        perpetual_voucher_type = VoucherType.objects.filter(description="PERPETUO").first()
+        
+        if voucher.lots.voucher_type.id != perpetual_voucher_type.id:
+            return JsonResponse({'error': 'El vale no es de tipo perpetuo'}, status=400)
+
+        voucher.status = status 
+        voucher.save()
+
+        
+        return JsonResponse({"message": "Nombre del vale actualizado con éxito" })
+    except Exception as err:
+        return JsonResponse({'error': str(err)}, status=500)

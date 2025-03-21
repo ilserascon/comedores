@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
         // Set the toast content (including a header, body, and close button)
         toast.innerHTML = `
-            <div class="toast-header bg-${type} text-white d-flex align-items-center justify-content-between p-1 px-1 rounded-pill shadow-sm">
+            <div class="toast-header bg-${type} text-white d-flex align-items-center justify-content-between p-1 px-1 shadow-sm">
                 <strong class="me-auto">${header}</strong>
                 <button type="button" class="btn-close btn-close-white right-1" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>

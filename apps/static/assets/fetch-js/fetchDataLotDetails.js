@@ -12,16 +12,6 @@
     return await response.json();
   }
 
-  async function fetchDownloadVouchers(lotId) {
-    const response = await fetch(`/search_pdf_qr_unique_voucher_and_generate/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lot_id: lotId })
-    });
-    if (!response.ok) throw new Error('Error al descargar los vales');
-    return await response.json();
-  }
-
   async function fetchPerpetualVoucher(voucherFolio) {
     const response = await fetch(`/search_pdf_qr_perpetual_voucher_and_generate/`, {
       method: 'POST',
@@ -35,4 +25,29 @@
   async function sendLotEmail(lotId, email) {
     const response = await sendLotFileToEmail(lotId, email);
     return response;
+  }
+
+  async function changeVoucherStatus(voucherId, status) {
+    try {
+        const response = await fetch(`/change_voucher_status`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                voucher_id: voucherId,
+                status: status
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Error al cambiar el estado del vale');
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        throw new Error(error.message || 'Error al cambiar el estado del vale');
+    }
   }

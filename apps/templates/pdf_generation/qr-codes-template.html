@@ -8,7 +8,7 @@
 <body>
     <main>
 
-    {% for qr_path, folio, comedor  in qrcodes%}
+    {% for qr_path, folio, comedor, employee  in qrcodes%}
         
         {% if loop.index0 % 3 == 0 %}
             <div class="row">
@@ -19,8 +19,16 @@
                 <img src="file:///{{ logo_path }}" alt="Alcorp logo">
                 <span>{{comedor}}</span>
               </div>
+              <span class="employee">
+                {% if employee and voucher_type == "PERPETUO" %}
+                  {{employee}}
+                {% endif %}
+              </span>
               <img src="file:///{{ qr_path }}" alt="QR Code">
               <div class="footer" >
+                {% if voucher_type == "PERPETUO" %}
+                <span class="vale-perpetuo">Vale perpetuo</span>
+                {% endif %}
                 <span>Folio: {{folio}}</span>
               </div>
             </div>

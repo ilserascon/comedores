@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const employeeHeader = document.getElementById('employeeHeader');
   const actionsHeader = document.getElementById('actionsHeader');
-  const uniqueLotActions = document.getElementById('uniqueLotActions');
+  const lotActions = document.getElementById('lotActions');
   const downloadVouchersBtn = document.getElementById('downloadVouchersBtn');
   const resendEmailBtn = document.getElementById('resendEmailBtn');
   const emailInput = document.getElementById('emailResend');
@@ -30,7 +30,6 @@ document.addEventListener('DOMContentLoaded', () => {
       pagination.innerHTML = '';
 
       const isUnique = data.vouchers.every(voucher => voucher.voucher_type === 'UNICO');
-      uniqueLotActions.style.display = isUnique ? 'block' : 'none';
 
       const hasPerpetual = data.vouchers.some(voucher => voucher.voucher_type === 'PERPETUO');
 
@@ -72,6 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ${voucher.voucher_type === 'PERPETUO'
         ? `<td>
             <button id='changeEmployeeBtn-${voucher.folio}' onclick="changeEmployeeName(${voucher.id}, '${voucher.folio}')" class="btn btn-primary btn-sm" disabled>Cambiar Nombre</button>
+            <button id='changeStatusBtn-${voucher.folio}' onclick="changeVoucherStatusBtn(${voucher.id}, ${voucher.status})" class="btn btn-primary btn-sm">${voucher.status ? 'Deshabilitar' : 'Habilitar'}</button>
             <button onclick="handlePerpetualVoucher('${voucher.folio}')" class="btn btn-primary btn-sm">Descargar Vale</button>
           </td>`
         : ''
@@ -79,6 +79,27 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     return row;
   }
+
+  window.changeVoucherStatusBtn = async function (voucher_id, status) {
+      try {
+          if(status === 0) {
+            status = false;
+          } else {
+            status = true;
+          }
+          const response = await changeVoucherStatus(voucher_id, !status);
+          if (response.message) {
+              showToast(`Vale ${status ? 'deshabilitado' : 'habilitado'} exitosamente`, 'success');
+              // Actualizar la tabla de vales
+              loadVouchers();
+
+          } else {
+              showToast(response.error || 'Error al cambiar el estado del vale', 'danger');
+          }
+      } catch (error) {
+          showToast(error.message || 'Error al cambiar el estado del vale', 'danger');
+      }
+  };
 
   window.changeEmployeeName = async function (voucher_id, folio) {
     try {
@@ -125,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   downloadVouchersBtn.addEventListener('click', async () => {
     try {
-      const data = await fetchDownloadVouchers(lotId);
+      const data = await getLotPdf(lotId);
       const a = document.createElement('a');
       a.href = data.pdf;
       a.download = `LOT-${lotId}.pdf`;
@@ -133,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (error) {
       showToast('Error al descargar los vales', 'danger');
     }
-  });
+  }); 
 
   window.handlePerpetualVoucher = async function (voucherFolio) {
     try {
@@ -159,14 +180,14 @@ document.addEventListener('DOMContentLoaded', () => {
   function showToast(message, type = 'success') {
     const toast = document.createElement('div');
     const header = type === 'success' ? 'Éxito' : type === 'info' ? 'Aviso' : 'Error';
-    toast.className = `toast align-items-center text-white bg-${type} border-0 rounded-pill shadow-sm p-2 px-3 m-1`;
+    toast.className = `toast align-items-center text-white bg-${type} border-0 shadow-sm p-2 px-3 m-1`;
     toast.role = 'alert';
     toast.ariaLive = 'assertive';
     toast.ariaAtomic = 'true';
     toast.style.zIndex = '1';
 
     toast.innerHTML = `
-      <div class="toast-header bg-${type} text-white d-flex align-items-center justify-content-between p-1 px-1 rounded-pill shadow-sm">
+      <div class="toast-header bg-${type} text-white d-flex align-items-center justify-content-between p-1 px-1 shadow-sm">
         <strong class="me-auto">${header}</strong>
         <button type="button" class="btn-close btn-close-white right-1" data-bs-dismiss="toast" aria-label="Close"></button>
       </div>
@@ -193,3 +214,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
   loadVouchers();
 });
+
