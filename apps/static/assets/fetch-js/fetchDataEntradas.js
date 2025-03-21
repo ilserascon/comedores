@@ -43,12 +43,6 @@ async function validarVale(folio) {
             body: JSON.stringify({ folio })
         });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            showToast(errorData.message, errorData.status);
-            console.log('Error:', errorData.message);            
-        }
-
         const data = await response.json();
         return data;
     } catch (error) {        
@@ -65,12 +59,6 @@ async function validarEmpleado(codigoEmpleado) {
             },
             body: JSON.stringify({ employeed_code: codigoEmpleado }),
         });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            showToast(errorData.message, errorData.status);
-            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-        }
 
         const data = await response.json();
         return data;
