@@ -110,16 +110,25 @@ async function openEditModal(id) {
     try {
         const comedor = await getComedor(id);
 
+        console.log(comedor);
+
         // Llenar los selects antes de asignar los valores
         await llenarSelectEncargados('editarComedorInCharge', comedor.in_charge);
-        await llenarSelectClientes('editarComedorClient');        
+        await llenarSelectClientes('editarComedorClient', comedor.client.id);
+
+        if (!comedor.client.status) {
+            document.getElementById('editarComedorClient').innerHTML = `<option value=${comedor.client.id}>${comedor.client.company}</option>`
+        }
+
+        document.getElementById('editarComedorClient').disabled = comedor.client.status ? false : true; // Deshabilitar el select si el cliente está inactivo
 
         // Asignar los valores a los campos del modal
         document.getElementById('editarComedorName').value = comedor.name;
         document.getElementById('editarComedorDescription').value = comedor.description;
         document.getElementById('editarComedorStatus').value = comedor.status ? '1' : '0';
         document.getElementById('editarComedorId').value = comedor.dining_room_id;
-        document.getElementById('editarComedorClient').value = comedor.client.id;        
+        document.getElementById('editarComedorStatus').disabled = comedor.client.status ? false : true;
+
 
         // Llamar a toggleEncargadoSelect para habilitar/deshabilitar el select de encargados
         toggleEncargadoSelect('editarComedorStatus', 'editarComedorInCharge');
@@ -276,7 +285,7 @@ async function llenarSelectEncargados(selectId, currentInCharge) {
  * @param {string} selectId - ID del select a llenar.
  * @throws {Error} - Error al obtener clientes.
  */
-async function llenarSelectClientes(selectId) {
+async function llenarSelectClientes(selectId, comedorId) {
     try {
         const data = await getClientes();
         const clientes = data.clientes;
@@ -297,6 +306,8 @@ async function llenarSelectClientes(selectId) {
             option.textContent = cliente.company; // Acceder a 'company' en lugar de 'client__company'
             select.appendChild(option);
         });
+
+        select.value = comedorId ? comedorId : ''; // Seleccionar el cliente actual si se proporciona
     } catch (error) {
         console.error('Error al llenar el select de clientes:', error.message);
     }

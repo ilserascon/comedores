@@ -204,7 +204,8 @@ def get_comedor(request):
             'in_charge__first_name',
             'in_charge__last_name',
             'client_diner_dining_room__client__id',
-            'client_diner_dining_room__client__company'
+            'client_diner_dining_room__client__company',
+            'client_diner_dining_room__client__status'
         ).first()
 
         # Verificar si el comedor existe
@@ -221,7 +222,8 @@ def get_comedor(request):
         # Formatear los datos del cliente
         client = {
             'id': dining_room['client_diner_dining_room__client__id'],
-            'company': dining_room['client_diner_dining_room__client__company']
+            'company': dining_room['client_diner_dining_room__client__company'],
+            'status': dining_room['client_diner_dining_room__client__status']
         }
 
         # Construir el contexto de respuesta
