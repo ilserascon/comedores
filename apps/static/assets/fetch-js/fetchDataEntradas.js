@@ -67,3 +67,20 @@ async function validarEmpleado(codigoEmpleado) {
         return null;
     }
 }
+
+async function fetchLastEntries(lastEntries) {
+    try {
+        const response = await fetch(`/get_last_entries?last_entries=${lastEntries}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error:', error.message);
+        return null;
+    }
+}

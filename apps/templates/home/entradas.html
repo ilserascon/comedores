@@ -15,7 +15,17 @@
     max-width: 450px;
     width: 100%;
   }
+
+  .last-5-entries-container{
+    background-color: white;
+    margin: 0 2rem;
+    padding: 1rem;
+    border-radius: 10px;
+  }
+  
 </style>
+
+
 
 <link rel="stylesheet" href="/static/assets/css/loader.css">
 {% endblock stylesheets %}
@@ -27,6 +37,13 @@
     <!-- El contenido se cargará dinámicamente con JavaScript -->
   </div>
 </div>
+
+<div class="last-5-entries-container shadow">
+  <div class="" id="last5entries">
+    <!-- El contenido se cargará dinámicamente con JavaScript -->
+  </div>
+</div>
+
 
 <div class="modal" id="entry-message" tabindex="-1" aria-labelledby="entry-message-label" aria-hidden="true">
   <div class="modal-dialog">

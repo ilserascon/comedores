@@ -49,6 +49,7 @@ urlpatterns = [
     path('validar_vale', views.validar_vale, name='validar_vale'),
     path('validar_empleado', views.validar_empleado, name='validar_empleado'), 
     path('get_informacion_comedor_entradas', views.get_informacion_comedor_entradas, name='get_informacion_comedor_entradas'),        
+    path('get_last_entries', views.get_last_entries, name='get_last_entries'),
 
 
     # ===================== REPORTE EMPLEADOS ===================== #

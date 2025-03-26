@@ -3052,6 +3052,62 @@ def validar_empleado(request):
             return JsonResponse({'error': 'El cuerpo de la solicitud debe ser un JSON válido'}, status=400)
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def get_last_entries(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Metodo no permitido'}, status=405)
+    
+    try:
+        last_entries = request.GET.get('last_entries')
+        dining_room = request
+        
+        if not last_entries:
+            return JsonResponse({'error': 'last_entries es requerido'}, status=400)
+        
+        last_entries = int(last_entries)
+        
+        if last_entries > 100:
+            return JsonResponse({'error': 'last_entries no puede ser mayor a 100'}, status=400)
+        
+        user = CustomUser.objects.filter(id=request.user.id).first()
+
+                
+        if not user:
+            return JsonResponse({'error': 'El usuario no existe'}, status=404)
+
+        dining_room = DiningRoom.objects.filter(in_charge=user).first()
+
+        
+        if not dining_room:
+            return JsonResponse({'error': 'El usuario no tiene un comedor asignado'}, status=404)
+        
+        client_diner = ClientDiner.objects.filter(dining_room=dining_room).first()
+
+        if not client_diner:
+            return JsonResponse({'error': 'El comedor no tiene clientes asignados'}, status=404)
+        
+        
+        
+        entries = Entry.objects.filter(client_diner=client_diner).order_by('-created_at')[:last_entries]
+
+        arizona_tz = pytz.timezone('America/Phoenix')
+        entries_json = [
+            {
+            "employee": entry.employee_client_diner.employee.name if entry.employee_client_diner else None,
+            "datetime": entry.created_at.astimezone(arizona_tz).strftime('%Y-%m-%d %H:%M:%S'),
+            "voucher": entry.voucher.folio if entry.voucher else None,
+            "voucher_type": entry.voucher.lots.voucher_type.description if entry.voucher else None
+            } for entry in entries
+        ]
+
+        return JsonResponse({'entries': entries_json})
+    
+    except Exception as err:
+        print(str(err))
+        return JsonResponse({'error': 'Error al obtener las entradas'}, status=500)
+        
+
     
 # ===================== ADMINISTRADOR DE VALES ===================== #
 @csrf_exempt

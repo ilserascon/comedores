@@ -1,5 +1,7 @@
 const correctAudio = new Audio('/static/assets/audio/correct.mp3');
 const incorrectAudio = new Audio('/static/assets/audio/incorrect.mp3');
+const last5entries = document.getElementById('last5entries')
+
 
 
 function playAudio(status){
@@ -32,6 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('employeeCode').value = '';
             document.getElementById('voucherFolio').value = '';
         }
+        updateLast5Entries()
     }
 
     async function validarEmpleadoEntrada(codigoEmpleado) {
@@ -263,3 +266,37 @@ function closeModal(){
     }
 }
 
+
+async function updateLast5Entries() {
+    try {
+        const data = await fetchLastEntries(5);
+        last5entries.innerHTML = `
+            <h5 class="mb-3">Últimas 5 entradas</h5>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Empleado</th>
+                        <th>Fecha de entrada</th>
+                        <th>Folio de Vale</th>
+                        <th>Tipo de Vale</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.entries.map(entry => `
+                        <tr>
+                            <td>${entry.employee || '--'}</td>
+                            <td>${entry.datetime || '--'}</td>
+                            <td>${entry.voucher || '--'}</td>
+                            <td>${entry.voucher_type || '--'}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    } catch (error) {
+        console.log(error)
+        showToast('Error al cargar las últimas entradas', 'danger');
+    }
+}
+
+updateLast5Entries();
