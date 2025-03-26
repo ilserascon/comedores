@@ -362,7 +362,7 @@ function validateFields(maxQuantity, quantity, clientField, diningRoomField){
   }
 
   if (quantity > maxQuantity) {
-    showToast('La cantidad no puede ser mayor a 999', 'danger')
+    showToast(`La cantidad no puede ser mayor a ${maxQuantity}`, 'danger')
     return false;
   }
 
@@ -392,7 +392,7 @@ generateUniqueVouchersForm.addEventListener('submit', (e) => {
   const uniqueClient = Number(data['unique-client-field'])
   const uniqueDiningRoom = Number(data['unique-dinningroom-field'])
 
-  if (!validateFields(999, quantity, uniqueClient, uniqueDiningRoom)) return;
+  if (!validateFields(9999, quantity, uniqueClient, uniqueDiningRoom)) return;
 
   const loader = getLoader('Generando vales', 'loader-unique-vouchers')
 

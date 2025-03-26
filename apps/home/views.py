@@ -2488,6 +2488,9 @@ def generate_unique_voucher(request):
         
         if type(quantity) != int:
             return JsonResponse({"error": "quantity debe ser un número entero"}, status=400)
+        
+        if quantity > 9999:
+            return JsonResponse({"error": "La cantidad no puede ser mayor a 9999"}, status=400)
 
         if type(client_id) != int:
             return JsonResponse({"error": "client_id debe ser un número entero"}, status=400)
