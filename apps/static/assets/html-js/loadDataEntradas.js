@@ -1,3 +1,21 @@
+const correctAudio = new Audio('/static/assets/audio/correct.mp3');
+const incorrectAudio = new Audio('/static/assets/audio/incorrect.mp3');
+
+
+function playAudio(status){
+    switch (status) {
+
+        case 'success':
+            correctAudio.play();
+            break;
+        default:
+            incorrectAudio.play();
+        break;
+    }
+    
+
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     
     async function validarEntrada() {
@@ -20,6 +38,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const empleadoData = await validarEmpleado(codigoEmpleado);        
         if (empleadoData) {
             showModal(empleadoData.message, empleadoData.status, 3);
+            playAudio(empleadoData.status);
             if (empleadoData.status === 'success') {
                 // Limpiar el campo de código de empleado
                 document.getElementById('employeeCode').value = '';
@@ -31,6 +50,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const data = await validarVale(folio);        
         if (data) {
             showModal(data.message, data.status, 3);
+            playAudio(data.status);
             if (data.status === 'success') {
                 // Limpiar el campo de folio del vale
                 document.getElementById('voucherFolio').value = '';
