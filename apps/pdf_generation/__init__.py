@@ -172,7 +172,11 @@ def clean_temp_dir():
 
 def prepare_url_pdf(filepath: str):
   #conseguir la url hasta el penultimo /
-  match = re.search(r"\\static\\.*", filepath)
-  relative_path = match.group(0)[1:] if match else filepath
-  relative_path = relative_path.replace("\\", "/")  
+  if os.name == 'nt':
+    match = re.search(r"\\static\\.*", filepath)
+    relative_path = match.group(0)[1:] if match else filepath
+    relative_path = relative_path.replace("\\", "/")
+  else:
+    match = re.search(r"/static/.*", filepath)
+    relative_path = match.group(0) if match else filepath
   return relative_path
