@@ -1508,6 +1508,7 @@ def export_excel_employee_report(request):
 
         entry_employee = Entry.objects.select_related(
             'employee_client_diner__employee',
+            'employee_client_diner__employee__payroll',
             'employee_client_diner__client_diner__client',
             'employee_client_diner__client_diner__dining_room'
         ).filter(**filters).values(
@@ -1522,7 +1523,7 @@ def export_excel_employee_report(request):
             employee_second_lastname=F('employee_client_diner__employee__second_lastname'),
             employee_status=F('employee_client_diner__employee__status'),
             entry_created_at=F('created_at')
-        ).order_by('-created_at')
+        ).order_by('-created_at')            
 
         # Crear un DataFrame a partir del queryset
         df = pd.DataFrame(list(entry_employee))
@@ -1533,6 +1534,7 @@ def export_excel_employee_report(request):
         
         # Si el estado del empleado es True, cambiar a 'Activo', de lo contrario 'Inactivo'
         df['employee_status'] = df['employee_status'].apply(lambda x: 'Activo' if x else 'Inactivo')
+        
 
         # Definir los encabezados personalizados para la hoja de Excel
         headers = [
@@ -1570,13 +1572,23 @@ def export_excel_employee_report(request):
             'Apellido Materno Empleado',
             'Estado Empleado',
             'Nombre Comedor',
-            'Total Entradas'
+            'Total Entradas',
+            'Nomina'
         ]
         ws2.append(simplified_headers)
         add_styles(ws2, simplified_headers)
 
         # Generar un informe resumido (agregando por empleado)
         summary_df = df.groupby(['employee_code', 'employee_name', 'employee_lastname', 'employee_second_lastname', 'dining_room_name', 'employee_status']).size().reset_index(name='Total Entradas')
+
+
+        def add_payroll_types(row):
+            employee = Employee.objects.filter(employeed_code=row['employee_code']).first()
+            print(employee.payroll)
+            row['payroll_description'] = employee.payroll.description
+            return row
+    
+        summary_df = summary_df.apply(add_payroll_types, axis=1)
 
         for row in dataframe_to_rows(summary_df, index=False, header=False):
             ws2.append(row)
