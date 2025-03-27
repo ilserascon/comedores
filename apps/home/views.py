@@ -2872,6 +2872,37 @@ def entradas_view(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 @csrf_exempt
+def entradas_te_view(request):
+    try:
+        user = request.user.id        
+        dining_room = DiningRoom.objects.filter(in_charge_id=user, status=True).first()        
+
+        if dining_room:
+            client_diner_dining_room = ClientDiner.objects.filter(dining_room=dining_room).first()            
+
+            if client_diner_dining_room:
+                response_data = {
+                    'has_dining_room': True,
+                    'dining_room': {
+                        'name': dining_room.name,
+                        'client_company': client_diner_dining_room.client.company
+                    }
+                }
+            else:
+                response_data = {
+                    'has_dining_room': False
+                }
+        else:
+            response_data = {
+                'has_dining_room': False
+            }
+
+        return JsonResponse(response_data)
+    except Exception as e:        
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
 def get_informacion_comedor_entradas(request):
     try:
         user_id = request.user.id
@@ -3052,6 +3083,62 @@ def validar_empleado(request):
             return JsonResponse({'error': 'El cuerpo de la solicitud debe ser un JSON válido'}, status=400)
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def validar_empleado_te(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            employeed_code = data.get('employeed_code')
+
+            # Verificar si el código de empleado fue proporcionado
+            if not employeed_code:
+                return JsonResponse({'message': 'El código de empleado es requerido', "status": "danger"}, status=400)
+
+            # Verificar si el empleado existe
+            employee = Employee.objects.filter(employeed_code=employeed_code).first()
+            if not employee:
+                return JsonResponse({'message': 'Empleado no encontrado', "status": "danger"}, status=404)
+
+            # Verificar si el empleado está activo
+            if not employee.status:
+                return JsonResponse({'message': 'Empleado inactivo', "status": "danger"}, status=400)
+ 
+            # Verificar si el usuario tiene un comedor asignado
+            user_id = request.user.id
+            dining_room = DiningRoom.objects.filter(in_charge_id=user_id).first()
+            if not dining_room:
+                return JsonResponse({'message': 'No tienes un comedor asignado', "status": "danger"}, status=403)
+            
+            # Verificar si el comedor asignado está activo
+            if not dining_room.status:
+                return JsonResponse({'message': 'El comedor asignado está inactivo', "status": "danger"}, status=403)
+
+            # Verificar si el empleado tiene acceso al comedor asignado
+            employee_client_diner = EmployeeClientDiner.objects.filter(employee=employee, client_diner__dining_room=dining_room).first()
+            if not employee_client_diner:
+                return JsonResponse({'message': 'El empleado no tiene acceso a este comedor', 'status': "danger"}, status=403)
+
+            # Definir la zona horaria de Arizona
+            arizona_tz = pytz.timezone('America/Phoenix')
+            now = timezone.now().astimezone(arizona_tz)
+            today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            today_end = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+            # Registrar la entrada
+            entry = Entry(
+                employee_client_diner=employee_client_diner,
+                client_diner=employee_client_diner.client_diner,
+                created_at=now
+            )
+            entry.save()
+
+            return JsonResponse({'message': 'Bienvenido al comedor', 'status': 'success'}, status=200)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'El cuerpo de la solicitud debe ser un JSON válido'}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
 
 @csrf_exempt
 def get_last_entries(request):

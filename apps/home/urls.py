@@ -45,9 +45,11 @@ urlpatterns = [
     path('get_tipos_nomina', views.get_tipos_nomina, name='get_tipos_nomina'),
 
     # ===================== ENTRADAS ===================== #
-    path('entradas_view', views.entradas_view, name='entradas_view'),    
+    path('entradas_view', views.entradas_view, name='entradas_view'), 
+    path('entradaste_te_view', views.entradas_te_view, name='entradas_te_view'),    
     path('validar_vale', views.validar_vale, name='validar_vale'),
     path('validar_empleado', views.validar_empleado, name='validar_empleado'), 
+    path('validar_empleado_te', views.validar_empleado_te, name='validar_empleado_te'), 
     path('get_informacion_comedor_entradas', views.get_informacion_comedor_entradas, name='get_informacion_comedor_entradas'),        
     path('get_last_entries', views.get_last_entries, name='get_last_entries'),
 

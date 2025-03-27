@@ -1,0 +1,80 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %} Entradas Tiempo Extra {% endblock title %}
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}
+<style>
+  .card-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 90vh;
+  }
+  .card {
+    max-width: 450px;
+    width: 100%;
+  }
+
+  .last-5-entries-container{
+    background-color: white;
+    margin: 0 2rem;
+    padding: 1rem;
+    border-radius: 10px;
+  }
+  
+</style>
+
+
+
+<link rel="stylesheet" href="/static/assets/css/loader.css">
+{% endblock stylesheets %}
+
+{% block content %}        
+
+<div class="card-container">
+  <div class="card shadow" id="cardContent">
+    <!-- El contenido se cargará dinámicamente con JavaScript -->
+  </div>
+</div>
+
+<div class="last-5-entries-container shadow">
+  <div class="" id="last5entries">
+    <!-- El contenido se cargará dinámicamente con JavaScript -->
+  </div>
+</div>
+
+
+<div class="modal" id="entry-message" tabindex="-1" aria-labelledby="entry-message-label" aria-hidden="true">
+  <div class="modal-dialog">
+      <div class="modal-content">
+          <div class="modal-header">
+              <h5 class="modal-title" id="entry-message-label"></h5>
+
+          </div>
+          <div class="modal-body">
+              
+          </div>
+      </div>
+  </div>
+</div>
+
+
+  <!-- Toast container -->
+<div aria-live="polite" aria-atomic="true" class="position-relative" style="z-index: 1070;" id="toast-area" aria-hidden="true">
+  <div class="toast-container position-fixed bottom-0 right-0 p-4 m-1 z-4" id="toastContainer">
+    <!-- Toasts will be dynamically added here -->
+  </div>
+</div>
+
+{% include "includes/footer.html" %}
+
+{% endblock content %}
+
+<!-- Specific JS goes HERE --> 
+{% block javascripts %}
+
+<script src="/static/assets/vendor/clipboard/dist/clipboard.min.js"></script>
+<script src="/static/assets/html-js/loadDataEntradas_te.js"></script>
+
+{% endblock javascripts %}
