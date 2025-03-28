@@ -1219,6 +1219,8 @@ def get_employee_report_general(request):
 
         filters = {k: v for k, v in filters.items() if v}
 
+        arizona_tz = pytz.timezone('America/Phoenix')
+        
         entry_employee = Entry.objects.select_related(
             'employee_client_diner__employee',
             'employee_client_diner__client_diner__client',
@@ -1236,6 +1238,10 @@ def get_employee_report_general(request):
             employee_status=F('employee_client_diner__employee__status'),
             entry_created_at=F('created_at')
         ).order_by('-created_at')
+
+        # Convert created_at to America/Phoenix timezone
+        for entry in entry_employee:
+            entry['entry_created_at'] = entry['entry_created_at'].astimezone(arizona_tz).strftime('%Y-%m-%d %H:%M:%S')
 
         paginator = Paginator(entry_employee, page_size)
 
@@ -1721,8 +1727,10 @@ def get_unique_reports(request):
         entry_map = {entry['voucher_id']: entry['created_at'] for entry in entries}
 
         # Añadir la información de las entradas a los vales
+        arizona_tz = pytz.timezone('America/Phoenix')
         for voucher in vouchers:
-            voucher['entry_created_at'] = entry_map.get(voucher['id'], None)
+            entry_created_at = entry_map.get(voucher['id'], None)
+            voucher['entry_created_at'] = entry_created_at.astimezone(arizona_tz).strftime('%Y-%m-%d %H:%M:%S') if entry_created_at else None
 
         paginator = Paginator(vouchers, page_size)
 
@@ -1989,9 +1997,10 @@ def export_excel_unique_reports(request):
         return JsonResponse({'error': 'No hay registros'}, status=500)
 
 def format_date(date):
+    az_timezone = pytz.timezone('America/Phoenix')
     if not date:
         return "Sin usar"
-    date_obj = date.replace(tzinfo=None) - timedelta(hours=7)
+    date_obj = date.astimezone(az_timezone)
     day = date_obj.day
     month = date_obj.month
     year = date_obj.year
@@ -2009,6 +2018,7 @@ def get_perpetual_reports(request):
     page_number = request.GET.get('page', 1)
     page_size = request.GET.get('page_size', 10)
     lot = request.GET.get('filterLotNumber')
+
 
 
     try:
@@ -2069,6 +2079,12 @@ def get_perpetual_reports(request):
             entries = paginator.page(1)
         except EmptyPage:
             entries = paginator.page(paginator.num_pages)
+            
+        
+        arizona_tz = pytz.timezone('America/Phoenix')
+            
+        for entry in entries:
+            entry['entry_created_at'] = entry['entry_created_at'].astimezone(arizona_tz).strftime('%Y-%m-%d %H:%M:%S')
 
         context = {
             'perpetual_reports': list(entries),
@@ -3122,8 +3138,8 @@ def validar_empleado_te(request):
             # Definir la zona horaria de Arizona
             arizona_tz = pytz.timezone('America/Phoenix')
             now = timezone.now().astimezone(arizona_tz)
-            today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-            today_end = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+            
+            print(now)
 
             # Registrar la entrada
             entry = Entry(
@@ -3176,7 +3192,15 @@ def get_last_entries(request):
         
         
         
-        entries = Entry.objects.filter(client_diner=client_diner).order_by('-created_at')[:last_entries]
+        arizona_tz = pytz.timezone('America/Phoenix')  # Replace with your desired timezone
+        entries = Entry.objects.filter(client_diner=client_diner).order_by('-created_at')
+        
+        if not len(entries):
+            return JsonResponse({'error': 'No hay entradas'}, status=404)
+        
+        entries = entries[:last_entries]
+        
+        # print(entries[0])
 
         arizona_tz = pytz.timezone('America/Phoenix')
         entries_json = [
@@ -3187,6 +3211,8 @@ def get_last_entries(request):
             "voucher_type": entry.voucher.lots.voucher_type.description if entry.voucher else None
             } for entry in entries
         ]
+        
+        # print(entries_json[0])
 
         return JsonResponse({'entries': entries_json})
     
@@ -3226,13 +3252,16 @@ def get_voucher_lots(request):
         if voucher_type:
             lots_query = lots_query.filter(voucher_type__description__iexact=voucher_type)
 
+        arizona_tz = pytz.timezone('America/Phoenix')
+        
+
         lots = [
             {
                 'id': lot['id'],
                 'voucher_type': lot['voucher_type__description'] or 'N/A',
                 'quantity': lot['quantity'] or 'N/A',
                 'email': lot['email'] or lot['client_diner__client__email'] or 'N/A',
-                'created_at': lot['created_at'].strftime('%Y-%m-%d %H:%M:%S') if lot['created_at'] else 'N/A',
+                'created_at': lot['created_at'].astimezone(arizona_tz).strftime('%Y-%m-%d %H:%M:%S') if lot['created_at'] else 'N/A',
                 'created_by': lot['created_by__username'] or 'N/A',
                 'client': lot['client_diner__client__company'] or 'N/A',
                 'dining_room': lot['client_diner__dining_room__name'] or 'N/A'

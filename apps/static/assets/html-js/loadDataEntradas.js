@@ -270,6 +270,11 @@ function closeModal(){
 async function updateLast5Entries() {
     try {
         const data = await fetchLastEntries(5);
+
+        if (!data.entries) {
+            return showToast('No hay entradas recientes', 'info');
+        }
+
         last5entries.innerHTML = `
             <h5 class="mb-3">Últimas 5 entradas</h5>
             <table class="table table-striped">
