@@ -45,22 +45,54 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function createPagination(currentPage, totalPages) {
-    let paginationHTML = '';
-    for (let i = 1; i <= totalPages; i++) {
-      paginationHTML += `
-        <li class="page-item ${i === currentPage ? 'active' : ''}" style="z-index: 0;">
-          <a class="page-link" href="javascript:void(0);" page-number="${i}">${i}</a>
-        </li>`;
-    }
-    pagination.innerHTML = paginationHTML;
-
-    // Add a single event listener to the pagination element
-    pagination.addEventListener('click', async function (event) {
-      if (event.target.tagName === 'A' && !isFetching) {
-        const pageNumber = parseInt(event.target.getAttribute('page-number'), 10);
-        await loadLots(pageNumber, searchLotInput.value, filterVoucherType.value);
+      const maxPagesToShow = 5; // Show current, 2 before, and 2 after
+      let paginationHTML = '';
+  
+      // Calculate the start and end pages
+      const startPage = Math.max(1, currentPage - 2); // 2 pages before the current
+      const endPage = Math.min(totalPages, currentPage + 2); // 2 pages after the current
+  
+      // Add "Previous" button
+      if (currentPage > 1) {
+          paginationHTML += `
+              <li class="page-item">
+                  <a class="page-link" href="javascript:void(0);" page-number="${currentPage - 1}">
+                      <i class="fas fa-angle-left"></i>
+                  </a>
+              </li>`;
       }
-    });
+  
+      // Add page links
+      for (let i = startPage; i <= endPage; i++) {
+          paginationHTML += `
+              <li class="page-item ${i === currentPage ? 'active' : ''}" style="z-index: 0;">
+                  <a class="page-link" href="javascript:void(0);" page-number="${i}">${i}</a>
+              </li>`;
+      }
+  
+      // Add "Next" button
+      if (currentPage < totalPages) {
+          paginationHTML += `
+              <li class="page-item">
+                  <a class="page-link" href="javascript:void(0);" page-number="${currentPage + 1}">
+                      <i class="fas fa-angle-right"></i>
+                  </a>
+              </li>`;
+      }
+  
+      pagination.innerHTML = paginationHTML;
+  
+      // Add a single event listener to the pagination element
+      pagination.addEventListener('click', async function (event) {
+          if (event.target.tagName === 'A' && !isFetching) {
+              const pageNumber = parseInt(event.target.getAttribute('page-number'), 10);
+              if (!isNaN(pageNumber)) {
+                  isFetching = true;
+                  await loadLots(pageNumber, searchLotInput.value, filterVoucherType.value);
+                  isFetching = false;
+              }
+          }
+      });
   }
 
   // Event listeners for filters
