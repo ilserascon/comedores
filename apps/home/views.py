@@ -2811,12 +2811,10 @@ def generate_perpetual_voucher_qr(request):
         except:
             return JsonResponse({'error': 'Error al generar el PDF'}, status=500)
         
-        match = re.search(r"\\static\\.*", filepath)
-        relative_path = match.group(0)[1:] if match else filepath
-        relative_path = relative_path.replace("\\", "/")  
+        url = prepare_url_pdf(filepath)
 
 
-        return JsonResponse({'filepath': relative_path, 'message': 'QR generado con éxito'})
+        return JsonResponse({'filepath': url, 'message': 'QR generado con éxito'})
 
     except:
         return JsonResponse({'error': 'Error al generar el QR'}, status=500)
