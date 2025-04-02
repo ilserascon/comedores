@@ -2,6 +2,7 @@ const correctAudio = new Audio('/static/assets/audio/correct.mp3');
 const incorrectAudio = new Audio('/static/assets/audio/incorrect.mp3');
 const last5entries = document.getElementById('last5entries')
 const modalElement = document.getElementById('entry-message')
+const bootstrapModal = new bootstrap.Modal(modalElement)
 
 
 
@@ -24,25 +25,32 @@ document.addEventListener('DOMContentLoaded', function() {
     async function validarEntrada() {
         const codigoEmpleado = document.getElementById('employeeCode').value;
         const folio = document.getElementById('voucherFolio').value;
+        let lastUsedInput
         
-        showModal('Por favor, espere...', 'loading', 3)
+        showModal('Por favor, espere...', 'loading', 2)
         if (codigoEmpleado && !folio) {
+            lastUsedInput = document.getElementById('employeeCode')
             await validarEmpleadoEntrada(codigoEmpleado);
         } else if (folio && !codigoEmpleado) {
+            lastUsedInput = document.getElementById('voucherFolio')
             await validarValeEntrada(folio);
         } else {                        
-            showModal('Por favor, ingrese solo el código de empleado o el folio del vale.', 'danger', 3);
+            showModal('Por favor, ingrese solo el código de empleado o el folio del vale.', 'danger', 2);
             playAudio('danger');
-            document.getElementById('employeeCode').value = '';
-            document.getElementById('voucherFolio').value = '';
         }
+        const modal = document.getElementById('entry-message');
+        if (lastUsedInput)
+            modal.setAttribute('data-input', lastUsedInput.id)
+        
+        document.getElementById('employeeCode').value = '';
+        document.getElementById('voucherFolio').value = '';
         updateLast5Entries()
     }
 
     async function validarEmpleadoEntrada(codigoEmpleado) {
         const empleadoData = await validarEmpleado(codigoEmpleado);        
         if (empleadoData) {
-            showModal(empleadoData.message, empleadoData.status, 3);
+            showModal(empleadoData.message, empleadoData.status, 2);
             playAudio(empleadoData.status);
             if (empleadoData.status === 'success') {
                 // Limpiar el campo de código de empleado
@@ -54,7 +62,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function validarValeEntrada(folio) {
         const data = await validarVale(folio);        
         if (data) {
-            showModal(data.message, data.status, 3);
+            showModal(data.message, data.status, 2);
             playAudio(data.status);
             if (data.status === 'success') {
                 // Limpiar el campo de folio del vale
@@ -114,9 +122,8 @@ document.addEventListener('DOMContentLoaded', function() {
     mostrarComedorInfo(); 
     
     document.addEventListener('keydown', async function(event) {
-        
-        if (event.key === 'Enter') {
-            await validarEntrada();
+        if (event.key == 'Enter'){
+            document.getElementById('btnValidarEntrada').click()
         }
     });
 });
@@ -256,14 +263,13 @@ const modalElement = document.getElementById('entry-message')
 
     }
     modalElement.innerHTML = content
-    const bsModal = new bootstrap.Modal(modalElement);
-    bsModal.show();
+    bootstrapModal.show();
     
     if (duration > 0) {
         setTimeout(() => {
             closeModal()
 
-        }, (duration * 1000))
+        }, (1 * 1000))
     }
 
 
@@ -271,14 +277,18 @@ const modalElement = document.getElementById('entry-message')
 }
 
 function closeModal(){
-    modalElement.innerHTML = ''
+    bootstrapModal.hide()
+
     const backdrop = document.querySelector('.modal-backdrop')
 
     if (backdrop) {
         backdrop.remove()
     }
-}
 
+    const input = document.getElementById(modalElement.getAttribute('data-input'))
+    if (input)
+        input.focus()
+}
 
 async function updateLast5Entries() {
     try {

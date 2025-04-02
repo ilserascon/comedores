@@ -81,13 +81,18 @@ document.addEventListener('DOMContentLoaded', () => {
       }
   
       pagination.innerHTML = paginationHTML;
+
+      console.log(pagination)
   
       // Add a single event listener to the pagination element
       pagination.addEventListener('click', async function (event) {
+        console.log(event)
+        console.log(event.target)
           if (event.target.tagName === 'A' && !isFetching) {
               const pageNumber = parseInt(event.target.getAttribute('page-number'), 10);
               if (!isNaN(pageNumber)) {
-                  isFetching = true;
+                  // isFetching = true;
+                  console.log(pageNumber)
                   await loadLots(pageNumber, searchLotInput.value, filterVoucherType.value);
                   isFetching = false;
               }
