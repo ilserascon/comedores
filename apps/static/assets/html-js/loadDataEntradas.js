@@ -1,6 +1,7 @@
 const correctAudio = new Audio('/static/assets/audio/correct.mp3');
 const incorrectAudio = new Audio('/static/assets/audio/incorrect.mp3');
 const last5entries = document.getElementById('last5entries')
+const modalElement = document.getElementById('entry-message')
 
 
 
@@ -23,7 +24,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function validarEntrada() {
         const codigoEmpleado = document.getElementById('employeeCode').value;
         const folio = document.getElementById('voucherFolio').value;
-
+        
         showModal('Por favor, espere...', 'loading', 3)
         if (codigoEmpleado && !folio) {
             await validarEmpleadoEntrada(codigoEmpleado);
@@ -31,6 +32,7 @@ document.addEventListener('DOMContentLoaded', function() {
             await validarValeEntrada(folio);
         } else {                        
             showModal('Por favor, ingrese solo el código de empleado o el folio del vale.', 'danger', 3);
+            playAudio('danger');
             document.getElementById('employeeCode').value = '';
             document.getElementById('voucherFolio').value = '';
         }
@@ -109,7 +111,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    mostrarComedorInfo();
+    mostrarComedorInfo(); 
+    
+    document.addEventListener('keydown', async function(event) {
+        
+        if (event.key === 'Enter') {
+            await validarEntrada();
+        }
+    });
 });
 
 /**
@@ -167,7 +176,6 @@ function getLoader(loaderId){
     `
   }
 
-const modalElement = document.getElementById('entry-message')
 
 /**
  * MUESTRA UN MODAL DE BOOTSTRAP.
@@ -178,11 +186,13 @@ const modalElement = document.getElementById('entry-message')
  * @param {number} [duration=0] - La duración en milisegundos para que el modal se cierre automáticamente. Si es 0, no se cierra automáticamente.
  */
 function showModal(message, type = 'success', duration = 0) {    
+const modalElement = document.getElementById('entry-message')
 
+    let content
     switch (type) {
         case 'loading':
             const loader = getLoader('loader')
-            modalElement.innerHTML = `
+            content = `
                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
                         <div class="modal-header bg-gray-dark">
@@ -198,7 +208,7 @@ function showModal(message, type = 'success', duration = 0) {
         break;
 
         case 'success':
-            modalElement.innerHTML = `
+            content = `
                                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
                         <div class="modal-header bg-green">
@@ -214,7 +224,7 @@ function showModal(message, type = 'success', duration = 0) {
             break;    
 
         case 'danger':
-            modalElement.innerHTML = `
+            content = `
                                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
                         <div class="modal-header bg-danger">
@@ -230,7 +240,7 @@ function showModal(message, type = 'success', duration = 0) {
             break;
         
         case 'info':
-            modalElement.innerHTML = `
+            content = `
                                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
                         <div class="modal-header bg-info">
@@ -245,12 +255,15 @@ function showModal(message, type = 'success', duration = 0) {
             `
 
     }
-
+    modalElement.innerHTML = content
+    const bsModal = new bootstrap.Modal(modalElement);
+    bsModal.show();
+    
     if (duration > 0) {
         setTimeout(() => {
             closeModal()
 
-        }, duration * 1000)
+        }, (duration * 1000))
     }
 
 
@@ -299,7 +312,6 @@ async function updateLast5Entries() {
             </table>
         `;
     } catch (error) {
-        console.log(error)
         showToast('Error al cargar las últimas entradas', 'danger');
     }
 }
