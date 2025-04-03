@@ -3376,12 +3376,9 @@ def search_pdf_qr_perpetual_voucher_and_generate(request):
         except:
             return JsonResponse({'error': 'Error al generar el PDF'}, status=500)
 
-        match = re.search(r"\\static\\.*", filepath)
-        relative_path = match.group(0)[1:] if match else filepath
-        relative_path = relative_path.replace("\\", "/")  
+        url = prepare_url_pdf(filepath)
 
-
-        return JsonResponse({'pdf': relative_path, 'message': 'PDF generado con éxito'})
+        return JsonResponse({'pdf': url, 'message': 'PDF generado con éxito'})
     except Exception as e:
         print(e)
         return JsonResponse({'error': str(e)}, status=500)

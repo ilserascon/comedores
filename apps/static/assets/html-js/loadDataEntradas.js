@@ -20,37 +20,39 @@ function playAudio(status){
 
 }
 
+const isFolio = (input) => /^\d+-\d+$/.test(input)
+const isEmployeeCode = (input) => /^\d+$/.test(input)
+
 document.addEventListener('DOMContentLoaded', function() {
     
     async function validarEntrada() {
-        const codigoEmpleado = document.getElementById('employeeCode').value;
-        const folio = document.getElementById('voucherFolio').value;
-        let lastUsedInput
+        const entryData = document.getElementById('entry-data').value;
+        showModal('Por favor, espere...', 'loading', 3)
         
-        showModal('Por favor, espere...', 'loading', 2)
-        if (codigoEmpleado && !folio) {
-            lastUsedInput = document.getElementById('employeeCode')
-            await validarEmpleadoEntrada(codigoEmpleado);
-        } else if (folio && !codigoEmpleado) {
-            lastUsedInput = document.getElementById('voucherFolio')
-            await validarValeEntrada(folio);
+
+        if (!entryData) {
+            showModal('Por favor, ingrese su código de empleado o folio de vale.', 'danger', 3);
+            playAudio('danger')
+            return
+        }
+                
+        if (isEmployeeCode(entryData)) {
+            await validarEmpleadoEntrada(entryData);
+        } else if (isFolio(entryData)) {
+            await validarValeEntrada(entryData);
         } else {                        
-            showModal('Por favor, ingrese solo el código de empleado o el folio del vale.', 'danger', 2);
+            showModal('El formato ingresado no es ni de un código de empleado ni de un folio de vale.', 'danger', 3);
             playAudio('danger');
         }
-        const modal = document.getElementById('entry-message');
-        if (lastUsedInput)
-            modal.setAttribute('data-input', lastUsedInput.id)
         
-        document.getElementById('employeeCode').value = '';
-        document.getElementById('voucherFolio').value = '';
         updateLast5Entries()
     }
 
     async function validarEmpleadoEntrada(codigoEmpleado) {
+        console.log(`Validando empleado: ${codigoEmpleado}`)
         const empleadoData = await validarEmpleado(codigoEmpleado);        
         if (empleadoData) {
-            showModal(empleadoData.message, empleadoData.status, 2);
+            showModal(empleadoData.message, empleadoData.status, 3);
             playAudio(empleadoData.status);
             if (empleadoData.status === 'success') {
                 // Limpiar el campo de código de empleado
@@ -62,7 +64,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function validarValeEntrada(folio) {
         const data = await validarVale(folio);        
         if (data) {
-            showModal(data.message, data.status, 2);
+            showModal(data.message, data.status, 3);
             playAudio(data.status);
             if (data.status === 'success') {
                 // Limpiar el campo de folio del vale
@@ -88,18 +90,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="card-body">
                         <h4 class="text-center mb-3">Registrar entrada</h4>
                         <div class="form-group">
-                            <label for="employeeCode">Código de Empleado</label>
-                            <input type="text" class="form-control" id="employeeCode" placeholder="Ingrese código de empleado">
-                        </div>
-                        <div class="form-group">
-                            <label for="voucherFolio">Folio del Vale</label>
-                            <input type="text" class="form-control" id="voucherFolio" placeholder="Ingrese folio del vale">
+                            <label for="employeeCode">Datos de entrada</label>
+                            <input type="text" class="form-control" id="entry-data" placeholder="Ingrese su código de empleado o folio de vale">
                         </div>
                     </div>
 
                     <!-- Footer Section -->
                     <div class="card-footer bg-transparent d-flex justify-content-end">
-                        <button type="button" data-toggle="modal" data-target="#entry-message" class="btn btn-primary" id="btnValidarEntrada">Validar</button>
+                        <button type="button"  class="btn btn-primary" id="btnValidarEntrada">Validar</button>
                     </div>
                 `;
                 
@@ -123,7 +121,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     document.addEventListener('keydown', async function(event) {
         if (event.key == 'Enter'){
-            document.getElementById('btnValidarEntrada').click()
+            validarEntrada()
         }
     });
 });
@@ -183,6 +181,7 @@ function getLoader(loaderId){
     `
   }
 
+let activeHidingTimeout = 0
 
 /**
  * MUESTRA UN MODAL DE BOOTSTRAP.
@@ -193,7 +192,6 @@ function getLoader(loaderId){
  * @param {number} [duration=0] - La duración en milisegundos para que el modal se cierre automáticamente. Si es 0, no se cierra automáticamente.
  */
 function showModal(message, type = 'success', duration = 0) {    
-const modalElement = document.getElementById('entry-message')
 
     let content
     switch (type) {
@@ -264,12 +262,16 @@ const modalElement = document.getElementById('entry-message')
     }
     modalElement.innerHTML = content
     bootstrapModal.show();
+
+    if (activeHidingTimeout) {
+        clearTimeout(activeHidingTimeout)
+    }
     
     if (duration > 0) {
-        setTimeout(() => {
+        activeHidingTimeout = setTimeout(() => {
             closeModal()
 
-        }, (1 * 1000))
+        }, (duration * 1000))
     }
 
 
@@ -279,15 +281,11 @@ const modalElement = document.getElementById('entry-message')
 function closeModal(){
     bootstrapModal.hide()
 
-    const backdrop = document.querySelector('.modal-backdrop')
-
-    if (backdrop) {
-        backdrop.remove()
-    }
-
-    const input = document.getElementById(modalElement.getAttribute('data-input'))
-    if (input)
+    const input = document.getElementById('entry-data')
+    if (input){
         input.focus()
+        input.value = ''
+    }
 }
 
 async function updateLast5Entries() {
