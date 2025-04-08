@@ -21,8 +21,7 @@ function playAudio(status){
 }
 
 const isFolio = (input) => /^\d+-\d+$/.test(input)
-const isEmployeeCode = (input) => /^\d+$/.test(input)
-
+const isEmployeeCode = (input) => /^[a-zA-Z0-9]+$/.test(input);
 document.addEventListener('DOMContentLoaded', function() {
     
     async function validarEntrada() {
@@ -49,14 +48,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async function validarEmpleadoEntrada(codigoEmpleado) {
-        console.log(`Validando empleado: ${codigoEmpleado}`)
         const empleadoData = await validarEmpleado(codigoEmpleado);        
         if (empleadoData) {
             showModal(empleadoData.message, empleadoData.status, 3);
             playAudio(empleadoData.status);
             if (empleadoData.status === 'success') {
                 // Limpiar el campo de código de empleado
-                document.getElementById('employeeCode').value = '';
+                document.getElementById('entry-data').value = '';
             }
         }
     }
@@ -68,7 +66,7 @@ document.addEventListener('DOMContentLoaded', function() {
             playAudio(data.status);
             if (data.status === 'success') {
                 // Limpiar el campo de folio del vale
-                document.getElementById('voucherFolio').value = '';
+                document.getElementById('entry-data').value = '';
             }
         }
     }
@@ -90,7 +88,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="card-body">
                         <h4 class="text-center mb-3">Registrar entrada</h4>
                         <div class="form-group">
-                            <label for="employeeCode">Datos de entrada</label>
+                            <label for="entry-data">Datos de entrada</label>
                             <input type="text" class="form-control" id="entry-data" placeholder="Ingrese su código de empleado o folio de vale">
                         </div>
                     </div>
@@ -286,6 +284,7 @@ function closeModal(){
         input.focus()
         input.value = ''
     }
+    updateLast5Entries()
 }
 
 async function updateLast5Entries() {

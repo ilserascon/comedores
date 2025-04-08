@@ -1159,7 +1159,7 @@ def upload_empleados(request):
                 message['message3'] = [f'Empleados modificados: {empleados_modificados}', 'info']
 
             return JsonResponse({'message': message})
-        except PayrollType.DoesNotExist:
+        except PayrollType.DoesNotExist as e:
             return JsonResponse({'error': 'Tipo de nómina no encontrado'}, status=404)
         except ClientDiner.DoesNotExist:
             return JsonResponse({'error': 'Cliente-Comedor no encontrado'}, status=404)
@@ -1590,7 +1590,6 @@ def export_excel_employee_report(request):
 
         def add_payroll_types(row):
             employee = Employee.objects.filter(employeed_code=row['employee_code']).first()
-            print(employee.payroll)
             row['payroll_description'] = employee.payroll.description
             return row
     
@@ -3137,8 +3136,6 @@ def validar_empleado_te(request):
             arizona_tz = pytz.timezone('America/Phoenix')
             now = timezone.now().astimezone(arizona_tz)
             
-            print(now)
-
             # Registrar la entrada
             entry = Entry(
                 employee_client_diner=employee_client_diner,
