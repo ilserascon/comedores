@@ -230,8 +230,8 @@ document.addEventListener('DOMContentLoaded', function() {
             return { error: 'El nombre de la compañía debe tener máximo 50 caracteres' };
         }
     
-        if (data.name.length < 2 || data.lastname.length < 2 || data.second_lastname.length < 2) {
-            return { error: 'El nombre y los apellidos deben tener al menos 2 caracteres' };
+        if (data.name.length < 2 || data.lastname.length < 2) {
+            return { error: 'El nombre y el apellido paterno deben tener al menos 2 caracteres' };
         }
         
         if (data.rfc.length < 12 || data.rfc.length > 13) {
