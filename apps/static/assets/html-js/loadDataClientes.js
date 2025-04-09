@@ -234,8 +234,8 @@ document.addEventListener('DOMContentLoaded', function() {
             return { error: 'El nombre y los apellidos deben tener al menos 2 caracteres' };
         }
         
-        if (data.rfc.length != 13) {
-            return { error: 'El RFC debe tener 13 caracteres' };
+        if (data.rfc.length < 12 || data.rfc.length > 13) {
+            return { error: 'El RFC debe tener 12 o 13 caracteres' };
         }
         
         if (data.phone.length != 10) {
