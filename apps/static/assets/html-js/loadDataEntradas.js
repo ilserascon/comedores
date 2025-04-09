@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     <!-- Main Section -->
                     <div class="card-body">
-                        <h4 class="text-center mb-3">Registrar entrada</h4>
+                        <h1 class="text-center mb-3 text-primary">Registrar entrada</h1>
                         <div class="form-group">
                             <label for="entry-data">Datos de entrada</label>
                             <input type="text" class="form-control" id="entry-data" placeholder="Ingrese su código de empleado o folio de vale">
