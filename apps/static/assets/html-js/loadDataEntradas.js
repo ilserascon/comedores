@@ -304,6 +304,7 @@ async function updateLast5Entries() {
                         <th>Fecha de entrada</th>
                         <th>Folio de Vale</th>
                         <th>Tipo de Vale</th>
+                        <th>Nombre del empleado del vale perpetuo</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -313,6 +314,7 @@ async function updateLast5Entries() {
                             <td>${entry.datetime || '--'}</td>
                             <td>${entry.voucher || '--'}</td>
                             <td>${entry.voucher_type || '--'}</td>
+                            <td>${entry.employee_name_voucher || ""}</td>
                         </tr>
                     `).join('')}
                 </tbody>

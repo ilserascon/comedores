@@ -3203,7 +3203,8 @@ def get_last_entries(request):
             "employee": entry.employee_client_diner.employee.name if entry.employee_client_diner else None,
             "datetime": entry.created_at.astimezone(arizona_tz).strftime('%Y-%m-%d %H:%M:%S'),
             "voucher": entry.voucher.folio if entry.voucher else None,
-            "voucher_type": entry.voucher.lots.voucher_type.description if entry.voucher else None
+            "voucher_type": entry.voucher.lots.voucher_type.description if entry.voucher else None,
+            "employee_name_voucher": entry.voucher.employee if entry.voucher else None
             } for entry in entries
         ]
         

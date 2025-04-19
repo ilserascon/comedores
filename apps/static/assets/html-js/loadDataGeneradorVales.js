@@ -338,6 +338,8 @@ getClientes().then(data => {
     if (uniqueClientField.children.length > 0) {
       uniqueClientField.children[0].selected = true
       perpetualClientField.children[0].selected = true
+      console.log(uniqueClientField.children[0])
+      console.log(uniqueDiningRoomField.children[0])
       populateDinningRoomField(uniqueClientField.children[0].value)
     } else {
       showToast('No se tienen clientes registrados.', 'danger')
@@ -350,8 +352,18 @@ getClientes().then(data => {
 uniqueClientField.addEventListener('change', () => {
   uniqueDiningRoomField.innerHTML = ''
   perpetualDiningRoomField.innerHTML = ''
+  uniqueClientField.value = uniqueClientField.value
+  perpetualClientField.value = uniqueClientField.value
   populateDinningRoomField(uniqueClientField.value)
 
+})
+
+perpetualClientField.addEventListener('change', () => {
+  uniqueDiningRoomField.innerHTML = ''
+  perpetualDiningRoomField.innerHTML = ''
+  uniqueClientField.value = perpetualClientField.value
+  perpetualClientField.value = perpetualClientField.value
+  populateDinningRoomField(perpetualClientField.value)
 })
 
 function validateFields(maxQuantity, quantity, clientField, diningRoomField){
