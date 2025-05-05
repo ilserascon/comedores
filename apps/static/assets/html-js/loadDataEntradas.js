@@ -75,13 +75,25 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             const data = await getUsuarioEntrada();
             const cardContent = document.getElementById('cardContent');
-            
+            console.log(data)
             if (data.has_dining_room) {
+                names = ''
+                names_company = ''
+                for (const [index, dining_room] of data.dining_rooms.entries()) {
+                    // Si es el último elemento, no agregar la coma
+                    if (index === data.dining_rooms.length - 1) {
+                        names += `${dining_room.name}`;
+                        names_company += `${dining_room.client_company}`;
+                    } else {
+                        names += `${dining_room.name}, `;
+                        names_company += `${dining_room.client_company}, `;
+                    }
+                }
                 cardContent.innerHTML = `
                     <!-- Header Section -->
                     <div class="card-header bg-transparent d-flex justify-content-between">
-                        <h3 class="mb-0" id="cliente">Cliente: ${data.dining_room.client_company}</h3>
-                        <span id="comedor">${data.dining_room.name}</span>
+                        <h3 class="mb-0" id="cliente">Cliente/s: ${names_company}</h3>
+                        <span id="comedor">${names}</span>
                     </div>
 
                     <!-- Main Section -->
@@ -300,6 +312,8 @@ async function updateLast5Entries() {
             <table class="table table-striped">
                 <thead>
                     <tr>
+                        <th>Comedor</th>
+                        <th>Cliente</th>
                         <th>Empleado</th>
                         <th>Fecha de entrada</th>
                         <th>Folio de Vale</th>
@@ -310,6 +324,8 @@ async function updateLast5Entries() {
                 <tbody>
                     ${data.entries.map(entry => `
                         <tr>
+                            <td>${entry.dining_room_name || '--'}</td>
+                            <td>${entry.client_company || '--'}</td>
                             <td>${entry.employee || '--'}</td>
                             <td>${entry.datetime || '--'}</td>
                             <td>${entry.voucher || '--'}</td>

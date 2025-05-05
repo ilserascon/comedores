@@ -14,7 +14,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const createPasswordInput = document.getElementById('create_password');
     const createRoleInput = document.getElementById('create_role');
     const createStatusInput = document.getElementById('create_status');
-    const createDiningRoomInput = document.getElementById('create_dining_room');
     const editUsernameInput = document.getElementById('edit_username');
     const editFirstNameInput = document.getElementById('edit_first_name');
     const editLastNameInput = document.getElementById('edit_last_name');
@@ -23,7 +22,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const editPasswordInput = document.getElementById('edit_password');
     const editRoleInput = document.getElementById('edit_role');
     const editStatusInput = document.getElementById('edit_status');
-    const editDiningRoomInput = document.getElementById('edit_dining_room');
     const pagination = document.getElementById('pagination');
     const roleFilter = document.getElementById('roleFilter');
     const searchUserInput = document.getElementById('searchUserInput');
@@ -72,16 +70,6 @@ document.addEventListener('DOMContentLoaded', function() {
         roleFilter.innerHTML = `<option value="">Todos los roles</option>` + roles.map(role => `<option value="${role.id}">${role.name}</option>`).join('');
     }
 
-    // Populate dining rooms without in charge
-    async function populateDiningRooms() {
-        const diners = await fetchDinersWithoutInCharge();
-        if (diners.length === 0) {
-            return { message: 'No hay comedores disponibles' };
-        } else {
-            return { message: 'Comedores cargados correctamentem', diners };
-        }
-    }
-
     // Populate users
     async function populateUsers(page = 1, search = '', role = '') {
         const data = await fetchUsers(page, search, role);
@@ -102,8 +90,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td>${user.second_last_name ? user.second_last_name : 'N/A'}</td>
                     <td>${user.email}</td>
                     <td>${user.role__name}</td>
-                    <td>${user.dining_room_in_charge__name ? user.dining_room_in_charge__name : 'Sin asignar'}</td>
-                    <td>${user.dining_room_in_charge__client_diner_dining_room__client__company ? user.dining_room_in_charge__client_diner_dining_room__client__company : 'N/A'}</td>
                     <td>
                         <span class="badge badge-dot mr-4">
                             <i class="${user.status ? 'bg-success' : 'bg-danger'}"></i>
@@ -192,7 +178,6 @@ document.addEventListener('DOMContentLoaded', function() {
             password: createPasswordInput.value,
             role_id: createRoleInput.value,
             status: createStatusInput.value === 'true',
-            dining_room_in_charge: createRoleInput.value == 1 ? null : createDiningRoomInput.value // No asignar comedor si es Administrador
         };
 
         if (!validateFormData(data)) {
@@ -233,7 +218,6 @@ document.addEventListener('DOMContentLoaded', function() {
             role_id: editRoleInput.value,
             role__name: editRoleInput.options[editRoleInput.selectedIndex].text,
             status: editStatusInput.value === 'true',
-            dining_room_in_charge: editRoleInput.value == "no" ? "no" : (editDiningRoomInput.value === 'no' ? "no" : editDiningRoomInput.value) // No asignar comedor si es Administrador
         };
 
         if (!validateFormData(formData)) {
@@ -245,7 +229,6 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        formData.dining_room_in_charge = editDiningRoomInput.value;
         const result = await saveUser(userId, formData);
         if (result.message) {
             editUserModal.hide();
@@ -261,7 +244,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function hasFormChanged(originalData, formData) {
         // Check if any field has changed
-        formData['dining_room_in_charge'] = formData['dining_room_in_charge'] === 'no' ? null : formData['dining_room_in_charge'];
         return Object.keys(formData).some(key => {
             if (key in originalData) {
                 return originalData[key] != formData[key];
@@ -299,22 +281,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.editUser = async function(userId) {
         const user = await fetchUserDetails(userId);
-        const result = await populateDiningRooms();
 
         enablePasswordEditCheckbox.checked = false;
         editPasswordInput.disabled = true;
         editPasswordInput.value = '';
-        editDiningRoomInput.innerHTML = '';
-        if (user.dining_room_in_charge__name) {
-            editDiningRoomInput.innerHTML = `<option value="${user.dining_room_in_charge}">${user.dining_room_in_charge__name}(${user.dining_room_in_charge__client_diner_dining_room__client__company ? user.dining_room_in_charge__client_diner_dining_room__client__company : 'N/A'})</option>`;
-        }
-        if(result.message === 'No hay comedores disponibles' && user.dining_room_in_charge__name) {
-            editDiningRoomInput.innerHTML +=`<option value="no">Sin Asignar</option>`;
-        }else if(result.message === 'No hay comedores disponibles') {
-            editDiningRoomInput.innerHTML +=`<option value="no">No hay comedores disponibles</option>`;
-        }else {
-            editDiningRoomInput.innerHTML +=`<option value="no">Sin Asignar</option>` + result.diners.map(diner => `<option value="${diner.id}">${diner.name}(${diner.client_diner_dining_room__client__company ? diner.client_diner_dining_room__client__company : 'N/A'})</option>`).join('');
-        }
         if (user) {
             editUserIdInput.value = user.id;
             editUsernameInput.value = user.username;
@@ -324,23 +294,12 @@ document.addEventListener('DOMContentLoaded', function() {
             editEmailInput.value = user.email;
             editRoleInput.value = user.role;
             editStatusInput.value = user.status;
-            editDiningRoomInput.value = user.dining_room_in_charge ? user.dining_room_in_charge : 'no';
             editUserModal.show();
-            handleRoleStatusChange(editRoleInput, editDiningRoomInput, editStatusInput);
+            handleRoleStatusChange(editRoleInput, editStatusInput);
         }
     };
 
-    function handleRoleStatusChange(roleInput, diningRoomInput, statusInput) {
-        if (roleInput.value == 1 || statusInput.value == 'false') {
-            diningRoomInput.value = 'no';
-            diningRoomInput.disabled = true;
-        } else {
-            diningRoomInput.disabled = false;
-        }
-    }
-
     populateRoles();
-    populateDiningRooms();
     populateUsers();
 
     // Close modal on button click
@@ -352,13 +311,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     createUserBtn.addEventListener('click', async function() {
         createUserForm.reset();
-        const result = await populateDiningRooms();
-        if(result.message === 'No hay comedores disponibles') {
-            createDiningRoomInput.innerHTML = `<option value="no">No hay comedores disponibles</option>`;
-        }else {
-            createDiningRoomInput.innerHTML = `<option value="no">Sin Asignar</option>` + result.diners.map(diner => `<option value="${diner.id}">${diner.name}(${diner.client_diner_dining_room__client__company ? diner.client_diner_dining_room__client__company : 'N/A'})</option>`).join('');
-        }
-        handleRoleStatusChange(createRoleInput, createDiningRoomInput, createStatusInput);
+        handleRoleStatusChange(createRoleInput, createStatusInput);
     });
 
     searchUserInput.addEventListener('input', function() {
@@ -399,21 +352,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Disable dining room selection if role is Admin
     createRoleInput.addEventListener('change', function() {
-        handleRoleStatusChange(createRoleInput, createDiningRoomInput, createStatusInput);
-    });
-
-    editRoleInput.addEventListener('change', function() {
-        handleRoleStatusChange(editRoleInput, editDiningRoomInput, editStatusInput);
-        if(editRoleInput.value == 1){
-            editDiningRoomInput.value = 'no';
-        }
+        handleRoleStatusChange(createRoleInput, createStatusInput);
     });
 
     createStatusInput.addEventListener('change', function() {
-        handleRoleStatusChange(createRoleInput, createDiningRoomInput, createStatusInput);
+        handleRoleStatusChange(createRoleInput, createStatusInput);
     });
 
     editStatusInput.addEventListener('change', function() {
-        handleRoleStatusChange(editRoleInput, editDiningRoomInput, editStatusInput);
+        handleRoleStatusChange(editRoleInput, editStatusInput);
     });
 });

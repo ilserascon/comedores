@@ -1,5 +1,6 @@
 let currentPage = 1; // Variable global para almacenar el número de página actual
 let currentFilter = 'all'; // Variable global para almacenar el filtro actual
+let currentInCharge = 'all'; // Variable global para almacenar el encargado actual
 
 
 /**
@@ -9,9 +10,9 @@ let currentFilter = 'all'; // Variable global para almacenar el filtro actual
  * @param {string} filter - Filtro a aplicar en la búsqueda de comedores.
  * @throws {Error} - Error al actualizar la tabla de comedores.
  */
-async function actualizarTablaComedores(page = 1, filter = 'all') {
+async function actualizarTablaComedores(page = 1, filter = 'all', in_charge = 'all') {
     try {
-        const data = await getComedores(page, filter);
+        const data = await getComedores(page, filter, in_charge);
         const tbody = document.querySelector('.list');
         tbody.innerHTML = '';
 
@@ -63,7 +64,7 @@ async function actualizarTablaComedores(page = 1, filter = 'all') {
             const prevPage = document.createElement('li');
             prevPage.classList.add('page-item');
             prevPage.innerHTML = `
-                <a class="page-link" href="#" onclick="actualizarTablaComedores(${data.page_number - 1}, '${filter}')">
+                <a class="page-link" href="#" onclick="actualizarTablaComedores(${data.page_number - 1}, '${filter}', '${in_charge}')">
                     <i class="fas fa-angle-left"></i>
                     <span class="sr-only">Previous</span>
                 </a>
@@ -78,7 +79,7 @@ async function actualizarTablaComedores(page = 1, filter = 'all') {
                 pageItem.classList.add('active');
             }
             pageItem.innerHTML = `
-                <a class="page-link" href="#" onclick="actualizarTablaComedores(${i}, '${filter}')">${i}</a>
+                <a class="page-link" href="#" onclick="actualizarTablaComedores(${i}, '${filter}', '${in_charge}')">${i}</a>
             `;
             pagination.appendChild(pageItem);
         }
@@ -87,7 +88,7 @@ async function actualizarTablaComedores(page = 1, filter = 'all') {
             const nextPage = document.createElement('li');
             nextPage.classList.add('page-item');
             nextPage.innerHTML = `
-                <a class="page-link" href="#" onclick="actualizarTablaComedores(${data.page_number + 1}, '${filter}')">
+                <a class="page-link" href="#" onclick="actualizarTablaComedores(${data.page_number + 1}, '${filter}', '${in_charge}')">
                     <i class="fas fa-angle-right"></i>
                     <span class="sr-only">Next</span>
                 </a>
@@ -176,10 +177,12 @@ async function crearComedor() {
 
         await llenarSelectClientesComedores('filterComedorSelect');
         document.getElementById('filterComedorSelect').value = currentFilter;
+        await llenarSelectInCharge('filterInChargeSelect');
+        document.getElementById('filterInChargeSelect').value = currentInCharge;
         await llenarSelectEncargados('comedorInCharge');
         await llenarSelectEncargados('editarComedorInCharge');
         $('#crearComedorModal').modal('hide');
-        await actualizarTablaComedores(currentPage, currentFilter);
+        await actualizarTablaComedores(currentPage, currentFilter, currentInCharge);
     } catch (error) {
         console.error('Error:', error.message);
         showToast('Error al crear comedor', 'danger');
@@ -232,7 +235,8 @@ async function actualizarComedor() {
         await llenarSelectEncargados('editarComedorInCharge');
         await llenarSelectClientesComedores('filterComedorSelect');
         document.getElementById('filterComedorSelect').value = currentFilter;
-        await actualizarTablaComedores(currentPage, currentFilter);
+        document.getElementById('filterInChargeSelect').value = currentInCharge;
+        await actualizarTablaComedores(currentPage, currentFilter, currentInCharge);
         $('#editarComedorModal').modal('hide');
     } catch (error) {
         console.error('Error:', error.message);
@@ -341,6 +345,32 @@ async function llenarSelectClientesComedores(selectId) {
         
     } catch (error) {
         console.error('Error al llenar el select de clientes con comedores:', error.message);
+    }
+}
+
+async function llenarSelectInCharge(selectId) {
+    try {
+        const data = await getEncargadosFiltro();
+        console.log(data);
+        const select = document.getElementById(selectId);
+        select.innerHTML = ''; // Limpiar opciones anteriores
+
+        // Agregar opción por defecto "Todos"
+        const optionTodos = document.createElement('option');
+        optionTodos.value = 'all';
+        optionTodos.textContent = 'Todos';
+        select.appendChild(optionTodos);
+
+        // Agregar opciones obtenidas de la consulta
+        data.forEach(encargado => {
+            const option = document.createElement('option');
+            option.value = encargado.id;
+            option.textContent = encargado.first_name + ' ' + encargado.last_name;
+            select.appendChild(option);
+        });
+        
+    } catch (error) {
+        console.error('Error al llenar el select de encargados con comedores:', error.message);
     }
 }
 
@@ -506,7 +536,25 @@ document.getElementById('editarComedorStatus').addEventListener('change', functi
 // ACTUALIZA LA TABLA DE COMEDORES CUANDO SE CAMBIA EL FILTRO EN EL SELECT
 document.getElementById('filterComedorSelect').addEventListener('change', async function() {
     currentFilter = this.value;
-    await actualizarTablaComedores(1, currentFilter);
+    await actualizarTablaComedores(1, currentFilter, currentInCharge);
+    if (this.value === 'all') {
+        document.getElementById('filterInChargeSelect').disabled = false; // Habilitar el select de encargados
+    } else {
+        document.getElementById('filterInChargeSelect').disabled = true; // Deshabilitar el select de encargados
+    }
+});
+
+// ACTUALIZA LA TABLA DE COMEDORES CUANDO SE CAMBIA EL FILTRO EN EL SELECT DE ENCARGADOS
+document.getElementById('filterInChargeSelect').addEventListener('change', async function() {
+    currentInCharge = this.value;
+    console.log(currentInCharge);
+    await actualizarTablaComedores(1, currentFilter, currentInCharge);
+    if (this.value === 'all') {
+        document.getElementById('filterComedorSelect').disabled = false; // Habilitar el select de clientes
+    }
+    else {
+        document.getElementById('filterComedorSelect').disabled = true; // Deshabilitar el select de clientes
+    }
 });
 
 // RESETEA EL FORMULARIO DE CREACIÓN DE COMEDOR
@@ -522,6 +570,7 @@ document.querySelectorAll('#cerrarComedorBtn, #cerrarComedorBtn2').forEach(butto
  */
 document.addEventListener("DOMContentLoaded", async function() {
     await llenarSelectClientesComedores('filterComedorSelect'); // Llenar el select de clientes con comedores primero
+    await llenarSelectInCharge('filterInChargeSelect'); // Llenar el select de encargados
     await actualizarTablaComedores();
     await llenarSelectEncargados('comedorInCharge');
     await llenarSelectEncargados('editarComedorInCharge');

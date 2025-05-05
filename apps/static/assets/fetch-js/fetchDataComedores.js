@@ -34,9 +34,9 @@ async function getAllComedores(clientId = 'all') {
  * @returns {Promise<Object>} - Datos de los comedores.
  * @throws {Error} - Error al obtener comedores.
  */
-async function getComedores(page = 1, filter = 'all') {
+async function getComedores(page = 1, filter = 'all', in_charge = 'all') {
     try {
-        const response = await fetch(`/get_comedores?page=${page}&filter=${filter}`, {
+        const response = await fetch(`/get_comedores?page=${page}&filter=${filter}&in_charge=${in_charge}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json'
@@ -166,6 +166,28 @@ async function getEncargados() {
     }
 }
 
+async function getEncargadosFiltro() {
+    try {
+        const response = await fetch('/get_in_charge_filter', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });        
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Error al obtener encargados');
+        }        
+
+        const data = await response.json();        
+        console.log(data)
+        return data.in_charge;
+    } catch (error) {
+        console.error('Error:', error.message);
+        throw new Error(error.message || 'Error al obtener encargados');
+    }
+}
 
 /**
  * OBTIENE LA LISTA DE CLIENTES CON COMEDORES.

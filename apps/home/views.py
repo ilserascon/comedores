@@ -81,7 +81,25 @@ def pages(request):
         html_template = loader.get_template('home/page-500.html')
         return HttpResponse(html_template.render(context, request))
 
-# ============================= COMEDORES =============================
+# ============================= COMEDORES ============================= #
+@csrf_exempt
+def get_in_charge_filter(request):
+    # Traer todos los in_charge de los comedores que tengan asignado al menos un comedor
+    try:
+        in_charge = DiningRoom.objects.filter(in_charge__isnull=False).values('in_charge__id', 'in_charge__first_name', 'in_charge__last_name').distinct()
+        in_charge_list = [
+            {
+                'id': ic['in_charge__id'],
+                'first_name': ic['in_charge__first_name'],
+                'last_name': ic['in_charge__last_name']
+            }
+            for ic in in_charge
+        ]
+        print(in_charge_list)
+        return JsonResponse({'in_charge': in_charge_list})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+    
 @csrf_exempt
 def get_all_comedores(request):
     try:
@@ -128,6 +146,7 @@ def get_comedores(request):
     try:
         # Obtener el valor del filtro de la solicitud
         filter_value = request.GET.get('filter', 'all')
+        filter_in_charge = request.GET.get('in_charge', 'all')
 
         # Obtener todos los comedores con la información del cliente y del encargado
         dining_rooms_query = DiningRoom.objects.select_related('in_charge').prefetch_related(
@@ -146,6 +165,12 @@ def get_comedores(request):
         # Aplicar el filtro si no es 'all'
         if filter_value != 'all':
             dining_rooms_query = dining_rooms_query.filter(client_diner_dining_room__client__id=filter_value)
+
+        if filter_in_charge != 'all' and filter_in_charge != 'sin_asignar':
+            dining_rooms_query = dining_rooms_query.filter(in_charge__id=filter_in_charge)
+        
+        if filter_in_charge == 'sin_asignar':
+            dining_rooms_query = dining_rooms_query.filter(in_charge__isnull=True)
 
         # Renombrar campos para evitar confusión
         dining_rooms_list = [
@@ -384,9 +409,6 @@ def get_encargados(request):
         # Filtrar los usuarios con role_id = 2
         encargados = CustomUser.objects.filter(role_id=2, status=True)
         
-        # Excluir los usuarios que están asignados como in_charge en cualquier DiningRoom
-        encargados = encargados.exclude(dining_room_in_charge__isnull=False)
-        
         # Seleccionar los campos necesarios
         encargados = encargados.values('id', 'first_name', 'last_name')
         
@@ -584,7 +606,7 @@ def user_list(request):
         role_filter = request.GET.get('role', '')
 
         users = CustomUser.objects.all().order_by('id').values(
-            'id', 'username', 'first_name', 'last_name', 'second_last_name', 'email', 'role__name', 'dining_room_in_charge__name', 'dining_room_in_charge__client_diner_dining_room__client__company', 'status'
+            'id', 'username', 'first_name', 'last_name', 'second_last_name', 'email', 'role__name', 'status'
         ).distinct()
 
         if search_query:
@@ -646,18 +668,6 @@ def user_list(request):
                     status=data.get('status', True),
                     created_by=request.user
                 )
-                if 'dining_room_in_charge' in data and data['dining_room_in_charge'] is not None:
-                    if data['dining_room_in_charge'] == 'null' or data['dining_room_in_charge'] == 'no':
-                        if user.dining_room_in_charge.exists():
-                            dining_room = user.dining_room_in_charge.first()
-                            dining_room.in_charge = None
-                            dining_room.save()
-                        user.dining_room_in_charge.clear()
-                    else:
-                        dining_room = get_object_or_404(DiningRoom, id=data['dining_room_in_charge'])
-                        dining_room.in_charge = user
-                        dining_room.save()
-                        user.dining_room_in_charge.set([dining_room])
 
                 if data['status'] == False:
                     dining_rooms = DiningRoom.objects.filter(in_charge=user)
@@ -685,7 +695,7 @@ def user_detail(request, user_id):
     user = get_object_or_404(CustomUser, id=user_id)
     if request.method == 'GET':
         try:
-            user_data = CustomUser.objects.filter(id=user_id).values('id', 'username', 'first_name', 'last_name', 'second_last_name', 'email', 'role', 'role__name', 'dining_room_in_charge','dining_room_in_charge__client_diner_dining_room__client__company', 'dining_room_in_charge__name','status', 'created_by', 'updated_by').first()
+            user_data = CustomUser.objects.filter(id=user_id).values('id', 'username', 'first_name', 'last_name', 'second_last_name', 'email', 'role', 'role__name', 'status', 'created_by', 'updated_by').first()
             return JsonResponse(user_data)
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
@@ -719,19 +729,6 @@ def user_detail(request, user_id):
                     user.role = get_object_or_404(Role, id=data['role_id'])
                 user.save()
 
-                if 'dining_room_in_charge' in data and data['dining_room_in_charge'] is not None:
-                    if data['dining_room_in_charge'] == 'null' or data['dining_room_in_charge'] == 'no':
-                        if user.dining_room_in_charge.exists():
-                            dining_room = user.dining_room_in_charge.first()
-                            dining_room.in_charge = None
-                            dining_room.save()
-                        user.dining_room_in_charge.clear()
-                    else:
-                        dining_room = get_object_or_404(DiningRoom, id=data['dining_room_in_charge'])
-                        dining_room.in_charge = user
-                        dining_room.save()
-                        user.dining_room_in_charge.set([dining_room])
-
                 if data['status'] == False:
                     dining_rooms = DiningRoom.objects.filter(in_charge=user)
                     for dining_room in dining_rooms:
@@ -757,29 +754,7 @@ def user_detail(request, user_id):
 def role_list(request):
     if request.method == 'GET':
         roles = Role.objects.all().values('id', 'name')
-        return JsonResponse(list(roles), safe=False)
-    
-@csrf_exempt
-def get_diner_without_in_charge(request):
-    try:
-        diners = ClientDiner.objects.filter(dining_room__in_charge__isnull=True, dining_room__status=1).values(
-            'dining_room', 'dining_room__name', 'client__company'
-        )
-        
-        # Convert QuerySet to a list of dictionaries
-        diners_list = [
-            {
-                'id': diner['dining_room'],
-                'name': diner['dining_room__name'],
-                'client_diner_dining_room__client__company': diner['client__company']
-            }
-            for diner in diners
-        ]
-        
-        return JsonResponse(diners_list, safe=False)
-    except Exception as e:
-        print(e)
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse(list(roles), safe=False) 
 
 # ===================== EMPLEADOS ===================== #
 @csrf_exempt
@@ -817,7 +792,7 @@ def get_empleados(request):
         dining_room_name=models.F('employee_client_diner_employee__client_diner__dining_room__name')
     ).values(
         'id', 'employeed_code', 'name', 'lastname', 'second_lastname', 'client__company', 'dining_room_name', 'payroll__description', 'status'
-    ).distinct()
+    ).distinct().order_by('id')  # Add ordering here
 
     paginator = Paginator(empleados, page_size)
     page_obj = paginator.get_page(page_number)
@@ -2858,23 +2833,19 @@ def change_voucher_employee(request):
 def entradas_view(request):
     try:
         user = request.user.id        
-        dining_room = DiningRoom.objects.filter(in_charge_id=user, status=True).first()        
+        dining_rooms = DiningRoom.objects.filter(in_charge_id=user, status=True)
 
-        if dining_room:
-            client_diner_dining_room = ClientDiner.objects.filter(dining_room=dining_room).first()            
-
-            if client_diner_dining_room:
-                response_data = {
-                    'has_dining_room': True,
-                    'dining_room': {
+        if dining_rooms.exists():
+            response_data = {
+                'has_dining_room': True,
+                'dining_rooms': [
+                    {
                         'name': dining_room.name,
-                        'client_company': client_diner_dining_room.client.company
+                        'client_company': ClientDiner.objects.filter(dining_room=dining_room).first().client.company
                     }
-                }
-            else:
-                response_data = {
-                    'has_dining_room': False
-                }
+                    for dining_room in dining_rooms
+                ]
+            }
         else:
             response_data = {
                 'has_dining_room': False
@@ -2888,23 +2859,19 @@ def entradas_view(request):
 def entradas_te_view(request):
     try:
         user = request.user.id        
-        dining_room = DiningRoom.objects.filter(in_charge_id=user, status=True).first()        
+        dining_rooms = DiningRoom.objects.filter(in_charge_id=user, status=True)
 
-        if dining_room:
-            client_diner_dining_room = ClientDiner.objects.filter(dining_room=dining_room).first()            
-
-            if client_diner_dining_room:
-                response_data = {
-                    'has_dining_room': True,
-                    'dining_room': {
+        if dining_rooms.exists():
+            response_data = {
+                'has_dining_room': True,
+                'dining_rooms': [
+                    {
                         'name': dining_room.name,
-                        'client_company': client_diner_dining_room.client.company
+                        'client_company': ClientDiner.objects.filter(dining_room=dining_room).first().client.company
                     }
-                }
-            else:
-                response_data = {
-                    'has_dining_room': False
-                }
+                    for dining_room in dining_rooms
+                ]
+            }
         else:
             response_data = {
                 'has_dining_room': False
@@ -3011,27 +2978,25 @@ def validar_vale(request):
         if not voucher:
             return JsonResponse({"message": "Vale no encontrado", "status": "danger"}, status=404)
 
-        # Verificar si el usuario tiene un comedor asignado
+        # Verificar si el usuario tiene comedores asignados
         user_id = request.user.id
-        dining_room = DiningRoom.objects.filter(in_charge_id=user_id).first()
-        if not dining_room:
-            return JsonResponse({'message': 'No tienes un comedor asignado', "status": "danger"}, status=403)
-        
-        # Verificar si el comedor asignado está activo
-        if not dining_room.status:
-            return JsonResponse({'message': 'El comedor asignado está inactivo', "status": "danger"}, status=403)
+        dining_rooms = DiningRoom.objects.filter(in_charge_id=user_id, status=True)
+        if not dining_rooms.exists():
+            return JsonResponse({'message': 'No tienes comedores asignados', "status": "danger"}, status=403)
 
-        # Verificar si el vale corresponde al comedor asignado
-        if voucher.lots.client_diner.dining_room != dining_room:
-            return JsonResponse({"message": "El vale no corresponde al comedor asignado", "status": "danger"}, status=403)
+        # Verificar si el vale corresponde a alguno de los comedores asignados
+        for dining_room in dining_rooms:
+            if voucher.lots.client_diner.dining_room == dining_room:
+                # Identificar el tipo de vale y manejar la lógica correspondiente
+                if voucher.lots.voucher_type.description == "UNICO":
+                    return manejar_vale_unico(voucher)
+                elif voucher.lots.voucher_type.description == "PERPETUO":
+                    return manejar_vale_perpetuo(voucher)
+                else:
+                    return JsonResponse({"message": "Tipo de vale desconocido", "status": "danger"}, status=400)
 
-        # Identificar el tipo de vale y manejar la lógica correspondiente
-        if voucher.lots.voucher_type.description == "UNICO":
-            return manejar_vale_unico(voucher)
-        elif voucher.lots.voucher_type.description == "PERPETUO":
-            return manejar_vale_perpetuo(voucher)
-        else:
-            return JsonResponse({"message": "Tipo de vale desconocido", "status": "danger"}, status=400)
+        # Si el vale no corresponde a ninguno de los comedores asignados
+        return JsonResponse({"message": "El vale no corresponde a ninguno de los comedores asignados", "status": "danger"}, status=403)
 
     except json.JSONDecodeError:
         return JsonResponse({"error": "El cuerpo de la solicitud debe ser un JSON válido"}, status=400)
@@ -3057,41 +3022,46 @@ def validar_empleado(request):
             # Verificar si el empleado está activo
             if not employee.status:
                 return JsonResponse({'message': 'Empleado inactivo', "status": "danger"}, status=400)
- 
-            # Verificar si el usuario tiene un comedor asignado
+
+            # Verificar si el usuario tiene comedores asignados
             user_id = request.user.id
-            dining_room = DiningRoom.objects.filter(in_charge_id=user_id).first()
-            if not dining_room:
-                return JsonResponse({'message': 'No tienes un comedor asignado', "status": "danger"}, status=403)
-            
-            # Verificar si el comedor asignado está activo
-            if not dining_room.status:
-                return JsonResponse({'message': 'El comedor asignado está inactivo', "status": "danger"}, status=403)
+            dining_rooms = DiningRoom.objects.filter(in_charge_id=user_id, status=True)
+            if not dining_rooms.exists():
+                return JsonResponse({'message': 'No tienes comedores asignados', "status": "danger"}, status=403)
 
-            # Verificar si el empleado tiene acceso al comedor asignado
-            employee_client_diner = EmployeeClientDiner.objects.filter(employee=employee, client_diner__dining_room=dining_room).first()
-            if not employee_client_diner:
-                return JsonResponse({'message': 'El empleado no tiene acceso a este comedor', 'status': "danger"}, status=403)
-
-            # Definir la zona horaria de Arizona
+            # Verificar si el empleado tiene acceso a al menos uno de los comedores asignados
             arizona_tz = pytz.timezone('America/Phoenix')
             now = timezone.now().astimezone(arizona_tz)
             today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
             today_end = now.replace(hour=23, minute=59, second=59, microsecond=999999)
 
-            # Verificar si el empleado ya ha registrado una entrada hoy
-            if Entry.objects.filter(employee_client_diner__employee=employee, created_at__range=(today_start, today_end)).exists():
-                return JsonResponse({'message': 'El empleado ya ha registrado una entrada hoy', "status": "info"}, status=400)
+            for dining_room in dining_rooms:
+                employee_client_diner = EmployeeClientDiner.objects.filter(
+                    employee=employee,
+                    client_diner__dining_room=dining_room
+                ).first()
 
-            # Registrar la entrada
-            entry = Entry(
-                employee_client_diner=employee_client_diner,
-                client_diner=employee_client_diner.client_diner,
-                created_at=now
-            )
-            entry.save()
+                if employee_client_diner:
+                    # Verificar si el empleado ya ha registrado una entrada hoy
+                    if Entry.objects.filter(
+                        employee_client_diner__employee=employee,
+                        client_diner=employee_client_diner.client_diner,
+                        created_at__range=(today_start, today_end)
+                    ).exists():
+                        return JsonResponse({'message': 'El empleado ya ha registrado una entrada hoy', "status": "info"}, status=400)
 
-            return JsonResponse({'message': 'Bienvenido al comedor', 'status': 'success'}, status=200)
+                    # Registrar la entrada
+                    entry = Entry(
+                        employee_client_diner=employee_client_diner,
+                        client_diner=employee_client_diner.client_diner,
+                        created_at=now
+                    )
+                    entry.save()
+                    return JsonResponse({'message': 'Bienvenido al comedor', 'status': 'success'}, status=200)
+
+            # Si no tiene acceso a ninguno de los comedores
+            return JsonResponse({'message': 'El empleado no tiene acceso a ninguno de los comedores asignados', 'status': "danger"}, status=403)
+
         except json.JSONDecodeError:
             return JsonResponse({'error': 'El cuerpo de la solicitud debe ser un JSON válido'}, status=400)
         except Exception as e:
@@ -3116,50 +3086,45 @@ def validar_empleado_te(request):
             # Verificar si el empleado está activo
             if not employee.status:
                 return JsonResponse({'message': 'Empleado inactivo', "status": "danger"}, status=400)
- 
-            # Verificar si el usuario tiene un comedor asignado
+
+            # Verificar si el usuario tiene comedores asignados
             user_id = request.user.id
-            dining_room = DiningRoom.objects.filter(in_charge_id=user_id).first()
-            if not dining_room:
-                return JsonResponse({'message': 'No tienes un comedor asignado', "status": "danger"}, status=403)
-            
-            # Verificar si el comedor asignado está activo
-            if not dining_room.status:
-                return JsonResponse({'message': 'El comedor asignado está inactivo', "status": "danger"}, status=403)
+            dining_rooms = DiningRoom.objects.filter(in_charge_id=user_id, status=True)
+            if not dining_rooms.exists():
+                return JsonResponse({'message': 'No tienes comedores asignados', "status": "danger"}, status=403)
 
-            # Verificar si el empleado tiene acceso al comedor asignado
-            employee_client_diner = EmployeeClientDiner.objects.filter(employee=employee, client_diner__dining_room=dining_room).first()
-            if not employee_client_diner:
-                return JsonResponse({'message': 'El empleado no tiene acceso a este comedor', 'status': "danger"}, status=403)
-
-            # Definir la zona horaria de Arizona
+            # Verificar si el empleado tiene acceso a al menos uno de los comedores asignados
             arizona_tz = pytz.timezone('America/Phoenix')
             now = timezone.now().astimezone(arizona_tz)
-            
-            # Registrar la entrada
-            entry = Entry(
-                employee_client_diner=employee_client_diner,
-                client_diner=employee_client_diner.client_diner,
-                created_at=now
-            )
-            entry.save()
 
-            return JsonResponse({'message': 'Bienvenido al comedor', 'status': 'success'}, status=200)
+            for dr in dining_rooms:
+                employee_client_diner = EmployeeClientDiner.objects.filter(employee=employee, client_diner__dining_room=dr).first()
+                if employee_client_diner:
+                    # Registrar la entrada
+                    entry = Entry(
+                        employee_client_diner=employee_client_diner,
+                        client_diner=employee_client_diner.client_diner,
+                        created_at=now
+                    )
+                    entry.save()
+                    return JsonResponse({'message': 'Bienvenido al comedor', 'status': 'success'}, status=200)
+
+            # Si no tiene acceso a ninguno de los comedores
+            return JsonResponse({'message': 'El empleado no tiene acceso a ninguno de los comedores asignados', 'status': "danger"}, status=403)
+
         except json.JSONDecodeError:
             return JsonResponse({'error': 'El cuerpo de la solicitud debe ser un JSON válido'}, status=400)
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
 
-
 @csrf_exempt
 def get_last_entries(request):
     if request.method != 'GET':
-        return JsonResponse({'error': 'Metodo no permitido'}, status=405)
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
     
     try:
         last_entries = request.GET.get('last_entries')
-        dining_room = request
-        
+
         if not last_entries:
             return JsonResponse({'error': 'last_entries es requerido'}, status=400)
         
@@ -3170,45 +3135,41 @@ def get_last_entries(request):
         
         user = CustomUser.objects.filter(id=request.user.id).first()
 
-                
         if not user:
             return JsonResponse({'error': 'El usuario no existe'}, status=404)
 
-        dining_room = DiningRoom.objects.filter(in_charge=user).first()
+        # Obtener todos los comedores asignados al usuario
+        dining_rooms = DiningRoom.objects.filter(in_charge=user, status=True)
 
-        
-        if not dining_room:
-            return JsonResponse({'error': 'El usuario no tiene un comedor asignado'}, status=404)
-        
-        client_diner = ClientDiner.objects.filter(dining_room=dining_room).first()
+        if not dining_rooms.exists():
+            return JsonResponse({'error': 'El usuario no tiene comedores asignados'}, status=404)
 
-        if not client_diner:
-            return JsonResponse({'error': 'El comedor no tiene clientes asignados'}, status=404)
-        
-        
-        
-        arizona_tz = pytz.timezone('America/Phoenix')  # Replace with your desired timezone
-        entries = Entry.objects.filter(client_diner=client_diner).order_by('-created_at')
-        
-        if not len(entries):
+        # Obtener las entradas para todos los comedores asignados
+        entries = Entry.objects.filter(
+            client_diner__dining_room__in=dining_rooms
+        ).select_related(
+            'client_diner__dining_room', 'client_diner__client', 'employee_client_diner__employee', 'voucher__lots__voucher_type'
+        ).order_by('-created_at')[:last_entries]
+
+        if not entries:
             return JsonResponse({'error': 'No hay entradas'}, status=404)
-        
-        entries = entries[:last_entries]
-        
-        # print(entries[0])
 
+        # Zona horaria de Arizona
         arizona_tz = pytz.timezone('America/Phoenix')
+
+        # Construir la respuesta con el nombre del comedor y la compañía
         entries_json = [
             {
-            "employee": entry.employee_client_diner.employee.name if entry.employee_client_diner else None,
-            "datetime": entry.created_at.astimezone(arizona_tz).strftime('%Y-%m-%d %H:%M:%S'),
-            "voucher": entry.voucher.folio if entry.voucher else None,
-            "voucher_type": entry.voucher.lots.voucher_type.description if entry.voucher else None,
-            "employee_name_voucher": entry.voucher.employee if entry.voucher else None
-            } for entry in entries
+                "employee": entry.employee_client_diner.employee.name if entry.employee_client_diner else None,
+                "datetime": entry.created_at.astimezone(arizona_tz).strftime('%Y-%m-%d %H:%M:%S'),
+                "voucher": entry.voucher.folio if entry.voucher else None,
+                "voucher_type": entry.voucher.lots.voucher_type.description if entry.voucher else None,
+                "employee_name_voucher": entry.voucher.employee if entry.voucher else None,
+                "dining_room_name": entry.client_diner.dining_room.name if entry.client_diner.dining_room else None,
+                "client_company": entry.client_diner.client.company if entry.client_diner.client else None
+            }
+            for entry in entries
         ]
-        
-        # print(entries_json[0])
 
         return JsonResponse({'entries': entries_json})
     
