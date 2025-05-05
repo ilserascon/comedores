@@ -368,6 +368,11 @@ async function llenarSelectInCharge(selectId) {
             option.textContent = encargado.first_name + ' ' + encargado.last_name;
             select.appendChild(option);
         });
+
+        const optionSinAsignar = document.createElement('option');
+        optionSinAsignar.value = 'sin_asignar';
+        optionSinAsignar.textContent = 'Sin asignar';
+        select.appendChild(optionSinAsignar);
         
     } catch (error) {
         console.error('Error al llenar el select de encargados con comedores:', error.message);
