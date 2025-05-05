@@ -18,6 +18,7 @@ urlpatterns = [
     path('create_comedor', views.create_comedor, name='create_comedor'),
     path('update_comedor', views.update_comedor, name='update_comedor'),
     path('get_encargados', views.get_encargados, name='get_encargados'),
+    path('get_in_charge_filter', views.get_in_charge_filter, name='get_in_charge_filter'),
 
     # ======================= CLIENTES ======================= #
     path('get_clientes', views.get_clientes, name='get_clientes'),
@@ -30,7 +31,6 @@ urlpatterns = [
     path('users', views.user_list, name='user_list'),
     path('users/<int:user_id>', views.user_detail, name='user_detail'),
     path('roles', views.role_list, name='role_list'),
-    path('diners-without-in-charge', views.get_diner_without_in_charge, name='diners-without-in-charge'),
 
     # ===================== EMPLEADOS ===================== #
     path('get_empleado', views.get_empleado, name='get_empleado'),

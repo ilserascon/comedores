@@ -56,16 +56,6 @@ async function fetchUserDetails(userId) {
     }
 }
 
-// Fetch dining rooms without in charge
-async function fetchDinersWithoutInCharge() {
-    try {
-        const response = await fetch('/diners-without-in-charge');
-        const diners = await response.json();
-        return diners;
-    } catch (error) {
-        return [];
-    }
-}
 
 // Helper function to get CSRF token from cookies
 function getCookie(name) {
