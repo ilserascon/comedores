@@ -210,11 +210,11 @@ function showModal(message, type = 'success', duration = 0) {
             content = `
                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
-                        <div class="modal-header bg-gray-dark">
-                            <h5 class="modal-title text-white">Cargando...
+                        <div class="modal-header display-1 bg-gray-dark">
+                            <h5 class="modal-title text-white entrada-title">Cargando...
                             </h5>
                         </div>
-                        <div class="modal-body">
+                        <div class="modal-body entrada-body">
                             ${loader}
                         </div>
                     </div>
@@ -226,11 +226,11 @@ function showModal(message, type = 'success', duration = 0) {
             content = `
                                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
-                        <div class="modal-header bg-green">
-                            <h5 class="modal-title text-white">Entrada registrada
+                        <div class="modal-header display-1 bg-green">
+                            <h5 class="modal-title text-white entrada-title">Entrada registrada
                             </h5>
                         </div>
-                        <div class="modal-body">
+                        <div class="modal-body entrada-body">
                             ${message}
                         </div>
                     </div>
@@ -242,11 +242,11 @@ function showModal(message, type = 'success', duration = 0) {
             content = `
                                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
-                        <div class="modal-header bg-danger">
-                            <h5 class="modal-title text-white">Error
+                        <div class="modal-header display-1 bg-danger">
+                            <h5 class="modal-title text-white entrada-title">Error
                             </h5>
                         </div>
-                        <div class="modal-body">
+                        <div class="modal-body entrada-body">
                             ${message}
                         </div>
                     </div>
@@ -258,7 +258,7 @@ function showModal(message, type = 'success', duration = 0) {
             content = `
                                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
-                        <div class="modal-header bg-info">
+                        <div class="modal-header display-1 bg-info">
                             <h5 class="modal-title text-white">Información
                             </h5>
                         </div>
