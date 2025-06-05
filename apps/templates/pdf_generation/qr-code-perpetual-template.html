@@ -11,16 +11,20 @@
             <div class="qr-code" >
               <div class="header">
                 <img src="file:///{{ logo_path }}" alt="Alcorp logo">
-                <span>{{comedor}}</span>
+                <span class="comedor">{{comedor}}</span>
               </div>
               <span class="employee">
                 {% if employee %}
-                  {{employee}}
+                  <strong class="employee-label">Empleado</strong>
+                  <span class="employee-name">{{employee}}</span>
                 {% endif %}
 
               </span>
               <img src="file:///{{ qr_path }}" alt="QR Code">
               <div class="footer" >
+                {% if company_name %}
+                <span class="company-name">{{company_name}}</span>
+                {% endif %}
                 <span class="vale-perpetuo">Vale perpetuo</span>
                 <span>Folio: {{folio}}</span>
               </div>

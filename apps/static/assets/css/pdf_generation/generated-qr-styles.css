@@ -56,6 +56,13 @@ img {
   margin-top: 3rem;
   text-align: center;
 }
+.company-name {
+  display: block;
+  font-weight: 600;
+  margin: 0.5rem 0;
+}
+
+.employee-name, .employee-label {display:block;}
 
 .vale-perpetuo {
   display: block;

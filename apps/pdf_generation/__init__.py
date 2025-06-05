@@ -46,9 +46,10 @@ QR_CODE_PERPETUAL_TEMPLATE = 'qr-code-perpetual-template.html'
 QR_CODES_STYLESHEET = CSS_DIR+'/generated-qr-styles.css'
 LOGO_PATH = os.path.abspath('./apps/static/assets/img/brand/logo_alcorp.png')
 
-def generate_qrs_pdf(qrs: list[str], filename: str, voucher_type: str):
+def generate_qrs_pdf(qrs: list[str], filename: str, voucher_type: str, company_name: str = ""):
   filename = OUTPUT_DIR+filename
-  rendered_template = jinja_env.get_template(QR_CODES_TEMPLATE).render({"qrcodes":qrs, "logo_path":LOGO_PATH,  "voucher_type": voucher_type})
+  context = {"qrcodes":qrs, "logo_path":LOGO_PATH,  "voucher_type": voucher_type, "company_name": company_name}
+  rendered_template = jinja_env.get_template(QR_CODES_TEMPLATE).render(context)
   pdfkit.from_string(
     rendered_template,
     filename,
@@ -68,9 +69,10 @@ def prepare_qr(voucher: Voucher):
 def generate_perpetual_voucher_pdf(voucher: Voucher, qr_path: str):
   
   filename = OUTPUT_DIR+f'/qr_{voucher.folio}.pdf'
-  
   dining_room = voucher.lots.client_diner.dining_room.name
-  rendered_template = jinja_env.get_template(QR_CODE_PERPETUAL_TEMPLATE).render({"logo_path": LOGO_PATH, "folio": voucher.folio, "employee": voucher.employee, "qr_path":qr_path, "comedor": dining_room})
+  context = {"logo_path": LOGO_PATH, "folio": voucher.folio, "employee": voucher.employee, "qr_path":qr_path, "comedor": dining_room, "company_name": voucher.lots.client_diner.client.company}
+  
+  rendered_template = jinja_env.get_template(QR_CODE_PERPETUAL_TEMPLATE).render(context)
   
   pdfkit.from_string(
     rendered_template,
@@ -132,12 +134,18 @@ def generate_lot_pdf(lot_id: int, check_exists: bool):
     return get_lot_pdf_path(lot_id)
   
   lot = Lots.objects.filter(id=lot_id).first()
+  company_name = lot.client_diner.client.company
   dining_room = lot.client_diner.dining_room.name
 
   vouchers = list(Voucher.objects.filter(id=lot_id))
   qr_paths = prepare_qrs(vouchers, lot_id, dining_room)
   filename = create_lot_pdf_name(lot_id)
-  generate_qrs_pdf(qr_paths, filename, lot.voucher_type.description)
+  generate_qrs_pdf(
+    qrs=qr_paths,
+    filename=filename,
+    voucher_type=lot.voucher_type.description,
+    company_name=company_name
+  )
 
   for qr_path in qr_paths:
     os.remove(qr_path[0])

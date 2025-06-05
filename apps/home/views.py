@@ -2543,7 +2543,7 @@ def generate_unique_voucher(request):
             
             
             filename = f'/LOT-{lots.id}.pdf'
-            generate_qrs_pdf(qr_paths, filename, lots.voucher_type.description)
+            generate_qrs_pdf(qr_paths, filename, lots.voucher_type.description, lots.client_diner.client.company)
             
             context = {
                 "lot_id": lots.id,
@@ -2590,7 +2590,7 @@ def get_lot_pdf(request):
     qr_paths = prepare_qrs(vouchers, lot.id, lot.client_diner.dining_room.name)
     
     filename = create_lot_pdf_name(lot.id)
-    filepath = generate_qrs_pdf(qr_paths, filename, lot.voucher_type.description)
+    filepath = generate_qrs_pdf(qr_paths, filename, lot.voucher_type.description, lot.client_diner.client.company)
     
     url = prepare_url_pdf(filepath)
 
