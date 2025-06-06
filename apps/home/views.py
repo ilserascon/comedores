@@ -2543,7 +2543,7 @@ def generate_unique_voucher(request):
             
             
             filename = f'/LOT-{lots.id}.pdf'
-            generate_qrs_pdf(qr_paths, filename, lots.voucher_type.description)
+            generate_qrs_pdf(qr_paths, filename, lots.voucher_type.description, lots.client_diner.client.company)
             
             context = {
                 "lot_id": lots.id,
@@ -2590,7 +2590,7 @@ def get_lot_pdf(request):
     qr_paths = prepare_qrs(vouchers, lot.id, lot.client_diner.dining_room.name)
     
     filename = create_lot_pdf_name(lot.id)
-    filepath = generate_qrs_pdf(qr_paths, filename, lot.voucher_type.description)
+    filepath = generate_qrs_pdf(qr_paths, filename, lot.voucher_type.description, lot.client_diner.client.company)
     
     url = prepare_url_pdf(filepath)
 
@@ -2911,7 +2911,7 @@ def get_informacion_comedor_entradas(request):
 def manejar_vale_unico(voucher):
     # Verificar si el vale esta activo
     if not voucher.status:
-        return JsonResponse({"message": "Este vale ya fue usado", "status": "info"}, status=400)
+        return JsonResponse({"message": "Este vale ya fue usado", "status": "danger"}, status=400)
 
     # Cambiar el estatus del vale a utilizado
     voucher.status = False
@@ -2934,7 +2934,7 @@ def manejar_vale_unico(voucher):
 def manejar_vale_perpetuo(voucher):
     # Verificar si el vale está activo
     if not voucher.status:
-        return JsonResponse({"message": "Este vale está inactivo", "status": "info"}, status=400)
+        return JsonResponse({"message": "Este vale está inactivo", "status": "danger"}, status=400)
 
     # Definir la zona horaria de Arizona
     arizona_tz = pytz.timezone('America/Phoenix')
@@ -2944,7 +2944,7 @@ def manejar_vale_perpetuo(voucher):
 
     # Verificar si el vale ya ha sido utilizado hoy
     if Entry.objects.filter(voucher=voucher, created_at__range=(today_start, today_end)).exists():
-        return JsonResponse({"message": "Este vale ya ha sido utilizado hoy", "status": "info"}, status=400)
+        return JsonResponse({"message": "Este vale ya ha sido utilizado hoy", "status": "danger"}, status=400)
 
     # Guardar la información de la entrada con la zona horaria de Arizona
     entry = Entry(
@@ -2970,7 +2970,7 @@ def validar_vale(request):
         # Verificar que el folio siga la estructura Lote-número (por ejemplo, "2-7")
         folio_regex = re.compile(r'^\d+-\d+$')
         if not folio_regex.match(folio):
-            return JsonResponse({"message": "Formato incorrecto", "status": "info"}, status=400)
+            return JsonResponse({"message": "Formato incorrecto", "status": "danger"}, status=400)
 
         voucher = Voucher.objects.filter(folio=folio).select_related('lots__voucher_type', 'lots__client_diner__dining_room').first()
 
@@ -3048,7 +3048,7 @@ def validar_empleado(request):
                         client_diner=employee_client_diner.client_diner,
                         created_at__range=(today_start, today_end)
                     ).exists():
-                        return JsonResponse({'message': 'El empleado ya ha registrado una entrada hoy', "status": "info"}, status=400)
+                        return JsonResponse({'message': 'El empleado ya ha registrado una entrada hoy', "status": "danger"}, status=400)
 
                     # Registrar la entrada
                     entry = Entry(
