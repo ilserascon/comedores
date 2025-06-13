@@ -384,23 +384,23 @@ def update_comedor(request):
             )
 
             # Si el comedor se desactiva, desactivar también a los empleados asignados
-            if not status:
-                client_diners = ClientDiner.objects.filter(dining_room=dining_room).all()
-                for client_diner in client_diners:
-                    client_diner.status = False
-                    client_diner.updated_by_id = user_id
-                    client_diner.save()
 
-                    employee_client_diners = EmployeeClientDiner.objects.filter(client_diner=client_diner).all()
-                    for employee_client_diner in employee_client_diners:
-                        employee_client_diner.status = False
-                        employee_client_diner.updated_by_id = user_id
-                        employee_client_diner.save()
+            client_diners = ClientDiner.objects.filter(dining_room=dining_room).all()
+            for client_diner in client_diners:
+                client_diner.status = status
+                client_diner.updated_by_id = user_id
+                client_diner.save()
 
-                        employee = employee_client_diner.employee
-                        employee.status = False
-                        employee.updated_by_id = user_id
-                        employee.save()
+                employee_client_diners = EmployeeClientDiner.objects.filter(client_diner=client_diner).all()
+                for employee_client_diner in employee_client_diners:
+                    employee_client_diner.status = status
+                    employee_client_diner.updated_by_id = user_id
+                    employee_client_diner.save()
+
+                    employee = employee_client_diner.employee
+                    employee.status = status
+                    employee.updated_by_id = user_id
+                    employee.save()
 
         return JsonResponse({'message': 'Comedor actualizado correctamente', 'status': 'success'})
     except Exception as e:
@@ -2509,6 +2509,8 @@ def generate_unique_voucher(request):
         
         voucher_type_obj = VoucherType.objects.filter(description=voucher_type).first()     
         client_dinner = ClientDiner.objects.filter(client_id=client_id, dining_room_id=dining_room_id).first()
+        
+        print(f'client_dinner: {client_dinner.status}')
 
         if not client_dinner:
             return JsonResponse({"error": "No se encontró la relación entre cliente y comedor"}, status=400)
