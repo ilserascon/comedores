@@ -90,6 +90,10 @@ urlpatterns = [
     path('change_voucher_status', views.change_voucher_status, name='change_voucher_status'),
     path('get_lot_pdf', views.get_lot_pdf, name='get_lot_pdf'),
 
+    path('control_accesos', views.control_accesos_page, name='control_accesos_page'),
+    path('api/control_accesos', views.control_accesos_api, name='control_accesos_api'),
+
+
     # Matches any html file
     re_path(r'^.*\.*', views.pages, name='pages'),
 

@@ -14,6 +14,9 @@ from django.utils import timezone
 from apps.authentication.models import CustomUser, Role
 from django.db import models
 from decouple import config
+from django.db import connection
+from datetime import datetime, timedelta
+from datetime import date
 
 from .models import  VoucherType, Lots, DiningRoom, ClientDiner, Client, Employee, PayrollType, Entry, EmployeeClientDiner, Voucher
 from apps.authentication.models import CustomUser, Role
@@ -3372,3 +3375,49 @@ def change_voucher_status(request):
         return JsonResponse({"message": "Nombre del vale actualizado con éxito" })
     except Exception as err:
         return JsonResponse({'error': str(err)}, status=500)
+
+def control_accesos_page(request):
+    fecha_hoy = date.today().strftime('%Y-%m-%d')
+    return render(request, 'control-accesos.html', {'fecha_hoy': fecha_hoy})
+
+def control_accesos_api(request):
+    fecha_str = request.GET.get('filterDate')
+    if not fecha_str:
+        return JsonResponse({'error': 'Fecha requerida'}, status=400)
+
+    try:
+        fecha_dt = datetime.strptime(fecha_str, '%Y-%m-%d')
+        fecha_inicio = fecha_dt.strftime('%Y-%m-%d 00:00:00')
+        fecha_fin = (fecha_dt + timedelta(days=1)).strftime('%Y-%m-%d 00:00:00')
+    except ValueError:
+        return JsonResponse({'error': 'Formato de fecha inválido'}, status=400)
+
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT c.company AS empresa, COUNT(e.id) AS entradas
+            FROM client c
+            LEFT JOIN client_diner cd ON cd.client_id = c.id
+            LEFT JOIN entry e 
+                ON e.client_diner_id = cd.id
+               AND e.created_at >= %s
+               AND e.created_at <  %s
+            GROUP BY c.company
+        """, [fecha_inicio, fecha_fin])
+        rows = cursor.fetchall()
+
+    with connection.cursor() as cursor:
+        cursor.execute("""
+        	SELECT COUNT(e.employee_client_diner_id) AS empleados, COUNT(e.voucher_id) AS vales
+            FROM client c
+            LEFT JOIN client_diner cd ON cd.client_id = c.id
+            LEFT JOIN entry e 
+                ON e.client_diner_id = cd.id
+                AND e.created_at >= %s
+                AND e.created_at <  %s
+        """, [fecha_inicio, fecha_fin])
+        rowsTotales = cursor.fetchall()
+
+    datos = [{'empresa': row[0], 'entradas': row[1]} for row in rows]
+    totales = [{'empleados': row[0], 'vales': row[1]} for row in rowsTotales]
+
+    return JsonResponse({'fecha': fecha_str, 'datos': datos, 'totales': totales})

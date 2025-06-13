@@ -1,0 +1,85 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %} Control de Accesos {% endblock title %}
+
+{% block content %}
+
+<div class="header bg-primary pb-6">
+    <div class="container-fluid">
+        <div class="header-body">
+            <div class="row align-items-center py-4">
+                <div class="col-lg-6 col-7">
+                    <h6 class="h2 text-white d-inline-block mb-0">Control de Accesos</h6>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Page content -->
+<div class="container-fluid mt--6">
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <!-- Card header -->
+                <div class="card-header border-0">
+                    <h3 class="mb-0">Filtros</h3>
+                </div>
+                <div class="card-body">
+                    <form id="filterForm">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label for="filterDate" class="form-label">Fecha</label>
+                                <input type="date" class="form-control" id="filterDate" name="filterDate">
+                            </div>
+                            <div class="col-md-8">
+                                <br>
+                                <button type="button" class="btn btn-success" id="BtnExportar">Exportar Reporte</button>
+                                <button type="button" class="btn btn-primary" id="BtnFiltros">Aplicar Filtros</button>
+                                <button type="button" class="btn btn-secondary" id="BtnLimpiarFiltros">Borrar Filtros</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col">
+            <div class="card">
+                <!-- Card header -->
+                <div class="card-header border-0">
+                    <h3 class="mb-0">Control de Accesos</h3>
+                </div>
+                <div class="card-body">
+                    <!-- Light table -->
+                    <div class="table-responsive">
+                        <table class="table align-items-center table-flush">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th scope="col">Empresa</th>
+                                    <th scope="col">Entradas</th>
+                                </tr>
+                            </thead>
+                            <tbody id="TableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                    <hr>
+                    <table>
+                        <thead id="TableHead"></thead>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    {% include "includes/footer.html" %}
+</div>
+{% endblock content %}
+
+{% block javascripts %}
+<script src="/static/assets/html-js/loadDataControlAccesos.js"></script>
+{% endblock javascripts %}
