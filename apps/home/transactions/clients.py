@@ -30,6 +30,8 @@ def change_client_status(user: CustomUser, client: Client, status: bool):
     client_diner.dining_room.save()
     
     if not status:
+      # Obtener los employee_client_diners para este client_diner
+      employee_client_diners = EmployeeClientDiner.objects.filter(client_diner=client_diner).all()
       for employee_client_diner in employee_client_diners:
         employee_client_diner.status = status
         employee_client_diner.updated_by = user
@@ -40,6 +42,5 @@ def change_client_status(user: CustomUser, client: Client, status: bool):
   
   client.status = status
   client.save()
-  
-  
-  
+
+
