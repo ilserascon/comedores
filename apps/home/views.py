@@ -559,7 +559,7 @@ def client_detail(request, client_id):
             if len(data['name']) < 2 or len(data['lastname']) < 2:
                 return JsonResponse({'error': 'El nombre y apellido paterno deben tener al menos 2 caracteres'}, status=400)
             
-            if len(data['rfc']) != 13 or len(data['rfc']) != 12:
+            if len(data['rfc']) > 13 or len(data['rfc']) < 12:
                 return JsonResponse({'error': 'El RFC debe tener 12 o 13 caracteres'}, status=400)
             
             if len(data['phone']) != 10:
